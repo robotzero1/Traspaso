@@ -1,6 +1,6 @@
 {
-    "built_at": "2026-10-04T16:47:28+00:00",
-    "osm_timestamp": "2026-10-04T14:33:06Z",
+    "built_at": "2026-10-04T18:06:17+00:00",
+    "osm_timestamp": "2026-10-04T17:47:51Z",
     "bbox": [
         41.6,
         -0.96,
@@ -8,10 +8,10 @@
         -0.82
     ],
     "counts": {
-        "neighbourhoods": 16,
+        "neighbourhoods": 15,
         "streets": 9353,
-        "points_of_interest": 8738,
-        "footfall_points": 7077
+        "points_of_interest": 8755,
+        "footfall_points": 7013
     },
     "footfall": {
         "component_weights": {
@@ -23,7 +23,5 @@
         "calibrated": false
     },
     "attribution": "Contains information from OpenStreetMap (© OpenStreetMap contributors), available under the Open Database License (ODbL).",
-    "warnings": [
-        "No population for [Distrito Rural] in sources/population.csv; using 0."
-    ]
+    "warnings": []
 }
