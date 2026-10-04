@@ -58,7 +58,7 @@ final class BalanceScenarios
                 footfall: $footfall,
                 condition: $condition,
             ),
-            cashCents: self::STARTING_CAPITAL_CENTS - self::traspaso($rentPercentile),
+            cashCents: self::STARTING_CAPITAL_CENTS - self::traspaso($rentPercentile) - self::deposit($rentPercentile),
             reputation: 50.0,
             staffCount: 2,
             staffMorale: 70.0,
@@ -72,6 +72,12 @@ final class BalanceScenarios
     public static function traspaso(int $percentile): int
     {
         return self::parameters()['traspaso']['percentiles_cents'][$percentile];
+    }
+
+    /** The landlord's deposit for the rent at this percentile. */
+    public static function deposit(int $percentile): int
+    {
+        return self::parameters()['rent']['percentiles_cents'][$percentile] * self::parameters()['purchase']['deposit_months_of_rent'];
     }
 
     /** @return list<CompetitorState> */
@@ -143,6 +149,7 @@ final class BalanceScenarios
             start: $start,
             startingCapitalCents: self::STARTING_CAPITAL_CENTS,
             traspasoCents: self::traspaso($percentile),
+            depositCents: self::deposit($percentile),
             competitors: self::typicalCompetitors(),
             parameters: self::parameters(),
             seed: $seed,

@@ -29,6 +29,74 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Game setup
+    |--------------------------------------------------------------------------
+    */
+
+    'game' => [
+        'source' => 'game design (SPEC §1–2)',
+        'starting_capital_cents' => ['min' => 2_000_000, 'max' => 10_000_000],
+        'months' => 12,
+    ],
+
+    // On top of the traspaso, the landlord holds a deposit (fianza), paid
+    // back when the business is sold. It counts towards net worth.
+    'purchase' => [
+        'source' => 'PLACEHOLDER: typical Zaragoza commercial leases',
+        'deposit_months_of_rent' => 2,
+    ],
+
+    // The business as the player finds it on the first day.
+    'takeover' => [
+        'source' => 'PLACEHOLDER: game design',
+        'staff_count' => 2,
+        'staff_morale' => 70,
+        // equipment health = base + per_condition × condition (1–10)
+        'equipment_health' => ['base' => 40, 'per_condition' => 5],
+        'stock_quality' => 55,
+    ],
+
+    'default_decisions' => [
+        'source' => 'game design',
+        'price_level' => 1.0,
+        'open_day_parts' => ['morning', 'lunch', 'afternoon'],
+        'open_days_per_week' => 6,
+        'staff_count' => 2,
+        'marketing_spend_cents' => 10_000,
+        'quality_tier' => 'standard',
+    ],
+
+    // The range the player can set each decision within.
+    'decision_limits' => [
+        'source' => 'game design',
+        'price_level' => ['min' => 0.7, 'max' => 1.6],
+        'staff_count' => ['min' => 0, 'max' => 8],
+        'marketing_spend_cents' => ['min' => 0, 'max' => 300_000],
+    ],
+
+    // What the business is worth to a buyer: what it was bought for is
+    // part location and licence (which stay), part fixtures (which wear
+    // with the equipment); on top comes goodwill from recent profits and
+    // reputation.
+    //   value = traspaso paid × (location_share + fixtures_share
+    //           × (equipment_base + (1 − equipment_base) × health / 100))
+    //         + profit_multiple_years × max(0, average monthly profit over
+    //           the last profit_months × 12) × (reputation_base
+    //           + reputation_per_point × reputation)
+    'valuation' => [
+        'source' => 'PLACEHOLDER: traspaso listings, to check against asking prices vs profits',
+        'location_share' => 0.5,
+        'fixtures_share' => 0.3,
+        'equipment_base' => 0.5,
+        'profit_months' => 12,
+        'profit_multiple_years' => 0.75,
+        'reputation_base' => 0.8,
+        'reputation_per_point' => 0.004,
+        'rounding_cents' => 50_000,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Generation: how many businesses, and what kind
     |--------------------------------------------------------------------------
     */
@@ -318,7 +386,7 @@ return [
     //                × quality factor
     'capture' => [
         'source' => 'PLACEHOLDER: game design, to tune in the balancing pass',
-        'base_rate' => 0.044,
+        'base_rate' => 0.0455,
         'price_elasticity' => 0.7,
         'reputation' => ['base' => 0.3, 'per_point' => 0.014],
         'quality' => ['base' => 0.75, 'per_point' => 0.005],
@@ -641,6 +709,13 @@ return [
         // Quality points a month a rival adds while the player out-attracts it.
         'quality_response' => 1.0,
         'reputation_adjustment_rate' => 0.2,
+        // Picking rivals when the player buys: other businesses in the
+        // same neighbourhood, up to nearby_count, placed at a random
+        // distance. Quality comes from their condition (1–10).
+        'nearby_count' => 5,
+        'distance_metres' => ['min' => 40, 'max' => 500],
+        'price_level' => ['min' => 0.9, 'max' => 1.1],
+        'quality' => ['base' => 25, 'per_condition' => 6],
     ],
 
     /*

@@ -9,20 +9,26 @@ use Tests\Support\EventFixtures;
 
 /*
  * The balance targets from SPEC §6, run against the real parameter sheet
- * with fixed seeds. Net worth values the business at the traspaso paid
- * until the Valuation step exists.
- *
- * "No single random event bankrupts a player with more than €5k of cash"
- * comes with events, in milestone 4.
+ * with fixed seeds. Net worth = cash + deposit + business value.
  */
 
 dataset('seeds', [1, 2, 3, 4, 5]);
 
-it('ends year 1 between −10% and +25% for an average business with average decisions', function (int $seed) {
-    $game = Scenarios::average($seed)->play(Scenarios::averageDecisions());
+it('ends year 1 between −10% and +25% for an average business with average decisions', function () {
+    // Random events make any single year a matter of luck too, so the
+    // target is read over many years: the typical (median) year lands in
+    // range, and so do at least 80% of them.
+    $changes = array_map(
+        fn (int $seed) => Scenarios::average($seed)->play(Scenarios::averageDecisions())->netWorthChange(),
+        range(1, 40),
+    );
+    sort($changes);
+    $median = ($changes[19] + $changes[20]) / 2;
+    $inRange = count(array_filter($changes, fn (float $c) => $c > -0.10 && $c < 0.25));
 
-    expect($game->netWorthChange())->toBeGreaterThan(-0.10)->toBeLessThan(0.25);
-})->with('seeds');
+    expect($median)->toBeGreaterThan(-0.10)->toBeLessThan(0.25)
+        ->and($inRange / count($changes))->toBeGreaterThanOrEqual(0.8);
+});
 
 it('loses money at a great location with bad management', function (int $seed) {
     $game = Scenarios::greatLocation($seed)->play(Scenarios::badDecisions());

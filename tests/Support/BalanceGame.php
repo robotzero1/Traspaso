@@ -7,13 +7,14 @@ use App\Simulation\Data\CompetitorState;
 use App\Simulation\Data\Decisions;
 use App\Simulation\Data\MarketContext;
 use App\Simulation\Data\MonthResult;
+use App\Simulation\Data\ParameterSheet;
 use App\Simulation\Engine;
 use App\Simulation\Rng\SeededRng;
+use App\Simulation\Valuation\BusinessValuation;
 
 /**
  * Plays a business for up to 12 months with fixed decisions, for balance
- * tests. Net worth values the business at the traspaso paid until the
- * Valuation step exists.
+ * tests. Net worth = cash + deposit + the business's value (SPEC §1).
  */
 final class BalanceGame
 {
@@ -28,6 +29,7 @@ final class BalanceGame
         public readonly BusinessState $start,
         public readonly int $startingCapitalCents,
         public readonly int $traspasoCents,
+        public readonly int $depositCents,
         private readonly array $competitors,
         private readonly array $parameters,
         private readonly int $seed = 1,
@@ -74,12 +76,24 @@ final class BalanceGame
         return array_sum(array_map(fn (MonthResult $m) => $m->profitCents(), $this->months));
     }
 
+    public function businessValueCents(): int
+    {
+        return (new BusinessValuation(new ParameterSheet($this->parameters)))->valueCents(
+            end($this->months)->stateAfter,
+            $this->traspasoCents,
+            array_map(fn (MonthResult $m) => $m->profitCents(), $this->months),
+        );
+    }
+
+    public function netWorthCents(): int
+    {
+        return $this->finalCashCents() + $this->depositCents + $this->businessValueCents();
+    }
+
     /** Change in net worth over the game, as a share of starting capital. */
     public function netWorthChange(): float
     {
-        $netWorth = $this->finalCashCents() + $this->traspasoCents;
-
-        return ($netWorth - $this->startingCapitalCents) / $this->startingCapitalCents;
+        return ($this->netWorthCents() - $this->startingCapitalCents) / $this->startingCapitalCents;
     }
 
     /** @return list<int> */

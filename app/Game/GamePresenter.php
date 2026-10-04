@@ -1,0 +1,137 @@
+<?php
+
+namespace App\Game;
+
+use App\Enums\BusinessStatus;
+use App\Models\Business;
+use App\Models\Game;
+use App\Models\GameCompetitor;
+use App\Models\GameEvent;
+use App\Models\MonthResult;
+use App\Simulation\Data\DayPart;
+use App\Simulation\Data\EventRecord;
+use App\Simulation\Data\Modifier;
+
+/**
+ * Shapes a game into props for the Inertia pages. Money stays in cents;
+ * the UI formats it.
+ */
+final class GamePresenter
+{
+    public function __construct(
+        private readonly GameMapper $mapper,
+        private readonly GameValuation $valuation,
+    ) {}
+
+    /** @return array<string, mixed> */
+    public function summary(Game $game): array
+    {
+        return [
+            'id' => $game->id,
+            'status' => $game->status->value,
+            'phase' => $this->phase($game),
+            'current_month' => $game->current_month,
+            'months' => (int) config("market.{$game->market}.game.months"),
+            'calendar_month' => $game->current_month <= 12 ? $game->calendarMonth($game->current_month) : null,
+            'start_date' => $game->start_date->toDateString(),
+            'starting_capital_cents' => $game->starting_capital_cents,
+            'cash_cents' => $game->cash_cents,
+            'deposit_cents' => $game->deposit_cents,
+            'net_worth_cents' => $this->valuation->netWorthCents($game),
+            'sold_for_cents' => $game->sold_for_cents,
+            'final_net_worth_cents' => $game->final_net_worth_cents,
+            'business_name' => $game->business?->fictional_name,
+        ];
+    }
+
+    /** browsing → playing → ending → over */
+    public function phase(Game $game): string
+    {
+        return match (true) {
+            ! $game->isActive() => 'over',
+            $game->business_id === null => 'browsing',
+            $game->isAwaitingEnd() => 'ending',
+            default => 'playing',
+        };
+    }
+
+    /** @return array<string, mixed> */
+    public function show(Game $game): array
+    {
+        $props = ['game' => $this->summary($game)];
+
+        if ($game->business_id === null) {
+            if ($game->isActive()) {
+                $props['businesses'] = $game->businesses()
+                    ->where('status', BusinessStatus::ForSale)
+                    ->with('neighbourhood')
+                    ->orderBy('traspaso_cents')
+                    ->get()
+                    ->map(fn (Business $b) => $this->business($b, $game))
+                    ->all();
+            }
+
+            return $props;
+        }
+
+        $sheet = $this->mapper->sheet($game);
+        $state = $this->mapper->state($game);
+
+        return [
+            ...$props,
+            'business' => $this->business($game->business, $game),
+            'state' => [
+                'reputation' => $state->reputation,
+                'staff_count' => $state->staffCount,
+                'staff_morale' => $state->staffMorale,
+                'equipment_health' => $state->equipmentHealth,
+                'equipment_age_months' => $state->equipmentAgeMonths,
+                'stock_quality' => $state->stockQuality,
+                'modifiers' => array_map(fn (Modifier $m) => $this->mapper->modifierToArray($m), $state->modifiers),
+            ],
+            'business_value_cents' => $this->valuation->businessValueCents($game),
+            'decisions' => $game->decisions,
+            'decision_limits' => $sheet->array('decision_limits'),
+            'allowed_day_parts' => $sheet->array("licence_day_parts.{$state->profile->licence->value}"),
+            'day_parts' => array_map(fn (DayPart $p) => [
+                'value' => $p->value,
+                'start_hour' => $sheet->int("day_parts.{$p->value}.start_hour"),
+                'end_hour' => $sheet->int("day_parts.{$p->value}.end_hour"),
+            ], DayPart::cases()),
+            'pending_events' => array_map(fn (EventRecord $e) => [
+                'key' => $e->key(),
+                'type' => $e->type,
+                'month' => $e->month,
+                'choices' => $e->choices,
+                'payload' => $e->payload,
+            ], $state->pendingEvents),
+            'results' => $game->monthResults()->get()->map(fn (MonthResult $r) => [
+                ...$r->only([
+                    'month', 'calendar_month', 'customers', 'revenue_cents', 'event_revenue_cents', 'cogs_cents',
+                    'staff_cents', 'rent_cents', 'utilities_cents', 'marketing_cents', 'other_cents', 'taxes_cents',
+                    'profit_cents', 'cash_after_cents', 'day_parts',
+                ]),
+            ])->all(),
+            'events' => $game->events()->get()->map(fn (GameEvent $e) => $e->only([
+                'month', 'type', 'payload', 'choices', 'choice', 'resolved_month',
+            ]))->all(),
+            'competitors' => $game->competitors()->get()->map(fn (GameCompetitor $c) => $c->only([
+                'key', 'name', 'distance_metres', 'price_level', 'quality', 'reputation', 'seats',
+            ]))->all(),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function business(Business $business, Game $game): array
+    {
+        return [
+            ...$business->only([
+                'id', 'fictional_name', 'street_type', 'category', 'floor_area_m2', 'indoor_seats', 'terrace_seats',
+                'rent_month_cents', 'traspaso_cents', 'licence', 'kitchen', 'condition', 'equipment_age_years',
+                'footfall', 'base_reputation',
+            ]),
+            'neighbourhood' => $business->neighbourhood->name,
+            'deposit_cents' => $business->rent_month_cents * (int) config("market.{$game->market}.purchase.deposit_months_of_rent"),
+        ];
+    }
+}
