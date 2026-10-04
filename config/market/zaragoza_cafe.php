@@ -717,6 +717,16 @@ return [
         'distance_metres' => ['min' => 40, 'max' => 500],
         'price_level' => ['min' => 0.9, 'max' => 1.1],
         'quality' => ['base' => 25, 'per_condition' => 6],
+        // Too few listings nearby (common away from the centre): real cafés
+        // and bars from OpenStreetMap within distance_metres.max make up
+        // the numbers. Only their position is real; the name is fictional
+        // and these are drawn.
+        'unlisted' => [
+            'poi_types' => ['cafe', 'nightlife'],
+            'seats' => ['min' => 15, 'max' => 60],
+            'condition' => ['min' => 3, 'max' => 8],
+            'reputation' => ['min' => 35.0, 'max' => 65.0],
+        ],
     ],
 
     /*

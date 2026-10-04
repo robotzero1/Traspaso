@@ -70,3 +70,27 @@ it('stops at the configured number even when more are close', function () {
     expect($picked)->toHaveCount($count)
         ->and(end($picked)->id)->toBe("c{$count}");
 });
+
+it('tops up from places that are not for sale when too few listings are near', function () {
+    $config = SimulationFixtures::parameters()['competitors'];
+    $at = fn (string $id, float $metres) => new CompetitorCandidate($id, $id, 30, 5, 50.0, $metres);
+
+    $picked = (new CompetitorPicker(SimulationFixtures::sheet()))->pick(
+        [$at('listing-far', 450.0), $at('listing-out', $config['distance_metres']['max'] + 1)],
+        new SeededRng(1),
+        [$at('osm-3', 300.0), $at('osm-1', 100.0), $at('osm-2', 200.0), $at('osm-4', 400.0), $at('osm-5', 420.0), $at('osm-out', 900.0)],
+    );
+
+    // The listing in range comes first; the nearest places make up the rest.
+    expect(array_map(fn ($c) => $c->id, $picked))->toBe(['osm-1', 'osm-2', 'osm-3', 'osm-4', 'listing-far'])
+        ->and($picked)->toHaveCount($config['nearby_count']);
+});
+
+it('leaves the places out when enough listings are near', function () {
+    $at = fn (string $id, float $metres) => new CompetitorCandidate($id, $id, 30, 5, 50.0, $metres);
+    $listings = array_map(fn (int $i) => $at("market-{$i}", 100.0 + $i), range(1, 6));
+
+    $picked = (new CompetitorPicker(SimulationFixtures::sheet()))->pick($listings, new SeededRng(1), [$at('osm-1', 10.0)]);
+
+    expect(array_map(fn ($c) => $c->id, $picked))->not->toContain('osm-1');
+});

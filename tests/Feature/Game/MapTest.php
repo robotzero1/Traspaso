@@ -110,3 +110,32 @@ it('serves the footfall surface to signed-in players only', function () {
     $this->actingAs($this->user)->get(route('games.show', $game))
         ->assertInertia(fn (Assert $page) => $page->where('map.has_footfall', true));
 });
+
+it('makes rivals of real cafés and bars nearby when no listings are close', function () {
+    $game = app(StartGame::class)->handle($this->user, 50_000_000, seed: 3);
+    $business = $game->businesses()->orderBy('traspaso_cents')->first();
+    // Every other listing far away; three real places near, one too far.
+    $game->businesses()->whereKeyNot($business->id)->update(['lat' => 41.0, 'lng' => -1.5]);
+    PointOfInterest::query()->whereIn('type', ['cafe', 'nightlife'])->delete();
+    [$lat, $lng] = [$business->lat, $business->lng];
+    $place = fn (string $type, string $name, float $metres, string $osm) => PointOfInterest::query()->create(
+        ['type' => $type, 'name' => $name, 'lat' => round($lat + $metres / 111_195, 6), 'lng' => $lng, 'osm_id' => $osm],
+    );
+    $place('cafe', 'Real Café', 80, 'node/1');
+    $place('nightlife', 'Real Pub', 200, 'node/2');
+    $place('shop', 'Real Shop', 50, 'node/3');
+    $place('cafe', 'Far Café', 900, 'node/4');
+
+    $this->actingAs($this->user)->post(route('games.purchase', $game), ['business_id' => $business->id]);
+    $rivals = $game->competitors()->orderBy('distance_metres')->get();
+
+    expect($rivals->pluck('key')->all())->toBe(['osm-node-1', 'osm-node-2'])
+        ->and($rivals->pluck('distance_metres')->all())->toEqualWithDelta([80.0, 200.0], 1.0)
+        // Real position, fictional name.
+        ->and($rivals[0]->lat)->toEqualWithDelta($lat + 80 / 111_195, 1e-6)
+        ->and($rivals->pluck('name')->intersect(['Real Café', 'Real Pub']))->toBeEmpty();
+
+    $this->actingAs($this->user)->get(route('games.show', $game))->assertInertia(fn (Assert $page) => $page
+        ->where('competitors.0.key', 'osm-node-1')
+        ->where('competitors.0.lat', $rivals[0]->lat));
+});

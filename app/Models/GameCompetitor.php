@@ -17,9 +17,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property float $quality
  * @property float $reputation
  * @property int $seats
+ * @property float|null $lat
+ * @property float|null $lng
  * @property-read Business|null $business
  */
-#[Fillable(['game_id', 'key', 'business_id', 'name', 'distance_metres', 'price_level', 'quality', 'reputation', 'seats'])]
+#[Fillable(['game_id', 'key', 'business_id', 'name', 'distance_metres', 'price_level', 'quality', 'reputation', 'seats', 'lat', 'lng'])]
 class GameCompetitor extends Model
 {
     /** @return BelongsTo<Game, $this> */

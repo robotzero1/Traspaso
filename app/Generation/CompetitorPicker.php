@@ -10,7 +10,8 @@ use App\Simulation\Rng\SeededRng;
  * Turns nearby businesses into the rivals the engine models when the
  * player buys: the nearest ones within the configured distance, at their
  * real distance. Candidates without a known location are picked at random
- * and placed at a random distance.
+ * and placed at a random distance. When too few are in range, $fill tops
+ * them up (see UnlistedRivals).
  */
 final readonly class CompetitorPicker
 {
@@ -18,11 +19,16 @@ final readonly class CompetitorPicker
 
     /**
      * @param  list<CompetitorCandidate>  $candidates
+     * @param  list<CompetitorCandidate>  $fill  located, used nearest first after the candidates
      * @return list<CompetitorState>
      */
-    public function pick(array $candidates, SeededRng $rng): array
+    public function pick(array $candidates, SeededRng $rng, array $fill = []): array
     {
-        $chosen = array_slice($this->ranked($candidates, $rng), 0, $this->sheet->int('competitors.nearby_count'));
+        $chosen = array_slice(
+            [...$this->ranked($candidates, $rng), ...$this->ranked($fill, $rng)],
+            0,
+            $this->sheet->int('competitors.nearby_count'),
+        );
         $competitors = [];
 
         foreach ($chosen as $candidate) {

@@ -155,8 +155,17 @@ final class GameMapper
         return "market-{$business->market_index}";
     }
 
-    /** @return array<string, mixed> attributes for a GameCompetitor row */
-    public function competitorAttributes(Game $game, CompetitorState $competitor): array
+    /** A rival made from a real café or bar: "osm-node-123". */
+    public function unlistedKey(string $osmId): string
+    {
+        return 'osm-'.str_replace('/', '-', $osmId);
+    }
+
+    /**
+     * @param  array{0: float, 1: float}|null  $location  for rivals that aren't listings
+     * @return array<string, mixed> attributes for a GameCompetitor row
+     */
+    public function competitorAttributes(Game $game, CompetitorState $competitor, ?array $location = null): array
     {
         $businessId = str_starts_with($competitor->id, 'market-')
             ? $game->businesses()->where('market_index', (int) substr($competitor->id, 7))->value('id')
@@ -171,6 +180,8 @@ final class GameMapper
             'quality' => round($competitor->quality, 2),
             'reputation' => round($competitor->reputation, 2),
             'seats' => $competitor->seats,
+            'lat' => $location[0] ?? null,
+            'lng' => $location[1] ?? null,
         ];
     }
 

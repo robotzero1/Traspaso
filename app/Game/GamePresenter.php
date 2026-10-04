@@ -188,6 +188,10 @@ final class GamePresenter
      */
     private function competitorLocation(GameCompetitor $competitor, Business $own): array
     {
+        if ($competitor->lat !== null) {
+            return ['lat' => $competitor->lat, 'lng' => $competitor->lng];
+        }
+
         if ($competitor->business?->lat !== null) {
             return ['lat' => $competitor->business->lat, 'lng' => $competitor->business->lng];
         }

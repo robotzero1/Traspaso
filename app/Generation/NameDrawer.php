@@ -16,10 +16,14 @@ final class NameDrawer
     /** @var array<string, true> */
     private array $used = [];
 
+    /** @param  list<string>  $taken  names already in use, never drawn */
     public function __construct(
         private readonly ParameterSheet $sheet,
         private readonly SeededRng $rng,
-    ) {}
+        array $taken = [],
+    ) {
+        $this->used = array_fill_keys($taken, true);
+    }
 
     public function draw(BusinessCategory $category): string
     {

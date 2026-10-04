@@ -8,8 +8,10 @@ use App\Generation\CompetitorCandidate;
 use App\Generation\CompetitorPicker;
 use App\Generation\Geo\Geo;
 use App\Generation\Takeover;
+use App\Generation\UnlistedRivals;
 use App\Models\Business;
 use App\Models\Game;
+use App\Models\PointOfInterest;
 use App\Simulation\Rng\SeededRng;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -60,7 +62,8 @@ final class PurchaseBusiness
     /**
      * The other businesses near the one bought become its rivals. With map
      * locations that means the nearest ones, wherever the district line
-     * falls; without, the others in the same neighbourhood.
+     * falls, topped up from real cafés and bars nearby when too few
+     * listings are close; without, the others in the same neighbourhood.
      */
     private function pickCompetitors(Game $game, Business $bought): void
     {
@@ -82,12 +85,52 @@ final class PurchaseBusiness
                 : null,
         ))->values()->all();
 
-        $competitors = (new CompetitorPicker($this->mapper->sheet($game)))
-            ->pick($candidates, (new SeededRng($game->seed))->fork('competitors'));
+        $rng = (new SeededRng($game->seed))->fork('competitors');
+        $places = $located ? $this->nearbyPlaces($game, $bought) : [];
+        $fill = (new UnlistedRivals($this->mapper->sheet($game)))->candidates(
+            array_values(array_map(fn (array $p) => ['key' => $p['key'], 'distance_metres' => $p['distance_metres']], $places)),
+            $rng->fork('unlisted'),
+            $game->businesses()->pluck('fictional_name')->all(),
+        );
+
+        $competitors = (new CompetitorPicker($this->mapper->sheet($game)))->pick($candidates, $rng, $fill);
 
         foreach ($competitors as $competitor) {
-            $row = $game->competitors()->create($this->mapper->competitorAttributes($game, $competitor));
+            $place = $places[$competitor->id] ?? null;
+            $row = $game->competitors()->create($this->mapper->competitorAttributes($game, $competitor, $place ? [$place['lat'], $place['lng']] : null));
             Business::query()->whereKey($row->business_id)->update(['status' => BusinessStatus::Competitor]);
         }
+    }
+
+    /**
+     * Real cafés and bars (OSM) within rival range of the business, nearest
+     * first, keyed by their rival key.
+     *
+     * @return array<string, array{key: string, lat: float, lng: float, distance_metres: float}>
+     */
+    private function nearbyPlaces(Game $game, Business $bought): array
+    {
+        $sheet = $this->mapper->sheet($game);
+        $max = $sheet->float('competitors.distance_metres.max');
+        $dLat = $max / 111_195;
+        $dLng = $dLat / cos(deg2rad($bought->lat));
+
+        $places = PointOfInterest::query()
+            ->whereIn('type', $sheet->array('competitors.unlisted.poi_types'))
+            ->whereNotNull('osm_id')
+            ->whereBetween('lat', [$bought->lat - $dLat, $bought->lat + $dLat])
+            ->whereBetween('lng', [$bought->lng - $dLng, $bought->lng + $dLng])
+            ->get()
+            ->map(fn (PointOfInterest $p) => [
+                'key' => $this->mapper->unlistedKey($p->osm_id),
+                'lat' => $p->lat,
+                'lng' => $p->lng,
+                'distance_metres' => Geo::distanceMetres($bought->lat, $bought->lng, $p->lat, $p->lng),
+            ])
+            ->filter(fn (array $p) => $p['distance_metres'] <= $max)
+            ->sortBy([['distance_metres', 'asc'], ['key', 'asc']])
+            ->keyBy('key');
+
+        return $places->all();
     }
 }
