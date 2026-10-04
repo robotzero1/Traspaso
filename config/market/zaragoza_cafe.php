@@ -49,7 +49,9 @@ return [
     // The business as the player finds it on the first day.
     'takeover' => [
         'source' => 'PLACEHOLDER: game design',
-        'staff_count' => 2,
+        // Owner plus one employee (balancing pass: two cost more than a
+        // typical café brings in).
+        'staff_count' => 1,
         'staff_morale' => 70,
         // equipment health = base + per_condition × condition (1–10)
         'equipment_health' => ['base' => 40, 'per_condition' => 5],
@@ -61,7 +63,7 @@ return [
         'price_level' => 1.0,
         'open_day_parts' => ['morning', 'lunch', 'afternoon'],
         'open_days_per_week' => 6,
-        'staff_count' => 2,
+        'staff_count' => 1,
         'marketing_spend_cents' => 10_000,
         'quality_tier' => 'standard',
     ],
@@ -89,7 +91,9 @@ return [
         'fixtures_share' => 0.3,
         'equipment_base' => 0.5,
         'profit_months' => 12,
-        'profit_multiple_years' => 0.75,
+        // Balancing pass: 0.75 added most of a year's profit again on top of
+        // the cash it brought in, widening every gap between players.
+        'profit_multiple_years' => 0.5,
         'reputation_base' => 0.8,
         'reputation_per_point' => 0.004,
         'rounding_cents' => 50_000,
@@ -235,7 +239,9 @@ return [
             100 => 200_000,
         ],
         'rounding_cents' => 2_500,
-        'correlation' => ['location' => 0.5, 'floor_area' => 0.4],
+        // Balancing pass: busy spots must cost more to rent, or the busiest
+        // street wins every game (0.5 left footfall-9 spots at ~€1,000).
+        'correlation' => ['location' => 0.85, 'floor_area' => 0.4],
     ],
 
     'traspaso' => [
@@ -250,7 +256,8 @@ return [
             100 => 9_000_000,
         ],
         'rounding_cents' => 50_000,
-        'correlation' => ['location' => 0.45, 'condition' => 0.35, 'floor_area' => 0.2],
+        // Balancing pass: the asking price follows the location (was 0.45).
+        'correlation' => ['location' => 0.8, 'condition' => 0.35, 'floor_area' => 0.2],
     ],
 
     /*
@@ -386,7 +393,9 @@ return [
     //                × quality factor
     'capture' => [
         'source' => 'PLACEHOLDER: game design, to tune in the balancing pass',
-        'base_rate' => 0.0455,
+        // Balancing pass (milestone 9): a thoughtful player's median year
+        // lands near +20% on the real Zaragoza surface (market:balance).
+        'base_rate' => 0.040,
         'price_elasticity' => 0.7,
         'reputation' => ['base' => 0.3, 'per_point' => 0.014],
         'quality' => ['base' => 0.75, 'per_point' => 0.005],
@@ -754,6 +763,11 @@ return [
         'payments_per_year' => 14,
         'employer_social_security_rate' => 0.315,
         'full_time_hours_per_week' => 40,
+        // People needed on the floor every open hour. Hours the owner
+        // (service.owner_hours_per_week) and staff don't cover are paid as
+        // part-time cover at the same hourly cost, so a long opening day
+        // costs wages (SPEC §6: a quiet day part shouldn't pay its way).
+        'min_on_shift' => 1.0,
     ],
 
     // Monthly cuota by the owner's net monthly income (upper bound, cents).

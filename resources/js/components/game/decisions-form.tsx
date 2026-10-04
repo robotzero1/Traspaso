@@ -88,6 +88,18 @@ export function DecisionsForm({
         .filter((p) => parts.includes(p.value))
         .reduce((sum, p) => sum + hours(p), 0);
     const staffCost = staff * costHints.staff_per_person_cents;
+    // Open hours you and your staff can't cover are paid as part-time
+    // cover, at a full-timer's hourly cost (the engine's Staffing rule).
+    const openHoursPerWeek = hoursPerDay * days;
+    const coverHoursPerWeek = Math.max(
+        0,
+        openHoursPerWeek * costHints.min_on_shift -
+            staff * costHints.full_time_hours_per_week -
+            costHints.owner_hours_per_week,
+    );
+    const coverCost =
+        (coverHoursPerWeek * costHints.staff_per_person_cents) /
+        costHints.full_time_hours_per_week;
     const utilities =
         costHints.utilities_base_cents +
         costHints.utilities_per_open_hour_cents *
@@ -95,7 +107,11 @@ export function DecisionsForm({
             days *
             WEEKS_PER_MONTH;
     const fixedCosts =
-        staffCost + costHints.rent_cents + utilities + marketingEuros * 100;
+        staffCost +
+        coverCost +
+        costHints.rent_cents +
+        utilities +
+        marketingEuros * 100;
     const pricePercent = Math.round((price - 1) * 100);
 
     const togglePart = (value: DayPartValue) =>
@@ -434,6 +450,12 @@ export function DecisionsForm({
                                 Costs you're committing to
                             </div>
                             <Row label={`Staff (${staff})`} cents={staffCost} />
+                            {coverCost > 0 && (
+                                <Row
+                                    label={`Part-time cover (~${Math.round(coverHoursPerWeek * WEEKS_PER_MONTH)} h)`}
+                                    cents={coverCost}
+                                />
+                            )}
                             <Row label="Rent" cents={costHints.rent_cents} />
                             <Row
                                 label={`Utilities (~${Math.round(hoursPerDay * days * WEEKS_PER_MONTH)} h open)`}

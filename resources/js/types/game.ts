@@ -161,6 +161,9 @@ export type Competitor = {
 
 export type CostHints = {
     staff_per_person_cents: number;
+    full_time_hours_per_week: number;
+    owner_hours_per_week: number;
+    min_on_shift: number;
     rent_cents: number;
     utilities_base_cents: number;
     utilities_per_open_hour_cents: number;

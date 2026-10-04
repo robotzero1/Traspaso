@@ -9,6 +9,7 @@ use App\Simulation\Data\ModifierSet;
 use App\Simulation\Data\ParameterSheet;
 use App\Simulation\Demand\DayPartSchedule;
 use App\Simulation\Demand\SeasonalFactors;
+use App\Simulation\Demand\Staffing;
 use InvalidArgumentException;
 
 /**
@@ -32,7 +33,7 @@ final readonly class MonthlyCosts
     ): CostBreakdown {
         $cogsShare = $this->sheet->float("cogs.share_of_revenue.{$decisions->qualityTier->value}") + $modifiers->cogsShare();
         $cogs = $this->round($revenueCents * $cogsShare);
-        $staff = $this->staff($decisions->staffCount);
+        $staff = $this->staff($decisions->staffCount) + $this->coverCents($decisions);
         $rent = $this->round($state->profile->rentMonthCents * $modifiers->rent());
         $utilities = $this->utilities($decisions, $season);
         $marketing = $decisions->marketingSpendCents;
@@ -57,10 +58,27 @@ final readonly class MonthlyCosts
     /** Monthly employer cost of the staff: 14 payments spread over 12 months, plus social security. */
     public function staff(int $staffCount): int
     {
+        return $this->round($this->staffUnrounded($staffCount));
+    }
+
+    private function staffUnrounded(int $staffCount): float
+    {
         $grossPerMonth = $this->sheet->float('staff.gross_per_payment_cents')
             * $this->sheet->float('staff.payments_per_year') / 12;
 
-        return $this->round($staffCount * $grossPerMonth * (1 + $this->sheet->float('staff.employer_social_security_rate')));
+        return $staffCount * $grossPerMonth * (1 + $this->sheet->float('staff.employer_social_security_rate'));
+    }
+
+    /**
+     * Part-time cover for open hours the owner and staff can't fill (see
+     * Staffing), at a full-timer's hourly employer cost.
+     */
+    public function coverCents(Decisions $decisions): int
+    {
+        $weeksPerMonth = 52 / 12;
+        $hourly = $this->staffUnrounded(1) / ($this->sheet->float('staff.full_time_hours_per_week') * $weeksPerMonth);
+
+        return $this->round(Staffing::for($decisions, $this->sheet)->coverHoursPerWeek * $weeksPerMonth * $hourly);
     }
 
     public function utilities(Decisions $decisions, SeasonalFactors $season): int

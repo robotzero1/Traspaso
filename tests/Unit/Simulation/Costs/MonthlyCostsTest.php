@@ -5,6 +5,7 @@ use App\Simulation\Data\DayPart;
 use App\Simulation\Data\ParameterSheet;
 use App\Simulation\Data\QualityTier;
 use App\Simulation\Demand\SeasonalFactors;
+use App\Simulation\Demand\Staffing;
 use Tests\Support\SimulationFixtures;
 
 function monthlyCosts(): MonthlyCosts
@@ -50,6 +51,24 @@ it('scales utilities with the hours open', function () {
 
     expect($long)->toBeGreaterThan($short)
         ->and($short)->toBeGreaterThan(SimulationFixtures::parameters()['utilities']['base_month_cents']);
+});
+
+it('pays part-time cover for open hours nobody else covers, at the hourly staff cost', function () {
+    $parameters = SimulationFixtures::parameters();
+    $long = ['staffCount' => 0, 'openDayParts' => DayPart::cases(), 'openDaysPerWeek' => 7];
+    $coverHours = Staffing::for(SimulationFixtures::decisions()->with(...$long), SimulationFixtures::sheet())->coverHoursPerWeek;
+    $hourly = monthlyCosts()->staff(1) / ($parameters['staff']['full_time_hours_per_week'] * 52 / 12);
+
+    expect($coverHours)->toBeGreaterThan(0.0)
+        ->and(costsFor(0, $long)->staffCents)->toEqualWithDelta($coverHours * 52 / 12 * $hourly, 1)
+        ->and(costsFor(0, ['staffCount' => 1, 'openDayParts' => [DayPart::Morning]])->staffCents)->toBe(monthlyCosts()->staff(1));
+});
+
+it('makes a long day cost wages, not just utilities', function () {
+    $day = ['staffCount' => 1, 'openDayParts' => [DayPart::Morning, DayPart::Lunch, DayPart::Afternoon], 'openDaysPerWeek' => 6];
+    $longer = [...$day, 'openDayParts' => [DayPart::Morning, DayPart::Lunch, DayPart::Afternoon, DayPart::Evening, DayPart::Night]];
+
+    expect(costsFor(0, $longer)->staffCents)->toBeGreaterThan(costsFor(0, $day)->staffCents);
 });
 
 it('picks the cuota de autónomo band by income', function () {

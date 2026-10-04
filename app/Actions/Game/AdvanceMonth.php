@@ -101,10 +101,13 @@ final class AdvanceMonth
                     ->update(['choice' => $event->choice, 'resolved_month' => $month]);
             }
 
+            // Rivals made from real cafés keep their own position.
+            $locations = $game->competitors()->whereNotNull('lat')->get(['key', 'lat', 'lng'])->keyBy('key');
             $game->competitors()->delete();
 
             foreach ($result->competitorsAfter as $competitor) {
-                $game->competitors()->create($this->mapper->competitorAttributes($game, $competitor));
+                $place = $locations[$competitor->id] ?? null;
+                $game->competitors()->create($this->mapper->competitorAttributes($game, $competitor, $place ? [$place->lat, $place->lng] : null));
             }
 
             $bankrupt = $result->cashAfterCents() < 0;

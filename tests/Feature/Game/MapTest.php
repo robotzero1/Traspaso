@@ -138,4 +138,8 @@ it('makes rivals of real cafés and bars nearby when no listings are close', fun
     $this->actingAs($this->user)->get(route('games.show', $game))->assertInertia(fn (Assert $page) => $page
         ->where('competitors.0.key', 'osm-node-1')
         ->where('competitors.0.lat', $rivals[0]->lat));
+
+    // They keep their place as the months go by.
+    $this->actingAs($this->user)->post(route('games.months.store', $game));
+    expect($game->competitors()->where('key', 'osm-node-1')->value('lat'))->toBe($rivals[0]->lat);
 });

@@ -173,10 +173,10 @@ Opening hours are a choice of **which parts of the day** to open for, not a numb
 
 - The player picks any non-empty set of day parts, with gaps allowed (a split shift), plus open days per week.
 - Each day part's hour span (for staff and utility costs), demand mix and average ticket live in `config/market/*.php`.
-- Opening for a day part with little local demand should cost more in wages and utilities than it brings in.
+- Opening for a day part with little local demand should cost more in wages and utilities than it brings in. Every open hour needs at least `staff.min_on_shift` people on the floor; hours the owner and staff can't cover are paid as part-time cover at the hourly staff cost.
 - Which day parts a licence allows is a rule the engine enforces, not something the DTO checks.
 
-**Balance tests** (Pest, using fixed seeds):
+**Balance tests** (Pest, using fixed seeds; rivals at the distances measured on the real surface, see `docs/balance-report.md`):
 
 - An average business, played with average decisions, ends year 1 between −10% and +25%.
 - A great location with bad management loses money.
@@ -257,7 +257,7 @@ Each one is sized to be a single cloud session.
 6. **UI**: business browser with filters, monthly decisions screen, P&L, cash-flow chart.
 7. **Map**: Leaflet map, business markers, POI layer, neighbourhood overlays, OSM attribution.
 8. **Real geo data and footfall**: the offline footfall script (§8 Footfall estimate) and its calibration counts; import the committed OSM/INE extracts and the footfall surface; derive the neighbourhood indices; place generated businesses on commercial street points and read their footfall (overall and per day part) from the surface, replacing the street-type bonus and noise.
-9. **Balancing pass**: run 1,000 simulated games with scripted strategies and report the outcome distributions.
+9. **Balancing pass**: run 1,000 simulated games with scripted strategies and report the outcome distributions (`php artisan market:balance`; results in `docs/balance-report.md`).
 
 ## 10. Open questions
 

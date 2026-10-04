@@ -5,16 +5,14 @@ namespace App\Actions\Game;
 use App\Enums\BusinessStatus;
 use App\Enums\GameStatus;
 use App\Game\GameMapper;
+use App\Game\MarketData;
 use App\Generation\BusinessGenerator;
 use App\Generation\CommercialPoints;
 use App\Generation\Geo\LocationPlacer;
-use App\Generation\Location;
-use App\Models\FootfallPoint;
 use App\Models\Game;
 use App\Models\Neighbourhood;
 use App\Models\User;
 use App\Simulation\Rng\SeededRng;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -24,7 +22,10 @@ use RuntimeException;
  */
 final class StartGame
 {
-    public function __construct(private readonly GameMapper $mapper) {}
+    public function __construct(
+        private readonly GameMapper $mapper,
+        private readonly MarketData $data,
+    ) {}
 
     public function handle(User $user, int $startingCapitalCents, string $market = 'zaragoza_cafe', ?int $seed = null): Game
     {
@@ -50,7 +51,7 @@ final class StartGame
             $generated = (new BusinessGenerator($this->mapper->parameters($game)))->generate(
                 (new SeededRng($game->seed))->fork('market'),
                 $neighbourhoods->map(fn (Neighbourhood $n) => $this->mapper->neighbourhood($n))->values()->all(),
-                locations: $this->commercialPoints($neighbourhoods),
+                locations: $this->commercialPoints(),
             );
 
             $now = now();
@@ -102,32 +103,14 @@ final class StartGame
     }
 
     /**
-     * The footfall surface's commercial points, by neighbourhood, or null
-     * before geo:build has produced one (businesses then get generated
-     * footfall and a position in their neighbourhood's circle).
-     *
-     * @param  Collection<int, Neighbourhood>  $neighbourhoods
+     * The footfall surface's commercial points, or null before geo:build
+     * has produced one (businesses then get generated footfall and a
+     * position in their neighbourhood's circle).
      */
-    private function commercialPoints($neighbourhoods): ?CommercialPoints
+    private function commercialPoints(): ?CommercialPoints
     {
-        if (FootfallPoint::query()->doesntExist()) {
-            return null;
-        }
+        $points = $this->data->commercialPoints();
 
-        $names = $neighbourhoods->pluck('name', 'id');
-        $byNeighbourhood = [];
-
-        foreach (FootfallPoint::query()->orderBy('id')->lazy(2000) as $point) {
-            $byNeighbourhood[$names[$point->neighbourhood_id]][] = new Location(
-                lat: $point->lat,
-                lng: $point->lng,
-                footfall: $point->footfall,
-                footfallByDayPart: $point->footfallByDayPart(),
-                streetType: $point->street_type,
-                pointId: $point->id,
-            );
-        }
-
-        return new CommercialPoints($byNeighbourhood);
+        return $points === null ? null : new CommercialPoints($points);
     }
 }

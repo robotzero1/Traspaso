@@ -119,6 +119,10 @@ final class GamePresenter
             // For the decisions screen's cost estimate; the engine's own numbers.
             'cost_hints' => [
                 'staff_per_person_cents' => $costs->staff(1),
+                // For the part-time cover estimate (see Staffing).
+                'full_time_hours_per_week' => $sheet->float('staff.full_time_hours_per_week'),
+                'owner_hours_per_week' => $sheet->float('service.owner_hours_per_week'),
+                'min_on_shift' => $sheet->float('staff.min_on_shift'),
                 'rent_cents' => $state->profile->rentMonthCents,
                 'utilities_base_cents' => $sheet->int('utilities.base_month_cents'),
                 'utilities_per_open_hour_cents' => $sheet->int('utilities.per_open_hour_cents'),

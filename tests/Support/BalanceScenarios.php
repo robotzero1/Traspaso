@@ -60,7 +60,7 @@ final class BalanceScenarios
             ),
             cashCents: self::STARTING_CAPITAL_CENTS - self::traspaso($rentPercentile) - self::deposit($rentPercentile),
             reputation: 50.0,
-            staffCount: 2,
+            staffCount: self::parameters()['takeover']['staff_count'],
             staffMorale: 70.0,
             equipmentHealth: 80.0,
             equipmentAgeMonths: 60,
@@ -80,23 +80,55 @@ final class BalanceScenarios
         return self::parameters()['rent']['percentiles_cents'][$percentile] * self::parameters()['purchase']['deposit_months_of_rent'];
     }
 
-    /** @return list<CompetitorState> */
-    public static function typicalCompetitors(): array
+    /**
+     * Five rivals at the given distances, like the five nearest real cafés
+     * and bars the game picks.
+     *
+     * @param  list<float>  $metres
+     * @return list<CompetitorState>
+     */
+    private static function rivalsAt(array $metres): array
     {
-        return [
-            new CompetitorState('c1', 'Competitor 1', 120.0, 1.0, 55.0, 55.0, 30),
-            new CompetitorState('c2', 'Competitor 2', 200.0, 0.95, 50.0, 50.0, 40),
-            new CompetitorState('c3', 'Competitor 3', 300.0, 1.05, 60.0, 60.0, 25),
-        ];
+        $traits = [[1.0, 55.0, 30], [0.95, 50.0, 40], [1.05, 60.0, 25], [1.0, 50.0, 30], [1.0, 55.0, 35]];
+
+        return array_map(
+            fn (int $i) => new CompetitorState('c'.($i + 1), 'Competitor '.($i + 1), $metres[$i], $traits[$i][0], $traits[$i][1], $traits[$i][1], $traits[$i][2]),
+            array_keys($metres),
+        );
     }
 
+    /**
+     * The rivals of a typical spot in the real game: the median distances
+     * of the nearest five cafés and bars to footfall-5 points on the
+     * Zaragoza surface (measured in the balancing pass).
+     *
+     * @return list<CompetitorState>
+     */
+    public static function typicalCompetitors(): array
+    {
+        return self::rivalsAt([42.0, 76.0, 104.0, 120.0, 134.0]);
+    }
+
+    /** @return list<CompetitorState> rivals of a quiet spot (footfall 3–4) */
+    public static function quietCompetitors(): array
+    {
+        return self::rivalsAt([50.0, 118.0, 156.0, 191.0, 222.0]);
+    }
+
+    /** @return list<CompetitorState> rivals of a busy spot (footfall 8.5–10) */
+    public static function busyCompetitors(): array
+    {
+        return self::rivalsAt([40.0, 49.0, 65.0, 77.0, 91.0]);
+    }
+
+    /** The game's default decisions (the parameter sheet's default_decisions). */
     public static function averageDecisions(): Decisions
     {
         return new Decisions(
             priceLevel: 1.0,
             openDayParts: [DayPart::Morning, DayPart::Lunch, DayPart::Afternoon],
             openDaysPerWeek: 6,
-            staffCount: 2,
+            staffCount: self::parameters()['default_decisions']['staff_count'],
             marketingSpendCents: 10_000,
             qualityTier: QualityTier::Standard,
         );
@@ -115,12 +147,16 @@ final class BalanceScenarios
         );
     }
 
-    /** Lean staffing, the hours that suit a quiet area, fair prices. */
+    /**
+     * Lean staffing, fair prices, little marketing. Open through the day:
+     * one employee costs the same however long the café opens, so cutting
+     * hours only cuts revenue (seen in the balancing pass).
+     */
     public static function goodDecisions(): Decisions
     {
         return new Decisions(
             priceLevel: 1.0,
-            openDayParts: [DayPart::Morning, DayPart::Lunch],
+            openDayParts: [DayPart::Morning, DayPart::Lunch, DayPart::Afternoon],
             openDaysPerWeek: 6,
             staffCount: 1,
             marketingSpendCents: 5_000,
@@ -130,27 +166,28 @@ final class BalanceScenarios
 
     public static function average(int $seed = 1): BalanceGame
     {
-        return self::game(self::business(self::averageNeighbourhood(), 5.0, 50), 50, $seed);
+        return self::game(self::business(self::averageNeighbourhood(), 5.0, 50), 50, $seed, self::typicalCompetitors());
     }
 
     public static function greatLocation(int $seed = 1): BalanceGame
     {
-        return self::game(self::business(self::busyNeighbourhood(), 9.0, 90, 8), 90, $seed);
+        return self::game(self::business(self::busyNeighbourhood(), 9.0, 90, 8), 90, $seed, self::busyCompetitors());
     }
 
     public static function mediocreLocation(int $seed = 1): BalanceGame
     {
-        return self::game(self::business(self::quietNeighbourhood(), 3.5, 25), 25, $seed);
+        return self::game(self::business(self::quietNeighbourhood(), 3.5, 25), 25, $seed, self::quietCompetitors());
     }
 
-    private static function game(BusinessState $start, int $percentile, int $seed): BalanceGame
+    /** @param list<CompetitorState> $competitors */
+    private static function game(BusinessState $start, int $percentile, int $seed, array $competitors): BalanceGame
     {
         return new BalanceGame(
             start: $start,
             startingCapitalCents: self::STARTING_CAPITAL_CENTS,
             traspasoCents: self::traspaso($percentile),
             depositCents: self::deposit($percentile),
-            competitors: self::typicalCompetitors(),
+            competitors: $competitors,
             parameters: self::parameters(),
             seed: $seed,
         );
