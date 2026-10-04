@@ -103,7 +103,10 @@ return [
     */
 
     'poi_types' => [
-        ['type' => 'hospitality', 'tags' => ['amenity' => ['cafe', 'bar', 'pub', 'restaurant', 'fast_food', 'ice_cream']]],
+        // Hospitality in three types with different hours (see timing).
+        ['type' => 'nightlife', 'tags' => ['amenity' => ['bar', 'pub', 'nightclub']]],
+        ['type' => 'cafe', 'tags' => ['amenity' => ['cafe', 'ice_cream']]],
+        ['type' => 'restaurant', 'tags' => ['amenity' => ['restaurant', 'fast_food']]],
         ['type' => 'university', 'tags' => ['amenity' => ['university', 'college']]],
         ['type' => 'school', 'tags' => ['amenity' => ['school']]],
         ['type' => 'market', 'tags' => ['amenity' => ['marketplace']]],
@@ -135,17 +138,30 @@ return [
 
         // A point is commercial (businesses can be placed there) with at
         // least min_pois shops or hospitality venues within radius_metres.
-        'commercial' => ['radius_metres' => 30, 'min_pois' => 1, 'types' => ['shop', 'hospitality']],
+        'commercial' => ['radius_metres' => 30, 'min_pois' => 1, 'types' => ['shop', 'nightlife', 'cafe', 'restaurant']],
 
-        // How the four components combine (they're each ranked 0–1 first).
+        // How the four components combine (they're each ranked 0–1 first),
+        // for the all-day footfall.
         'component_weights' => ['poi' => 0.4, 'centrality' => 0.3, 'catchment' => 0.2, 'transport' => 0.1],
+
+        // The same per day part (missing = component_weights). What's open
+        // nearby matters more as the day goes on: at night a busy junction
+        // with nothing open isn't busy. Commuters make transport count in
+        // the morning.
+        'component_weights_by_day_part' => [
+            'morning' => ['poi' => 0.35, 'centrality' => 0.25, 'catchment' => 0.15, 'transport' => 0.25],
+            'lunch' => ['poi' => 0.45, 'centrality' => 0.25, 'catchment' => 0.15, 'transport' => 0.15],
+            'afternoon' => ['poi' => 0.4, 'centrality' => 0.3, 'catchment' => 0.2, 'transport' => 0.1],
+            'evening' => ['poi' => 0.5, 'centrality' => 0.25, 'catchment' => 0.2, 'transport' => 0.05],
+            'night' => ['poi' => 0.7, 'centrality' => 0.2, 'catchment' => 0.1, 'transport' => 0.0],
+        ],
 
         // poi: Σ weight × timing[day part] × e^(−distance / decay).
         'poi' => [
             'decay_metres' => 150,
             'max_radius_metres' => 450,
             'weights' => [
-                'shop' => 1.0, 'hospitality' => 1.0, 'office' => 1.5, 'university' => 8.0, 'school' => 3.0,
+                'shop' => 1.0, 'nightlife' => 1.0, 'cafe' => 1.0, 'restaurant' => 1.0, 'office' => 1.5, 'university' => 8.0, 'school' => 3.0,
                 'market' => 5.0, 'station' => 6.0, 'bus_stop' => 0.5, 'tourism' => 4.0, 'park' => 2.0,
             ],
             // When each type draws people, by day part (missing = 1.0).
@@ -153,8 +169,11 @@ return [
                 'office' => ['morning' => 1.5, 'lunch' => 1.5, 'afternoon' => 0.7, 'evening' => 0.2, 'night' => 0.0],
                 'school' => ['morning' => 1.5, 'lunch' => 0.8, 'afternoon' => 1.0, 'evening' => 0.0, 'night' => 0.0],
                 'university' => ['morning' => 1.2, 'lunch' => 1.2, 'afternoon' => 1.2, 'evening' => 0.6, 'night' => 0.3],
-                'shop' => ['morning' => 1.0, 'lunch' => 0.8, 'afternoon' => 1.2, 'evening' => 0.6, 'night' => 0.0],
-                'hospitality' => ['morning' => 0.8, 'lunch' => 1.2, 'afternoon' => 0.8, 'evening' => 1.4, 'night' => 1.2],
+                // Small shops close about 14:00–17:00 and by 20:30.
+                'shop' => ['morning' => 1.2, 'lunch' => 0.5, 'afternoon' => 1.3, 'evening' => 0.4, 'night' => 0.0],
+                'nightlife' => ['morning' => 0.1, 'lunch' => 0.4, 'afternoon' => 0.6, 'evening' => 1.5, 'night' => 2.5],
+                'cafe' => ['morning' => 1.6, 'lunch' => 1.0, 'afternoon' => 1.2, 'evening' => 0.6, 'night' => 0.1],
+                'restaurant' => ['morning' => 0.3, 'lunch' => 1.8, 'afternoon' => 0.4, 'evening' => 1.6, 'night' => 0.5],
                 'market' => ['morning' => 1.5, 'lunch' => 1.0, 'afternoon' => 0.5, 'evening' => 0.0, 'night' => 0.0],
                 'tourism' => ['morning' => 0.8, 'lunch' => 1.2, 'afternoon' => 1.2, 'evening' => 1.0, 'night' => 0.5],
                 'park' => ['morning' => 0.8, 'lunch' => 0.8, 'afternoon' => 1.4, 'evening' => 0.8, 'night' => 0.1],

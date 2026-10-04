@@ -11,7 +11,7 @@ use App\Simulation\Data\DayPart;
  * components — nearby points of interest (per day part, by their timing),
  * street-network centrality, the catchment of residents and workers, and
  * public transport — ranked, combined and mapped onto the 0–10 footfall
- * scale.
+ * scale. Each day part combines the components with its own weights.
  */
 final class FootfallSurfaceBuilder
 {
@@ -220,15 +220,20 @@ final class FootfallSurfaceBuilder
 
         $combined = ['all' => []];
 
-        foreach ($points as $i => $point) {
-            $shared = $weights['centrality'] * $ranks['centrality'][$i]
-                + $weights['catchment'] * $ranks['catchment'][$i]
-                + $weights['transport'] * $ranks['transport'][$i];
+        $partWeights = array_map(
+            fn (string $part) => $this->config['component_weights_by_day_part'][$part] ?? $weights,
+            array_combine($dayParts, $dayParts),
+        );
+        $mix = fn (array $w, int $i, string $poi) => $w['poi'] * $ranks[$poi][$i]
+            + $w['centrality'] * $ranks['centrality'][$i]
+            + $w['catchment'] * $ranks['catchment'][$i]
+            + $w['transport'] * $ranks['transport'][$i];
 
-            $combined['all'][$i] = $shared + $weights['poi'] * $ranks['poi'][$i];
+        foreach ($points as $i => $point) {
+            $combined['all'][$i] = $mix($weights, $i, 'poi');
 
             foreach ($dayParts as $part) {
-                $combined[$part][$i] = $shared + $weights['poi'] * $ranks["poi_{$part}"][$i];
+                $combined[$part][$i] = $mix($partWeights[$part], $i, "poi_{$part}");
             }
         }
 

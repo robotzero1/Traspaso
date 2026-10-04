@@ -50,7 +50,8 @@ it('reads walkable streets with their node coordinates', function () {
 it('classifies points of interest and flags competitors', function () {
     $pois = collect(fixturePois());
 
-    expect($pois->where('type', 'hospitality')->count())->toBe(10)
+    expect($pois->where('type', 'nightlife')->count())->toBe(5)
+        ->and($pois->where('type', 'cafe')->count())->toBe(5)
         ->and($pois->where('competitor', true)->count())->toBe(10)
         ->and($pois->where('type', 'office')->count())->toBe(6)
         ->and($pois->firstWhere('type', 'university'))->toMatchArray(['name' => 'Campus Este', 'osm_id' => 'way/7000', 'lat' => GeoFixtures::lat(6)])
@@ -109,7 +110,7 @@ it('measures densities over the built-up area when given', function () {
 it('keeps only commercial points inside a neighbourhood', function () {
     $surface = fixtureSurface();
     $commercialRadius = geoConfig()['footfall']['commercial']['radius_metres'];
-    $shops = array_filter(fixturePois(), fn ($p) => in_array($p['type'], ['shop', 'hospitality'], true));
+    $shops = array_filter(fixturePois(), fn ($p) => in_array($p['type'], geoConfig()['footfall']['commercial']['types'], true));
 
     expect($surface)->not->toBeEmpty();
 
@@ -152,6 +153,43 @@ it('gives each day part its own footfall, following who is around', function () 
     expect($lunchGap)->toBeGreaterThan($nightGap);
 });
 
+it('moves the busiest streets with the hour: bars at night, cafés in the morning', function () {
+    // The pedestrian street (column 2) gets bars; a side street (row 7)
+    // gets breakfast cafés.
+    $config = geoConfig();
+    $pois = fixturePois();
+
+    foreach (range(1, 7) as $r) {
+        $pois[] = ['type' => 'nightlife', 'lat' => GeoFixtures::lat($r + 0.05), 'lng' => GeoFixtures::lng(2.05), 'name' => "Pub {$r}", 'osm_id' => "node/{$r}", 'competitor' => true];
+    }
+
+    foreach (range(0, 8) as $c) {
+        $pois[] = ['type' => 'cafe', 'lat' => GeoFixtures::lat(7.05), 'lng' => GeoFixtures::lng($c + 0.5), 'name' => "Café {$c}", 'osm_id' => "node/9{$c}", 'competitor' => true];
+    }
+
+    $surface = collect((new FootfallSurfaceBuilder($config['footfall'], $config['street_types']))
+        ->build(fixtureStreets(), $pois, fixtureNeighbourhoods()));
+    $barStreet = $surface->where('osm_way_id', 202)->where('lat', '!=', GeoFixtures::lat(4));
+    $cafeStreet = $surface->where('osm_way_id', 107);
+    $gap = fn (string $part) => $barStreet->avg("footfall_{$part}") - $cafeStreet->avg("footfall_{$part}");
+
+    expect($gap('night'))->toBeGreaterThan($gap('morning') + 1.0);
+});
+
+it("combines the components with each day part's own weights", function () {
+    $config = geoConfig();
+    $config['footfall']['component_weights_by_day_part']['night'] = ['poi' => 0.0, 'centrality' => 1.0, 'catchment' => 0.0, 'transport' => 0.0];
+    $surface = (new FootfallSurfaceBuilder($config['footfall'], $config['street_types']))
+        ->build(fixtureStreets(), fixturePois(), fixtureNeighbourhoods());
+
+    // Night is centrality alone: footfall follows its rank exactly.
+    $byCentrality = collect($surface)->sortBy('centrality_score')->pluck('footfall_night')->values()->all();
+    $sorted = $byCentrality;
+    sort($sorted);
+
+    expect($byCentrality)->toBe($sorted);
+});
+
 it('stores component scores as ranks for calibration', function () {
     foreach (fixtureSurface() as $point) {
         foreach (['poi_score', 'centrality_score', 'catchment_score', 'transport_score', 'poi_morning_score'] as $key) {
@@ -168,7 +206,7 @@ it('builds the same surface from the same data', function () {
 });
 
 it('builds nothing without commercial streets', function () {
-    $noShops = array_values(array_filter(fixturePois(), fn ($p) => ! in_array($p['type'], ['shop', 'hospitality'], true)));
+    $noShops = array_values(array_filter(fixturePois(), fn ($p) => ! in_array($p['type'], geoConfig()['footfall']['commercial']['types'], true)));
 
     expect((new FootfallSurfaceBuilder(geoConfig()['footfall'], geoConfig()['street_types']))->build(fixtureStreets(), $noShops, fixtureNeighbourhoods()))->toBe([]);
 });
