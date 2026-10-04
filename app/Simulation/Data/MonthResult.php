@@ -13,6 +13,7 @@ final readonly class MonthResult
     /**
      * @param  list<CompetitorState>  $competitorsAfter
      * @param  list<EventRecord>  $events
+     * @param  list<DayPartResult>  $dayParts
      */
     public function __construct(
         public int $gameMonth,
@@ -22,12 +23,14 @@ final readonly class MonthResult
         public BusinessState $stateAfter,
         public array $competitorsAfter = [],
         public array $events = [],
+        public array $dayParts = [],
     ) {
         Guard::between('gameMonth', $gameMonth, 1, 12);
         Guard::nonNegative('customers', $customers);
         Guard::nonNegative('revenueCents', $revenueCents);
         Guard::listOf('competitorsAfter', $competitorsAfter, CompetitorState::class);
         Guard::listOf('events', $events, EventRecord::class);
+        Guard::listOf('dayParts', $dayParts, DayPartResult::class);
     }
 
     public function profitCents(): int

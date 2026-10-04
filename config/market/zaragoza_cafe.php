@@ -194,26 +194,47 @@ return [
     'day_parts' => [
         'source' => 'PLACEHOLDER: typical Zaragoza trading hours / own observation',
         // Hours are on a 0–27 clock so night (0–3) sorts after evening.
+        // intensity: how busy the street is in that day part (1.0 = typical).
+        // turnover_per_seat_hour: covers a seat can serve per hour.
         // demand_mix: how much each driver contributes to that day part.
         'morning' => [
+            'intensity' => 1.2, 'turnover_per_seat_hour' => 1.5,
             'start_hour' => 7, 'end_hour' => 12,
             'demand_mix' => ['office' => 0.35, 'transport' => 0.30, 'student' => 0.20, 'population' => 0.15],
         ],
         'lunch' => [
+            'intensity' => 1.0, 'turnover_per_seat_hour' => 1.0,
             'start_hour' => 12, 'end_hour' => 16,
             'demand_mix' => ['office' => 0.40, 'tourist' => 0.25, 'population' => 0.20, 'transport' => 0.15],
         ],
         'afternoon' => [
+            'intensity' => 0.8, 'turnover_per_seat_hour' => 1.0,
             'start_hour' => 16, 'end_hour' => 20,
             'demand_mix' => ['student' => 0.35, 'population' => 0.35, 'tourist' => 0.15, 'transport' => 0.15],
         ],
         'evening' => [
+            'intensity' => 0.9, 'turnover_per_seat_hour' => 0.8,
             'start_hour' => 20, 'end_hour' => 24,
             'demand_mix' => ['population' => 0.40, 'tourist' => 0.35, 'student' => 0.25],
         ],
         'night' => [
+            'intensity' => 0.6, 'turnover_per_seat_hour' => 0.6,
             'start_hour' => 24, 'end_hour' => 27,
             'demand_mix' => ['tourist' => 0.50, 'student' => 0.50],
+        ],
+    ],
+
+    // How much each day part suits each kind of business, as a multiplier
+    // on potential customers. Kitchens matter at lunch and in the evening.
+    'appeal' => [
+        'source' => 'PLACEHOLDER: game design / own observation',
+        'category' => [
+            'cafe' => ['morning' => 1.0, 'lunch' => 0.9, 'afternoon' => 1.0, 'evening' => 0.6, 'night' => 0.3],
+            'cafe_bar' => ['morning' => 0.8, 'lunch' => 1.0, 'afternoon' => 0.9, 'evening' => 1.0, 'night' => 1.0],
+        ],
+        'kitchen' => [
+            'lunch' => ['none' => 0.6, 'basic' => 1.0, 'full' => 1.3],
+            'evening' => ['none' => 0.8, 'basic' => 1.0, 'full' => 1.15],
         ],
     ],
 
@@ -224,7 +245,16 @@ return [
         'bar_musical' => ['morning', 'lunch', 'afternoon', 'evening', 'night'],
     ],
 
-    // Average spend per customer, before price level, by day part.
+    // Where in each day part's ticket range a business sits: 0 = min,
+    // 1 = max. Set by quality tier, shifted by kitchen at lunch and evening.
+    'ticket_position' => [
+        'source' => 'PLACEHOLDER: own observation / menus',
+        'tier' => ['budget' => 0.25, 'standard' => 0.5, 'premium' => 0.75],
+        'kitchen_offset' => ['none' => -0.2, 'basic' => 0.0, 'full' => 0.2],
+        'kitchen_day_parts' => ['lunch', 'evening'],
+    ],
+
+    // Average spend per customer, including IVA, before price level.
     'average_ticket_cents' => [
         'source' => 'PLACEHOLDER: own observation / menus',
         'morning' => ['min' => 350, 'max' => 500],
@@ -253,6 +283,120 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Demand (used by the engine)
+    |--------------------------------------------------------------------------
+    |
+    | potential per day part = potential_per_hour_at_footfall_10
+    |     × (footfall / 10) ^ footfall_exponent
+    |     × day part intensity × Σ demand_mix × driver × appeal
+    |     × hours × open days × seasonality × noise
+    |
+    | Index drivers are index / index_reference; the population driver is
+    | population / population_reference, capped.
+    |
+    */
+
+    'demand' => [
+        'source' => 'PLACEHOLDER: to calibrate against manual pedestrian counts',
+        'potential_per_hour_at_footfall_10' => 400,
+        'footfall_exponent' => 0.8,
+        'index_reference' => 5.0,
+        'population_reference' => 60_000,
+        'population_driver_cap' => 2.0,
+        // Month-to-month randomness in demand: normal(1, noise_sd), clamped.
+        'noise_sd' => 0.05,
+        'noise_min' => 0.8,
+        'noise_max' => 1.2,
+    ],
+
+    // capture = base_rate × own attractiveness × condition × marketing
+    //         / (1 + weight × Σ competitor attractiveness × decay
+    //              + density_weight × competition density / density_reference)
+    // The listed competitors are the nearby rivals the game models; the
+    // neighbourhood's density stands for all the others.
+    // attractiveness = reputation factor × price_level ^ −price_elasticity
+    //                × quality factor
+    'capture' => [
+        'source' => 'PLACEHOLDER: game design, to tune in the balancing pass',
+        'base_rate' => 0.044,
+        'price_elasticity' => 0.7,
+        'reputation' => ['base' => 0.3, 'per_point' => 0.014],
+        'quality' => ['base' => 0.75, 'per_point' => 0.005],
+        'condition' => ['base' => 0.9, 'per_point' => 0.02],
+        // boost = max_boost × (1 − e^(−spend / scale_cents))
+        'marketing' => ['max_boost' => 0.25, 'scale_cents' => 30_000],
+        'competition' => [
+            'weight' => 0.4,
+            'distance_decay_metres' => 200,
+            'density_weight' => 0.5,
+            'density_reference' => 50,
+        ],
+    ],
+
+    // Quality 0–100 served to customers: the tier's score, cut by worn
+    // equipment. Below the threshold, equipment health scales quality down
+    // linearly to min_factor at 0 health.
+    'quality' => [
+        'source' => 'PLACEHOLDER: game design',
+        'tier_scores' => ['budget' => 35, 'standard' => 55, 'premium' => 80],
+        'equipment_threshold' => 50,
+        'equipment_min_factor' => 0.6,
+    ],
+
+    'service' => [
+        'source' => 'PLACEHOLDER: own observation',
+        'customers_per_person_hour' => 18,
+        // The owner works in the business on top of the staff.
+        'owner_hours_per_week' => 50,
+        // Above this share of service capacity, service and morale suffer.
+        'comfortable_utilisation' => 0.8,
+        // service score = morale_weight × morale + base
+        //               − overload_penalty × (utilisation − comfortable)
+        'morale_weight' => 0.5,
+        'base' => 15,
+        'overload_penalty' => 100,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | State evolution (used by the engine)
+    |--------------------------------------------------------------------------
+    |
+    | Each month a score moves adjustment_rate of the way to its target.
+    |
+    */
+
+    'reputation' => [
+        'source' => 'PLACEHOLDER: game design, to tune in the balancing pass',
+        // target = base + quality_weight × (quality − 50)
+        //        − price_premium_penalty × (price level − 1), when above 1
+        //        + price_discount_bonus × (1 − price level), when below 1
+        //        + service_weight × (service − 50)
+        'target_base' => 50,
+        'quality_weight' => 0.6,
+        'price_premium_penalty' => 80,
+        'price_discount_bonus' => 15,
+        'service_weight' => 0.3,
+        'adjustment_rate' => 0.3,
+    ],
+
+    'morale' => [
+        'source' => 'PLACEHOLDER: game design',
+        // target = base − overwork_penalty × (utilisation − comfortable)
+        'base' => 70,
+        'overwork_penalty' => 100,
+        'adjustment_rate' => 0.3,
+    ],
+
+    'equipment' => [
+        'source' => 'PLACEHOLDER: game design',
+        // Health lost per month: wear_per_month + wear_per_age_year × age.
+        'wear_per_month' => 1.0,
+        'wear_per_age_year' => 0.1,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Costs (used by the engine)
     |--------------------------------------------------------------------------
     */
@@ -269,9 +413,10 @@ return [
 
     'staff' => [
         'source' => 'PLACEHOLDER: SMI / hostelería collective agreement for Zaragoza',
-        // Full-time gross per payment; there are 14 payments a year, so the
-        // monthly cost is gross × payments_per_year / 12.
-        'gross_per_payment_cents' => ['min' => 118_400, 'max' => 150_000],
+        // Full-time gross per payment (between SMI, €1,184, and ~€1,500);
+        // there are 14 payments a year, so the monthly cost is
+        // gross × payments_per_year / 12, plus employer social security.
+        'gross_per_payment_cents' => 130_000,
         'payments_per_year' => 14,
         'employer_social_security_rate' => 0.315,
         'full_time_hours_per_week' => 40,
@@ -292,12 +437,27 @@ return [
 
     'utilities' => [
         'source' => 'PLACEHOLDER: supplier estimates',
-        'month_cents' => ['min' => 25_000, 'max' => 50_000],
+        // base + per hour open; aims at €250–500 a month.
+        'base_month_cents' => 15_000,
+        'per_open_hour_cents' => 50,
     ],
 
     'insurance' => [
         'source' => 'PLACEHOLDER: quotes',
-        'month_cents' => ['min' => 3_000, 'max' => 6_000],
+        // Quotes range €30–60 a month.
+        'month_cents' => 4_500,
+    ],
+
+    'maintenance' => [
+        'source' => 'PLACEHOLDER: own estimate',
+        'base_month_cents' => 5_000,
+        'per_equipment_year_cents' => 500,
+    ],
+
+    // Pago fraccionado (modelo 130): a share of positive monthly profit.
+    'income_tax' => [
+        'source' => 'PLACEHOLDER: AEAT modelo 130',
+        'rate' => 0.20,
     ],
 
     'terrace_fee' => [

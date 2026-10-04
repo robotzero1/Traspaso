@@ -11,7 +11,9 @@ use App\Simulation\Data\DayPart;
 use App\Simulation\Data\Decisions;
 use App\Simulation\Data\Kitchen;
 use App\Simulation\Data\Licence;
+use App\Simulation\Data\MarketContext;
 use App\Simulation\Data\NeighbourhoodProfile;
+use App\Simulation\Data\ParameterSheet;
 use App\Simulation\Data\QualityTier;
 
 /**
@@ -102,6 +104,22 @@ final class SimulationFixtures
             reputation: 60.0,
             seats: 30,
         );
+    }
+
+    /** The real parameter sheet, read without booting Laravel. */
+    public static function parameters(): array
+    {
+        return require dirname(__DIR__, 2).'/config/market/zaragoza_cafe.php';
+    }
+
+    public static function sheet(): ParameterSheet
+    {
+        return new ParameterSheet(self::parameters());
+    }
+
+    public static function context(int $calendarMonth = 4, array $competitors = []): MarketContext
+    {
+        return new MarketContext($calendarMonth, 1, $competitors, self::parameters());
     }
 
     public static function costs(): CostBreakdown
