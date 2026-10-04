@@ -28,6 +28,8 @@ class GeoFetchCommand extends Command
             try {
                 $this->components->task("Downloading {$name}", function () use ($files, $name, $query) {
                     $response = Http::timeout(config('geo.overpass_timeout_seconds') + 30)
+                        ->withUserAgent(config('geo.user_agent'))
+                        ->accept('application/json')
                         ->asForm()
                         ->post(config('geo.overpass_url'), ['data' => $query])
                         ->throw();

@@ -38,6 +38,9 @@ return [
     */
 
     'overpass_url' => env('OVERPASS_URL', 'https://overpass-api.de/api/interpreter'),
+    // Overpass turns away requests with a generic HTTP-library User-Agent
+    // (406 Not Acceptable): identify the tool, with a way to reach you.
+    'user_agent' => env('GEO_USER_AGENT', 'Traspaso/1.0 (business simulator; https://github.com/robotzero1/Traspaso)'),
     // PHP memory for geo:build; a city's raw street data is large.
     'build_memory_limit' => '2G',
     'overpass_timeout_seconds' => 300,

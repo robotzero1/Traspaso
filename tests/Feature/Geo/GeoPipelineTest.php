@@ -68,6 +68,8 @@ it('downloads streets, points of interest and boundaries from Overpass', functio
     }
 
     Http::assertSentCount(3);
+    // Overpass rejects generic User-Agents with 406.
+    Http::assertSent(fn (Request $r) => str_starts_with($r->header('User-Agent')[0] ?? '', 'Traspaso/'));
     Http::assertSent(fn (Request $r) => str_contains($r['data'], '[bbox:41.6,-0.96,41.7,-0.82]') || str_contains($r['data'], 'area['));
 });
 
