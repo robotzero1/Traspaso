@@ -188,4 +188,6 @@ export type MapProps = {
     }[];
     /** True until real OSM data is imported: positions are approximate. */
     placeholder: boolean;
+    /** True when the footfall surface is loaded (GET /map/footfall). */
+    has_footfall: boolean;
 };

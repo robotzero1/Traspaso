@@ -5,6 +5,7 @@ namespace App\Game;
 use App\Enums\BusinessStatus;
 use App\Generation\Geo\Geo;
 use App\Models\Business;
+use App\Models\FootfallPoint;
 use App\Models\Game;
 use App\Models\GameCompetitor;
 use App\Models\GameEvent;
@@ -167,6 +168,7 @@ final class GamePresenter
                 ->orderBy('type')->orderBy('name')->get()
                 ->map(fn (PointOfInterest $p) => $p->only(['type', 'name', 'lat', 'lng']))->all(),
             'placeholder' => ! $fromOsm,
+            'has_footfall' => FootfallPoint::query()->exists(),
         ];
     }
 

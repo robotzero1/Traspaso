@@ -3,6 +3,7 @@
 use App\Actions\Game\StartGame;
 use App\Generation\Geo\Geo;
 use App\Models\Business;
+use App\Models\FootfallPoint;
 use App\Models\Neighbourhood;
 use App\Models\PointOfInterest;
 use App\Models\User;
@@ -57,6 +58,7 @@ it('sends the map with OpenStreetMap attribution, areas, landmarks and locations
         ->where('map.tile_url', config('map.tile_url'))
         ->where('map.attribution', fn (string $attribution) => str_contains($attribution, 'OpenStreetMap'))
         ->where('map.placeholder', true)
+        ->where('map.has_footfall', false)
         ->has('map.neighbourhoods', Neighbourhood::query()->count())
         ->has('map.points_of_interest', PointOfInterest::query()->count())
         ->has('businesses.0', fn (Assert $b) => $b->whereType('lat', 'double')->whereType('lng', 'double')->etc()));
@@ -79,4 +81,27 @@ it('locates your business and your rivals on the map', function () {
     expect($props['business']['lat'])->toBe($business->lat)
         ->and(collect($props['competitors'])->every(fn ($c) => $c['lat'] !== null && $c['lng'] !== null))->toBeTrue()
         ->and(Geo::distanceMetres($business->lat, $business->lng, $opened['lat'], $opened['lng']))->toEqualWithDelta(200.0, 1.0);
+});
+
+it('serves the footfall surface to signed-in players only', function () {
+    $neighbourhood = Neighbourhood::query()->first();
+    FootfallPoint::query()->create([
+        'neighbourhood_id' => $neighbourhood->id, 'lat' => 41.6512, 'lng' => -0.8811, 'street_type' => 'main_street',
+        'poi_score' => 0.9, 'centrality_score' => 0.8, 'catchment_score' => 0.7, 'transport_score' => 0.6,
+        'footfall' => 8.4, 'footfall_morning' => 7.0, 'footfall_lunch' => 9.1, 'footfall_afternoon' => 8.0,
+        'footfall_evening' => 6.5, 'footfall_night' => 2.0,
+    ]);
+
+    $this->get(route('map.footfall'))->assertRedirect(route('login'));
+
+    $this->actingAs($this->user)->getJson(route('map.footfall'))
+        ->assertOk()
+        ->assertExactJson([
+            'columns' => ['lat', 'lng', 'footfall', 'footfall_morning', 'footfall_lunch', 'footfall_afternoon', 'footfall_evening', 'footfall_night'],
+            'points' => [[41.6512, -0.8811, 8.4, 7.0, 9.1, 8.0, 6.5, 2.0]],
+        ]);
+
+    $game = app(StartGame::class)->handle($this->user, 5_000_000, seed: 3);
+    $this->actingAs($this->user)->get(route('games.show', $game))
+        ->assertInertia(fn (Assert $page) => $page->where('map.has_footfall', true));
 });

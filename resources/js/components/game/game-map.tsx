@@ -1,4 +1,5 @@
 import 'leaflet/dist/leaflet.css';
+import { useState } from 'react';
 import {
     Circle,
     CircleMarker,
@@ -8,7 +9,14 @@ import {
     MapContainer,
     TileLayer,
     Tooltip,
+    useMapEvents,
 } from 'react-leaflet';
+import {
+    FOOTFALL_BINS,
+    FOOTFALL_VIEWS,
+    FootfallLayer,
+} from '@/components/game/footfall-layer';
+import type { FootfallView } from '@/components/game/footfall-layer';
 import { formatCents, humanize } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { BusinessForSale, Competitor, MapProps } from '@/types/game';
@@ -19,6 +27,18 @@ const located = <T extends { lat: number | null; lng: number | null }>(
     items: T[],
 ): Located<T>[] =>
     items.filter((i): i is Located<T> => i.lat !== null && i.lng !== null);
+
+const FOOTFALL_LAYER = 'Footfall (estimated)';
+
+/** Tells the parent when the player switches the footfall overlay. */
+function OverlayWatcher({ onChange }: { onChange: (on: boolean) => void }) {
+    useMapEvents({
+        overlayadd: (e) => e.name === FOOTFALL_LAYER && onChange(true),
+        overlayremove: (e) => e.name === FOOTFALL_LAYER && onChange(false),
+    });
+
+    return null;
+}
 
 type Props = {
     map: MapProps;
@@ -43,6 +63,11 @@ export function GameMap({
     competitors = [],
     className,
 }: Props) {
+    const [footfallOn, setFootfallOn] = useState(false);
+    const [footfallView, setFootfallView] = useState<FootfallView>('overall');
+    const [footfallStatus, setFootfallStatus] = useState<
+        'loading' | 'ready' | 'error'
+    >('loading');
     const centre: [number, number] =
         own?.lat != null && own.lng != null ? [own.lat, own.lng] : map.centre;
     const kinds = [
@@ -74,7 +99,20 @@ export function GameMap({
                         attribution={map.attribution}
                         maxZoom={map.max_zoom}
                     />
+                    <OverlayWatcher onChange={setFootfallOn} />
                     <LayersControl position="topright">
+                        {map.has_footfall && (
+                            <LayersControl.Overlay name={FOOTFALL_LAYER}>
+                                <LayerGroup>
+                                    {footfallOn && (
+                                        <FootfallLayer
+                                            view={footfallView}
+                                            onStatus={setFootfallStatus}
+                                        />
+                                    )}
+                                </LayerGroup>
+                            </LayersControl.Overlay>
+                        )}
                         <LayersControl.Overlay checked name="Neighbourhoods">
                             <LayerGroup>
                                 {map.neighbourhoods.map((n) =>
@@ -185,6 +223,59 @@ export function GameMap({
                     )}
                 </MapContainer>
 
+                {footfallOn && (
+                    <div className="absolute top-2 left-12 z-[1000] space-y-1.5 rounded-md border bg-background/90 px-2 py-1.5 text-xs shadow-sm">
+                        <label className="flex items-center gap-2">
+                            <span className="font-medium">Footfall</span>
+                            <select
+                                value={footfallView}
+                                onChange={(e) =>
+                                    setFootfallView(
+                                        e.target.value as FootfallView,
+                                    )
+                                }
+                                className="rounded border bg-background px-1 py-0.5"
+                            >
+                                {FOOTFALL_VIEWS.map((v) => (
+                                    <option key={v.key} value={v.key}>
+                                        {v.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        {footfallStatus === 'loading' && (
+                            <div className="text-muted-foreground">
+                                Loading…
+                            </div>
+                        )}
+                        {footfallStatus === 'error' && (
+                            <div className="text-destructive">
+                                Couldn't load footfall.
+                            </div>
+                        )}
+                        {footfallStatus === 'ready' && (
+                            <div className="flex items-end gap-0.5">
+                                {FOOTFALL_BINS.map((bin, i) => (
+                                    <div
+                                        key={bin}
+                                        className="flex flex-col items-center gap-0.5"
+                                    >
+                                        <span
+                                            className="h-2 w-8"
+                                            style={{
+                                                background: `var(--viz-seq-${i + 1})`,
+                                            }}
+                                        />
+                                        <span className="text-[10px] text-muted-foreground tabular-nums">
+                                            {bin}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {kinds.length > 0 && (
                     <div className="pointer-events-none absolute bottom-6 left-2 z-[1000] space-y-1 rounded-md border bg-background/90 px-2 py-1.5 text-xs shadow-sm">
                         {kinds.map((k) => (
@@ -230,6 +321,8 @@ export function GameMap({
                 are simulated.
                 {map.placeholder &&
                     ' Neighbourhood areas and landmarks are approximate until real OpenStreetMap data is imported.'}
+                {footfallOn &&
+                    ' Footfall is a 0–10 estimate from OpenStreetMap streets and places, not a pedestrian count.'}
             </figcaption>
         </figure>
     );

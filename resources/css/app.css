@@ -168,6 +168,21 @@
 }
 
 /*
+ * Sequential ramp for the footfall layer: one orange hue (the second
+ * sequential hue, so it stays clear of the blue for-sale markers), validated
+ * as ordinal against the OSM tile background #f2efe9. Map tiles stay light
+ * in dark mode, so the ramp is the same in both. The dots have no ring and
+ * sit under the markers, which keep their white ring and larger size.
+ */
+:root {
+    --viz-seq-1: #dc8c6f;
+    --viz-seq-2: #cd643b;
+    --viz-seq-3: #a94a25;
+    --viz-seq-4: #833516;
+    --viz-seq-5: #5d230b;
+}
+
+/*
  * Map markers. Leaflet draws SVG paths; these classes colour them from the
  * chart tokens (slots 1–3, validated all-pairs). The white ring keeps
  * markers readable on the light map tiles, and shape/size tell the kinds
