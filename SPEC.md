@@ -97,11 +97,16 @@ Each field is tagged by where its value comes from:
 ### points_of_interest
 `id, type (university|school|station|park|office|competitor_seed…), name, lat, lng, osm_id` — [real], imported from OSM extracts.
 
+### footfall_points
+A precomputed footfall surface, sampled at points along streets (about every 25 m), [real→derived]:
+`id, lat, lng, osm_way_id, neighbourhood_id, poi_score, centrality_score, catchment_score, transport_score, footfall 0–10, footfall_<day part> 0–10 (one per day part), commercial (bool)`.
+`commercial` marks points with shops or hospitality on the street nearby; businesses are only placed on those.
+
 ### businesses
 | field | source |
 |---|---|
 | id, fictional_name | [sim] |
-| neighbourhood_id, lat, lng | [real] location, snapped to a real commercial street |
+| neighbourhood_id, lat, lng | [real] location: a commercial street point from `footfall_points` |
 | category (`cafe`, `cafe_bar`) | [research] |
 | floor_area_m2 | [research] |
 | indoor_seats, terrace_seats | [research] |
@@ -110,7 +115,7 @@ Each field is tagged by where its value comes from:
 | licence (`cafe`, `cafe_bar`, `bar_musical`) | [research] |
 | kitchen (`none`, `basic`, `full`) | [research] |
 | condition 1–10, equipment_age_years | [sim] |
-| footfall 0–10 | [real→derived] from the neighbourhood indices + street type |
+| footfall 0–10, footfall per day part | [real→derived] read from `footfall_points` at the business's location (see §8 Footfall estimate). Until milestone 8: neighbourhood indices + street type |
 | base_reputation 0–100 | [sim] |
 | status (`for_sale`, `owned_by_player`, `competitor`) | [sim] |
 
@@ -133,8 +138,9 @@ simulateMonth(state, decisions, context, rng) -> MonthResult
 
 1. Seasonality & weather   month → demand multiplier; terrace usable-days
 2. Potential customers     for each open day part:
-                             footfall × (neighbourhood indices weighted by that
-                             day part's demand mix) × seasonality
+                             footfall for that day part × seasonality
+                             (until milestone 8: footfall × neighbourhood indices
+                             weighted by that day part's demand mix)
 3. Capture rate            f(reputation, price vs. local average, quality, marketing,
                              competitor attractiveness)
 4. Covers                  per day part: min(potential × capture,
@@ -192,6 +198,7 @@ Opening hours are a choice of **which parts of the day** to open for, not a numb
 | Average ticket € (café-bar, evenings) | 6–10 | own observation |
 | Day part hour spans | morning 7–12, lunch 12–16, afternoon 16–20, evening 20–24, night 0–3 | typical Zaragoza trading hours |
 | Demand mix per day part (weight of each neighbourhood index) | see §6 Day parts | own observation / footfall counts |
+| Footfall model: component weights, POI type weights, decay radius | see §8 Footfall estimate | manual pedestrian counts |
 | Average ticket by day part | morning ≈ café ticket, evening/night ≈ café-bar ticket | own observation / menus |
 | Day parts allowed per licence | `night` only with `cafe_bar` / `bar_musical` | Zaragoza licensing ordinance (opening-hours rules) |
 | COGS % of revenue | 28–35% | hospitality benchmarks |
@@ -215,8 +222,28 @@ Opening hours are a choice of **which parts of the day** to open for, not a numb
 | AEMET | climate normals | open data; attribute |
 | Property portals | **manual research only**, turned into aggregate distributions | no scraping, no copying text/photos, nothing stored per listing |
 | Google Maps / Places | not used in the MVP | if added later: runtime display only, store only Place IDs |
+| Manual pedestrian counts | calibrating the footfall model | own research; store only location, time, day part and count |
 
 **Geo data is fetched locally and committed** to `database/seeders/geo/`. Cloud environments may not have network access to Overpass or Catastro.
+
+### Footfall estimate
+
+There is no open pedestrian-count data for Zaragoza, so footfall is estimated from open-data proxies, calibrated against a small set of manual counts. It is computed once, offline, by a script run locally (e.g. Python with `osmnx`/`networkx`), and the output is committed to `database/seeders/geo/`. The app never computes it at runtime.
+
+For each street point, four component scores are worked out, each normalised to 0–1 across the city:
+
+| component | what it measures | source |
+|---|---|---|
+| `poi_score` | shops, cafés, bars, banks, pharmacies, schools, offices… nearby, weighted by type and fading with distance (≈150–300 m) | OSM |
+| `centrality_score` | how many short walking routes pass along the street (betweenness on the pedestrian network within ≈800 m); separates main streets from side streets | OSM street network |
+| `catchment_score` | residents and workers within a 5–10 minute walk | INE census sections, Catastro / OSM offices |
+| `transport_score` | tram and bus stops nearby, tram stops and interchanges weighted higher | OSM, Zaragoza open data (stop boardings, if published) |
+
+- `footfall` is a weighted sum of the components, rescaled to 0–10 so the city's percentiles match the parameter sheet.
+- **Per day part:** each POI type carries a timing profile (offices → morning and lunch; schools → morning and afternoon; bars → evening and night; universities → afternoon), so `poi_score`, and therefore footfall, is also computed per day part. This replaces the neighbourhood-level demand mix.
+- **Calibration:** count pedestrians for 10 minutes at 15–20 varied spots, at two or three times of day. Tune the weights so the model ranks those spots the same way the counts do (check with a rank correlation), and commit the counts with the script.
+- All weights, radii and timing profiles live in `config/market/*.php` and in the script's committed settings, marked as placeholders until calibrated.
+- **Licence:** the surface is an OSM-derived database under the ODbL. Keep it in its own files and table, attribute OpenStreetMap wherever it appears, and expect to share it under the ODbL if distributed.
 
 ## 9. Milestones
 
@@ -229,7 +256,7 @@ Each one is sized to be a single cloud session.
 5. **Game flow**: create a game, browse businesses, buy one, set decisions, advance the month, end of game, bankruptcy.
 6. **UI**: business browser with filters, monthly decisions screen, P&L, cash-flow chart.
 7. **Map**: Leaflet map, business markers, POI layer, neighbourhood overlays, OSM attribution.
-8. **Real geo data**: import the committed OSM/INE extracts and derive the neighbourhood indices.
+8. **Real geo data and footfall**: the offline footfall script (§8 Footfall estimate) and its calibration counts; import the committed OSM/INE extracts and the footfall surface; derive the neighbourhood indices; place generated businesses on commercial street points and read their footfall (overall and per day part) from the surface, replacing the street-type bonus and noise.
 9. **Balancing pass**: run 1,000 simulated games with scripted strategies and report the outcome distributions.
 
 ## 10. Open questions
