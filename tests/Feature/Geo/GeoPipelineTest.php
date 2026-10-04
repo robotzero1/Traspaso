@@ -3,6 +3,7 @@
 use App\Actions\Game\StartGame;
 use App\Generation\Geo\OsmExtract;
 use App\Geo\GeoFiles;
+use App\Geo\OverpassQueries;
 use App\Models\Business;
 use App\Models\FootfallPoint;
 use App\Models\Neighbourhood;
@@ -27,6 +28,9 @@ use Tests\Support\GeoFixtures;
 beforeEach(function () {
     $this->root = 'storage/framework/testing/geo-'.uniqid();
     config([
+        'geo.fetch_tiles' => 2,
+        // Retries in this file never sleep.
+        'geo.retry_delay_ms' => 0,
         'geo.raw_path' => "{$this->root}/raw",
         'geo.sources_path' => "{$this->root}/out/sources",
         'geo.output_path' => "{$this->root}/out",
@@ -67,13 +71,21 @@ it('downloads streets, points of interest and boundaries from Overpass', functio
         expect(base_path("{$this->root}/raw/{$name}.json"))->toBeFile();
     }
 
-    Http::assertSentCount(3);
+    // 2 × 2 tiles for streets and for POIs, plus the boundaries.
+    Http::assertSentCount(9);
+
+    // Tiles overlap in what they return; the merge keeps each element once.
+    $streets = json_decode(File::get(base_path("{$this->root}/raw/streets.json")), true);
+    expect($streets['elements'])->toHaveCount(count(GeoFixtures::streets()['elements']));
+
     // Overpass rejects generic User-Agents with 406.
     Http::assertSent(fn (Request $r) => str_starts_with($r->header('User-Agent')[0] ?? '', 'Traspaso/'));
-    Http::assertSent(fn (Request $r) => str_contains($r['data'], '[bbox:41.6,-0.96,41.7,-0.82]') || str_contains($r['data'], 'area['));
+    Http::assertSent(fn (Request $r) => str_contains($r['data'], '[bbox:41.6,-0.96,41.65,-0.89]'));
+    Http::assertSent(fn (Request $r) => str_contains($r['data'], 'area['));
 });
 
 it('explains a missing certificate bundle', function () {
+    config(['geo.retries' => 0]);
     Http::fake(fn () => throw new ConnectionException('cURL error 60: SSL certificate problem: unable to get local issuer certificate'));
 
     $this->artisan('geo:fetch')
@@ -81,10 +93,56 @@ it('explains a missing certificate bundle', function () {
         ->assertFailed();
 });
 
-it('reports a failed download', function () {
-    Http::fake(['*' => Http::response('Too many requests', 429)]);
+it('retries when the server is busy or timing out', function () {
+    Http::fakeSequence()
+        ->push('Gateway timeout', 504)
+        ->push('Too many requests', 429)
+        ->whenEmpty(Http::response(GeoFixtures::streets()));
 
-    $this->artisan('geo:fetch')->assertFailed();
+    $this->artisan('geo:fetch --skip-boundaries')->assertSuccessful();
+
+    expect(base_path("{$this->root}/raw/streets.json"))->toBeFile();
+});
+
+it('gives up after the configured retries and explains', function () {
+    config(['geo.retries' => 2]);
+    Http::fake(['*' => Http::response('Gateway timeout', 504)]);
+
+    $this->artisan('geo:fetch')
+        ->expectsOutputToContain('HTTP 504')
+        ->expectsOutputToContain('Run the command again later')
+        ->assertFailed();
+
+    Http::assertSentCount(3);
+});
+
+it('resumes, skipping tiles already downloaded', function () {
+    File::ensureDirectoryExists(base_path("{$this->root}/raw/tiles"));
+
+    foreach (range(0, 3) as $i) {
+        File::put(base_path("{$this->root}/raw/tiles/streets-{$i}.json"), json_encode(GeoFixtures::streets()));
+    }
+
+    Http::fake(['*' => Http::response(GeoFixtures::pointsOfInterest())]);
+
+    $this->artisan('geo:fetch --skip-boundaries')->assertSuccessful();
+
+    // Only the four POI tiles were fetched.
+    Http::assertSentCount(4);
+
+    $this->artisan('geo:fetch --skip-boundaries --fresh')->assertSuccessful();
+    Http::assertSentCount(12);
+});
+
+it('cuts the city into tiles that cover it exactly', function () {
+    $queries = new OverpassQueries(config('geo'));
+    $tiles = $queries->tiles(3);
+    [$south, $west, $north, $east] = config('geo.bbox');
+
+    expect($tiles)->toHaveCount(9)
+        ->and($tiles[0][0])->toBe($south)->and($tiles[0][1])->toBe($west)
+        ->and($tiles[8][2])->toBe($north)->and($tiles[8][3])->toBe($east)
+        ->and($queries->streets($tiles[4]))->toContain("[bbox:{$tiles[4][0]},{$tiles[4][1]},{$tiles[4][2]},{$tiles[4][3]}]");
 });
 
 it('builds the committed files from the downloads', function () {

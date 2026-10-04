@@ -45,6 +45,14 @@ return [
     'build_memory_limit' => '2G',
     'overpass_timeout_seconds' => 300,
 
+    // The public Overpass servers time out (504) on big queries and push
+    // back when busy (429). Streets and POIs are fetched in fetch_tiles ×
+    // fetch_tiles pieces, each retried up to `retries` times with a growing
+    // pause; finished tiles are kept, so a re-run resumes.
+    'fetch_tiles' => 3,
+    'retries' => 4,
+    'retry_delay_ms' => 20_000,
+
     // The urban area: south, west, north, east.
     'bbox' => [41.600, -0.960, 41.700, -0.820],
 
