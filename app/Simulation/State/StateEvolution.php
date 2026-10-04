@@ -9,7 +9,7 @@ use App\Simulation\Data\ParameterSheet;
 /**
  * Step 8: how the business changes over the month. Reputation and staff
  * morale move part of the way towards a target each month; equipment
- * wears and ages.
+ * wears and ages; event modifiers count down a month.
  */
 final readonly class StateEvolution
 {
@@ -31,6 +31,7 @@ final readonly class StateEvolution
             equipmentHealth: max(0.0, $state->equipmentHealth - $this->wear($state->equipmentAgeMonths)),
             equipmentAgeMonths: $state->equipmentAgeMonths + 1,
             stockQuality: $quality,
+            modifiers: $state->modifierSet()->tick(),
         );
     }
 

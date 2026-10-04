@@ -2,10 +2,12 @@
 
 namespace App\Simulation;
 
+use App\Simulation\Competitors\CompetitorBehaviour;
 use App\Simulation\Costs\MonthlyCosts;
 use App\Simulation\Data\BusinessState;
 use App\Simulation\Data\DayPartResult;
 use App\Simulation\Data\Decisions;
+use App\Simulation\Data\EventRecord;
 use App\Simulation\Data\MarketContext;
 use App\Simulation\Data\MonthResult;
 use App\Simulation\Data\ParameterSheet;
@@ -16,6 +18,12 @@ use App\Simulation\Demand\QualityScore;
 use App\Simulation\Demand\Revenue;
 use App\Simulation\Demand\Seasonality;
 use App\Simulation\Demand\Staffing;
+use App\Simulation\Events\ChoiceResolver;
+use App\Simulation\Events\EffectApplier;
+use App\Simulation\Events\EventConditions;
+use App\Simulation\Events\EventOccurrence;
+use App\Simulation\Events\EventRoller;
+use App\Simulation\Events\EventSignals;
 use App\Simulation\Exceptions\DecisionNotAllowed;
 use App\Simulation\Rng\SeededRng;
 use App\Simulation\State\StateEvolution;
@@ -28,8 +36,10 @@ use App\Simulation\State\StateEvolution;
  * (new SeededRng($game->seed))->fork("month-{$n}"), so replaying a month
  * gives the same result.
  *
- * Not yet simulated: events (step 7) and competitor moves (step 9).
- * Competitors pass through unchanged and no events happen.
+ * Events: choices on last month's events take effect first, so their
+ * modifiers count this month. Events rolled this month (step 7) book
+ * their one-off costs now; their lasting modifiers start next month, and
+ * any that offer a choice wait in the state's pendingEvents.
  */
 final class Engine
 {
@@ -38,19 +48,39 @@ final class Engine
         $sheet = new ParameterSheet($context->parameters);
         $this->guardLicence($state, $decisions, $sheet);
 
+        $applier = new EffectApplier($sheet);
+        $competitors = $context->competitors;
+        $eventCostCents = 0;
+        $eventRevenueCents = 0;
+
+        // Choices made on last month's events
+        $resolved = (new ChoiceResolver($sheet))->resolve($state->pendingEvents, $decisions);
+        $state = $state->with(pendingEvents: []);
+
+        foreach ($resolved as $occurrence) {
+            $state = $applier->applyToState($state, $occurrence->effects, $occurrence->record->type);
+            $competitors = $applier->applyToCompetitors($competitors, $occurrence->effects, $context->gameMonth, $rng->fork("resolve-{$occurrence->record->type}"));
+            $eventCostCents += $occurrence->effects->costCents;
+            $eventRevenueCents += $occurrence->effects->revenueCents;
+        }
+
         $profile = $state->profile;
+        $modifiers = $state->modifierSet();
         $potential = new PotentialCustomers($sheet);
         $covers = new Covers($sheet);
         $revenue = new Revenue($sheet);
+        $captureRate = new CaptureRate($sheet);
 
         // 1. Seasonality & weather
         $season = (new Seasonality($sheet))->forMonth($context->calendarMonth, $decisions->openDaysPerWeek);
 
         // 3. Capture rate (needs quality, which doesn't depend on demand)
-        $quality = (new QualityScore($sheet))->score($state, $decisions);
-        $capture = (new CaptureRate($sheet))->rate($state, $decisions, $quality, $context->competitors);
+        $quality = max(0.0, (new QualityScore($sheet))->score($state, $decisions) - $modifiers->qualityPenalty());
+        $capture = $captureRate->rate($state, $decisions, $quality, $competitors);
 
-        $staffing = Staffing::for($decisions, $sheet);
+        // Staff missing because of events are still paid, but not on the floor.
+        $onTheFloor = $decisions->with(staffCount: max(0, $decisions->staffCount - $modifiers->staffShortage()));
+        $staffing = Staffing::for($onTheFloor, $sheet);
         $noise = $potential->noise($rng->fork('demand'));
         $dayParts = [];
         $totalDemand = 0.0;
@@ -58,18 +88,18 @@ final class Engine
 
         foreach ($decisions->openDayParts as $part) {
             // 2. Potential customers
-            $partPotential = $potential->forDayPart($profile, $part, $season, $noise);
+            $partPotential = $potential->forDayPart($profile, $part, $season, $noise) * $modifiers->demand($part);
 
             // 4. Covers
             $partDemand = $partPotential * $capture;
-            $partCapacity = $covers->capacity($profile, $part, $season, $staffing);
+            $partCapacity = $covers->capacity($profile, $part, $season, $staffing) * $modifiers->capacity($part);
             $partCovers = $covers->covers($partDemand, $partCapacity);
 
             // 5. Revenue
             $partRevenue = $revenue->netRevenueCents($partCovers, $revenue->ticketCents($profile, $part, $decisions));
 
             $totalDemand += $partDemand;
-            $totalServiceCapacity += $covers->serviceCapacity($part, $season, $staffing);
+            $totalServiceCapacity += $covers->serviceCapacity($part, $season, $staffing) * $modifiers->capacity($part);
             $dayParts[] = new DayPartResult(
                 dayPart: $part,
                 potentialCustomers: (int) round($partPotential),
@@ -80,15 +110,43 @@ final class Engine
             );
         }
 
-        $revenueCents = array_sum(array_map(fn (DayPartResult $part) => $part->revenueCents, $dayParts));
+        $utilisation = $totalServiceCapacity > 0 ? $totalDemand / $totalServiceCapacity : 0.0;
+
+        // 7. Events (rolled before costs so their one-off costs are booked this month)
+        $rolled = (new EventRoller($sheet))->roll(
+            EventSignals::from($state, $quality, $utilisation, $sheet->float('service.comfortable_utilisation')),
+            EventConditions::from($state, $decisions, $context->calendarMonth, count($competitors)),
+            $context->gameMonth,
+            $rng->fork('events'),
+        );
+
+        foreach ($rolled as $occurrence) {
+            $eventCostCents += $occurrence->effects->costCents;
+            $eventRevenueCents += $occurrence->effects->revenueCents;
+        }
+
+        $revenueCents = array_sum(array_map(fn (DayPartResult $part) => $part->revenueCents, $dayParts)) + $eventRevenueCents;
 
         // 6. Costs
-        $costs = (new MonthlyCosts($sheet))->calculate($state, $decisions, $season, $revenueCents);
+        $costs = (new MonthlyCosts($sheet))->calculate($state, $decisions, $season, $revenueCents, $modifiers, $eventCostCents);
         $cashAfter = $state->cashCents + $revenueCents - $costs->totalCents();
 
-        // 8. State evolution
-        $utilisation = $totalServiceCapacity > 0 ? $totalDemand / $totalServiceCapacity : 0.0;
+        // 8. State evolution, then this month's events on top
         $stateAfter = (new StateEvolution($sheet))->next($state, $decisions, $quality, $utilisation, $cashAfter);
+
+        // 9. Competitors
+        $ownAttractiveness = $captureRate->attractiveness($state->reputation, $decisions->priceLevel, $quality);
+        $competitors = (new CompetitorBehaviour($sheet))->next($competitors, $decisions->priceLevel, $ownAttractiveness, $rng->fork('competitors'));
+
+        foreach ($rolled as $occurrence) {
+            $stateAfter = $applier->applyToState($stateAfter, $occurrence->effects, $occurrence->record->type);
+            $competitors = $applier->applyToCompetitors($competitors, $occurrence->effects, $context->gameMonth, $rng->fork("event-{$occurrence->record->type}"));
+        }
+
+        $stateAfter = $stateAfter->with(pendingEvents: array_values(array_filter(
+            array_map(fn (EventOccurrence $o) => $o->record, $rolled),
+            fn (EventRecord $event) => $event->awaitsChoice(),
+        )));
 
         // 10. Result
         return new MonthResult(
@@ -97,9 +155,11 @@ final class Engine
             revenueCents: $revenueCents,
             costs: $costs,
             stateAfter: $stateAfter,
-            competitorsAfter: $context->competitors,
-            events: [],
+            competitorsAfter: $competitors,
+            events: array_map(fn (EventOccurrence $o) => $o->record, $rolled),
             dayParts: $dayParts,
+            resolvedEvents: array_map(fn (EventOccurrence $o) => $o->record, $resolved),
+            eventRevenueCents: $eventRevenueCents,
         );
     }
 

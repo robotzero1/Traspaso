@@ -15,6 +15,7 @@ final readonly class Decisions
 
     /**
      * @param  list<DayPart>  $openDayParts
+     * @param  array<string, string>  $eventChoices  choice per pending event, keyed by EventRecord::key()
      */
     public function __construct(
         /** Prices relative to the local average: 1.0 is average, 1.5 is 50% above. */
@@ -25,9 +26,16 @@ final readonly class Decisions
         public int $staffCount,
         public int $marketingSpendCents,
         public QualityTier $qualityTier,
+        public array $eventChoices = [],
     ) {
         Guard::positive('priceLevel', $priceLevel);
         Guard::listOf('openDayParts', $openDayParts, DayPart::class);
+
+        foreach ($eventChoices as $key => $choice) {
+            if (! is_string($key) || ! is_string($choice)) {
+                throw new InvalidArgumentException('eventChoices must map event keys to choice names.');
+            }
+        }
 
         if ($openDayParts === []) {
             throw new InvalidArgumentException('openDayParts must contain at least one day part.');
@@ -39,6 +47,12 @@ final readonly class Decisions
         Guard::between('openDaysPerWeek', $openDaysPerWeek, 1, 7);
         Guard::nonNegative('staffCount', $staffCount);
         Guard::nonNegative('marketingSpendCents', $marketingSpendCents);
+    }
+
+    /** The player's choice for a pending event, if they made one. */
+    public function choiceFor(EventRecord $event): ?string
+    {
+        return $this->eventChoices[$event->key()] ?? null;
     }
 
     public function isOpenFor(DayPart $part): bool

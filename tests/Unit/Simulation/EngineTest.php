@@ -67,14 +67,6 @@ it('loses customers to competitors', function () {
     expect(simulate(competitors: [SimulationFixtures::competitor()])->customers)->toBeLessThan(simulate()->customers);
 });
 
-it('passes competitors through and raises no events yet', function () {
-    $competitors = [SimulationFixtures::competitor('a'), SimulationFixtures::competitor('b')];
-    $result = simulate(competitors: $competitors);
-
-    expect($result->competitorsAfter)->toBe($competitors)
-        ->and($result->events)->toBe([]);
-});
-
 it('refuses to open at night without a licence that allows it', function () {
     simulate(decisions: ['openDayParts' => [DayPart::Evening, DayPart::Night]]);
 })->throws(DecisionNotAllowed::class, "A [cafe] licence doesn't allow opening for [night].");

@@ -5,6 +5,7 @@ namespace App\Simulation\Costs;
 use App\Simulation\Data\BusinessState;
 use App\Simulation\Data\CostBreakdown;
 use App\Simulation\Data\Decisions;
+use App\Simulation\Data\ModifierSet;
 use App\Simulation\Data\ParameterSheet;
 use App\Simulation\Demand\DayPartSchedule;
 use App\Simulation\Demand\SeasonalFactors;
@@ -12,20 +13,31 @@ use InvalidArgumentException;
 
 /**
  * Step 6: the month's costs. "Other" holds the cuota de autónomo,
- * insurance, maintenance and the terrace fee.
+ * insurance, maintenance, the terrace fee and costs from events.
  */
 final readonly class MonthlyCosts
 {
     public function __construct(private ParameterSheet $sheet) {}
 
-    public function calculate(BusinessState $state, Decisions $decisions, SeasonalFactors $season, int $revenueCents): CostBreakdown
-    {
-        $cogs = $this->round($revenueCents * $this->sheet->float("cogs.share_of_revenue.{$decisions->qualityTier->value}"));
+    /**
+     * @param  int  $eventCostCents  one-off costs from events this month
+     */
+    public function calculate(
+        BusinessState $state,
+        Decisions $decisions,
+        SeasonalFactors $season,
+        int $revenueCents,
+        ModifierSet $modifiers = new ModifierSet,
+        int $eventCostCents = 0,
+    ): CostBreakdown {
+        $cogsShare = $this->sheet->float("cogs.share_of_revenue.{$decisions->qualityTier->value}") + $modifiers->cogsShare();
+        $cogs = $this->round($revenueCents * $cogsShare);
         $staff = $this->staff($decisions->staffCount);
-        $rent = $state->profile->rentMonthCents;
+        $rent = $this->round($state->profile->rentMonthCents * $modifiers->rent());
         $utilities = $this->utilities($decisions, $season);
         $marketing = $decisions->marketingSpendCents;
-        $fixedOther = $this->insurance() + $this->maintenance($state) + $this->terraceFee($state);
+        $fixedOther = $this->insurance() + $this->maintenance($state) + $this->terraceFee($state)
+            + $modifiers->monthlyCostCents() + $eventCostCents;
 
         $beforeCuota = $revenueCents - ($cogs + $staff + $rent + $utilities + $marketing + $fixedOther);
         $cuota = $this->cuotaAutonomo($beforeCuota);

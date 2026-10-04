@@ -63,19 +63,19 @@ it('rejects invalid results', function (array $overrides) {
 ]);
 
 it('tracks whether an event is waiting for a choice', function () {
-    $event = new EventRecord('equipment_failure', ['repair_cost_cents' => 140_000], ['repair', 'limp_on']);
+    $event = new EventRecord('equipment_failure', 1, ['repair_cost_cents' => 140_000], ['repair', 'limp_on']);
 
     expect($event->awaitsChoice())->toBeTrue()
-        ->and((new EventRecord('equipment_failure', [], ['repair', 'limp_on'], 'repair'))->awaitsChoice())->toBeFalse()
-        ->and((new EventRecord('heatwave'))->awaitsChoice())->toBeFalse();
+        ->and((new EventRecord('equipment_failure', 1, [], ['repair', 'limp_on'], 'repair'))->awaitsChoice())->toBeFalse()
+        ->and((new EventRecord('heatwave', 1))->awaitsChoice())->toBeFalse();
 });
 
 it('rejects invalid events', function (Closure $make) {
     expect($make)->toThrow(InvalidArgumentException::class);
 })->with([
-    'blank type' => fn () => new EventRecord(''),
-    'choice not offered' => fn () => new EventRecord('inspection', [], ['pay_fine'], 'appeal'),
-    'choice without options' => fn () => new EventRecord('heatwave', [], [], 'stay_open'),
-    'duplicate choices' => fn () => new EventRecord('inspection', [], ['pay', 'pay']),
-    'keyed choices' => fn () => new EventRecord('inspection', [], ['a' => 'pay']),
+    'blank type' => fn () => new EventRecord('', 1),
+    'choice not offered' => fn () => new EventRecord('inspection', 1, [], ['pay_fine'], 'appeal'),
+    'choice without options' => fn () => new EventRecord('heatwave', 1, [], [], 'stay_open'),
+    'duplicate choices' => fn () => new EventRecord('inspection', 1, [], ['pay', 'pay']),
+    'keyed choices' => fn () => new EventRecord('inspection', 1, [], ['a' => 'pay']),
 ]);

@@ -397,6 +397,254 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Random events (engine step 7)
+    |--------------------------------------------------------------------------
+    |
+    | Each month every eligible event rolls its probability; at most
+    | max_per_month happen (in a random order).
+    |
+    | probability / outcome weights: base + Σ factor × signal, clamped 0–1.
+    | Signals, each 0–1 unless noted:
+    |   equipment_wear (1 − health/100), low_morale, low_quality,
+    |   low_reputation, reputation, overwork (utilisation above comfortable),
+    |   staff_count (people), equipment_age_years (years).
+    |
+    | requires: months (calendar months it can happen in), open_any (day
+    |   parts, at least one open), terrace, min_staff, has_competitors.
+    |
+    | effects (immediate, in the month the event happens; modifiers start
+    | next month): cost_cents, revenue_cents, reputation, morale,
+    | equipment_health, modifiers, add_competitor, remove_competitor.
+    |
+    | choices: the player picks one before next month (default_choice if
+    | they don't); its effects apply at the start of that month, and its
+    | modifiers apply from that month. outcomes: one is drawn by weight.
+    |
+    | modifiers: effect (demand, capacity, quality_penalty, cogs_share,
+    | rent, staff_shortage, monthly_cost), value, months (null =
+    | permanent), day_parts (optional).
+    |
+    */
+
+    'events' => [
+        'source' => 'PLACEHOLDER: game design, to tune in the balancing pass',
+        'max_per_month' => 2,
+
+        'library' => [
+            'equipment_failure' => [
+                'probability' => ['base' => 0.02, 'equipment_wear' => 0.15],
+                'effects' => ['equipment_health' => -15],
+                'choices' => [
+                    'repair' => ['cost_cents' => 140_000, 'equipment_health' => 40],
+                    'limp_on' => ['modifiers' => [
+                        ['effect' => 'capacity', 'value' => 0.75, 'months' => 2],
+                        ['effect' => 'quality_penalty', 'value' => 5, 'months' => 2],
+                    ]],
+                ],
+                'default_choice' => 'limp_on',
+            ],
+
+            'fridge_breakdown' => [
+                'probability' => ['base' => 0.015, 'equipment_wear' => 0.05],
+                'effects' => ['cost_cents' => 50_000, 'equipment_health' => -5],
+            ],
+
+            'water_leak' => [
+                'probability' => ['base' => 0.02],
+                'effects' => [
+                    'cost_cents' => 80_000,
+                    'modifiers' => [['effect' => 'capacity', 'value' => 0.9, 'months' => 1]],
+                ],
+            ],
+
+            'burglary' => [
+                'probability' => ['base' => 0.01],
+                // The insurance excess.
+                'effects' => ['cost_cents' => 100_000, 'morale' => -3],
+            ],
+
+            'health_inspection' => [
+                'probability' => ['base' => 0.06],
+                'outcomes' => [
+                    'passed' => [
+                        'weight' => ['base' => 1.0],
+                        'effects' => ['reputation' => 1],
+                    ],
+                    'minor_fine' => [
+                        'weight' => ['base' => 0.2, 'low_quality' => 0.5, 'equipment_wear' => 0.3],
+                        'effects' => ['cost_cents' => 60_000, 'reputation' => -2],
+                    ],
+                    'serious_fine' => [
+                        'weight' => ['base' => 0.02, 'low_quality' => 0.05, 'equipment_wear' => 0.1],
+                        'effects' => [
+                            'cost_cents' => 250_000,
+                            'reputation' => -6,
+                            'modifiers' => [['effect' => 'capacity', 'value' => 0.9, 'months' => 1]],
+                        ],
+                    ],
+                ],
+            ],
+
+            'staff_quits' => [
+                'requires' => ['min_staff' => 1],
+                'probability' => ['base' => 0.0, 'staff_count' => 0.015, 'low_morale' => 0.15],
+                'effects' => ['morale' => -5],
+                'choices' => [
+                    'recruit' => [
+                        'cost_cents' => 30_000,
+                        'modifiers' => [['effect' => 'staff_shortage', 'value' => 1, 'months' => 1]],
+                    ],
+                    'temp_agency' => ['cost_cents' => 90_000],
+                ],
+                'default_choice' => 'recruit',
+            ],
+
+            'supplier_price_rise' => [
+                'probability' => ['base' => 0.04],
+                'choices' => [
+                    'accept' => ['modifiers' => [['effect' => 'cogs_share', 'value' => 0.02, 'months' => 6]]],
+                    'switch_supplier' => ['modifiers' => [['effect' => 'quality_penalty', 'value' => 6, 'months' => 3]]],
+                ],
+                'default_choice' => 'accept',
+            ],
+
+            'rent_review' => [
+                'probability' => ['base' => 0.015],
+                'choices' => [
+                    'accept' => ['modifiers' => [['effect' => 'rent', 'value' => 1.05, 'months' => null]]],
+                    'negotiate' => [
+                        'cost_cents' => 30_000,
+                        'modifiers' => [['effect' => 'rent', 'value' => 1.02, 'months' => null]],
+                    ],
+                ],
+                'default_choice' => 'accept',
+            ],
+
+            'bad_review' => [
+                'probability' => ['base' => 0.01, 'low_quality' => 0.08, 'overwork' => 0.1],
+                'effects' => ['reputation' => -6],
+                'choices' => [
+                    'reply_publicly' => ['reputation' => 3],
+                    'ignore' => [],
+                ],
+                'default_choice' => 'ignore',
+            ],
+
+            'press_feature' => [
+                'probability' => ['base' => 0.005, 'reputation' => 0.04],
+                'effects' => [
+                    'reputation' => 3,
+                    'modifiers' => [['effect' => 'demand', 'value' => 1.15, 'months' => 2]],
+                ],
+            ],
+
+            'catering_order' => [
+                'probability' => ['base' => 0.02, 'reputation' => 0.03],
+                'choices' => [
+                    // Net of IVA; COGS is charged on it like any revenue.
+                    'accept' => ['revenue_cents' => 120_000, 'cost_cents' => 25_000, 'morale' => -3],
+                    'decline' => [],
+                ],
+                'default_choice' => 'decline',
+            ],
+
+            // Forecast for the coming weeks, so it lands in June–August.
+            'heatwave' => [
+                'requires' => ['months' => [5, 6, 7]],
+                'probability' => ['base' => 0.3],
+                'effects' => ['modifiers' => [
+                    ['effect' => 'demand', 'value' => 0.85, 'months' => 1, 'day_parts' => ['morning', 'afternoon']],
+                    ['effect' => 'demand', 'value' => 1.2, 'months' => 1, 'day_parts' => ['evening', 'night']],
+                    // Air conditioning.
+                    ['effect' => 'monthly_cost', 'value' => 12_000, 'months' => 1],
+                ]],
+            ],
+
+            // A street festival next month. The Pilar (October) is in the
+            // seasonality multipliers instead.
+            'local_festival' => [
+                'requires' => ['months' => [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12]],
+                'probability' => ['base' => 0.06],
+                'choices' => [
+                    'join_in' => [
+                        'cost_cents' => 40_000,
+                        'modifiers' => [['effect' => 'demand', 'value' => 1.35, 'months' => 1]],
+                    ],
+                    'business_as_usual' => [
+                        'modifiers' => [['effect' => 'demand', 'value' => 1.1, 'months' => 1]],
+                    ],
+                ],
+                'default_choice' => 'business_as_usual',
+            ],
+
+            'roadworks' => [
+                'probability' => ['base' => 0.03],
+                'effects' => ['modifiers' => [['effect' => 'demand', 'value' => 0.8, 'months' => 2]]],
+            ],
+
+            'new_offices_nearby' => [
+                'probability' => ['base' => 0.015],
+                'effects' => ['modifiers' => [
+                    ['effect' => 'demand', 'value' => 1.12, 'months' => 6, 'day_parts' => ['morning', 'lunch']],
+                ]],
+            ],
+
+            'noise_complaint' => [
+                'requires' => ['open_any' => ['evening', 'night']],
+                'probability' => ['base' => 0.08],
+                'choices' => [
+                    'soundproof' => ['cost_cents' => 150_000],
+                    'pay_fine' => ['cost_cents' => 75_000, 'reputation' => -2],
+                ],
+                'default_choice' => 'pay_fine',
+            ],
+
+            'competitor_opens' => [
+                'probability' => ['base' => 0.025],
+                'effects' => ['add_competitor' => [
+                    'distance_metres' => ['min' => 50, 'max' => 400],
+                    'price_level' => ['min' => 0.9, 'max' => 1.1],
+                    'quality' => ['min' => 40, 'max' => 75],
+                    'reputation' => 45,
+                    'seats' => ['min' => 20, 'max' => 50],
+                ]],
+            ],
+
+            'competitor_closes' => [
+                'requires' => ['has_competitors' => true],
+                'probability' => ['base' => 0.015],
+                // The least attractive nearby rival closes.
+                'effects' => ['remove_competitor' => 'weakest'],
+            ],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Competitors (engine step 9)
+    |--------------------------------------------------------------------------
+    |
+    | Rivals near the player follow the player's prices, drift in quality,
+    | fight back with quality when the player is more attractive, and
+    | their reputation moves towards a target like the player's does.
+    |
+    */
+
+    'competitors' => [
+        'source' => 'PLACEHOLDER: game design',
+        'follow_radius_metres' => 300,
+        'price_follow_rate' => 0.1,
+        'price_noise_sd' => 0.01,
+        'price_min' => 0.8,
+        'price_max' => 1.3,
+        'quality_noise_sd' => 1.5,
+        // Quality points a month a rival adds while the player out-attracts it.
+        'quality_response' => 1.0,
+        'reputation_adjustment_rate' => 0.2,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Costs (used by the engine)
     |--------------------------------------------------------------------------
     */
