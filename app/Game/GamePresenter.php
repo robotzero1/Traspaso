@@ -162,9 +162,11 @@ final class GamePresenter
                     'radius_m' => $n->radius_m,
                     'boundary' => $n->boundary,
                 ])->all(),
-            'points_of_interest' => PointOfInterest::query()->orderBy('type')->orderBy('name')->get()
+            'points_of_interest' => PointOfInterest::query()
+                ->when($fromOsm = PointOfInterest::query()->whereNotNull('osm_id')->exists(), fn ($q) => $q->whereIn('type', config('geo.map_poi_types')))
+                ->orderBy('type')->orderBy('name')->get()
                 ->map(fn (PointOfInterest $p) => $p->only(['type', 'name', 'lat', 'lng']))->all(),
-            'placeholder' => PointOfInterest::query()->whereNotNull('osm_id')->doesntExist(),
+            'placeholder' => ! $fromOsm,
         ];
     }
 
@@ -197,7 +199,7 @@ final class GamePresenter
             ...$business->only([
                 'id', 'fictional_name', 'lat', 'lng', 'street_type', 'category', 'floor_area_m2', 'indoor_seats', 'terrace_seats',
                 'rent_month_cents', 'traspaso_cents', 'licence', 'kitchen', 'condition', 'equipment_age_years',
-                'footfall', 'base_reputation',
+                'footfall', 'footfall_by_day_part', 'base_reputation',
             ]),
             'neighbourhood' => $business->neighbourhood->name,
             'deposit_cents' => $business->rent_month_cents * (int) config("market.{$game->market}.purchase.deposit_months_of_rent"),

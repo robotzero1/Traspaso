@@ -51,6 +51,7 @@
             "@php artisan migrate --force",
             "@php artisan db:seed --class=NeighbourhoodSeeder --force",
             "@php artisan db:seed --class=PointOfInterestSeeder --force",
+            "@php artisan db:seed --class=FootfallPointSeeder --force",
             "npm install",
             "npm run build"
         ],

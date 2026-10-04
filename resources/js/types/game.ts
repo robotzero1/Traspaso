@@ -36,6 +36,8 @@ export type BusinessForSale = {
     condition: number;
     equipment_age_years: number;
     footfall: number;
+    /** From the footfall surface; null before real geo data. */
+    footfall_by_day_part: Partial<Record<DayPartValue, number>> | null;
     base_reputation: number;
 };
 

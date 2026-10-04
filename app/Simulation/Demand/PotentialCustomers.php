@@ -13,9 +13,10 @@ use InvalidArgumentException;
  * Step 2: how many people near the business might come in during a day
  * part over the month, before reputation, price and competition.
  *
- * Footfall says how busy the spot is. Until real footfall per day part
- * arrives (milestone 8), the neighbourhood indices weighted by each day
- * part's demand mix say when in the day that crowd turns up.
+ * With the footfall surface (SPEC §8), the business has a footfall for
+ * each day part, which already says when people are about. Without it, the
+ * overall footfall says how busy the spot is and the neighbourhood indices,
+ * weighted by each day part's demand mix, say when that crowd turns up.
  */
 final readonly class PotentialCustomers
 {
@@ -30,12 +31,15 @@ final readonly class PotentialCustomers
 
     public function forDayPart(BusinessProfile $profile, DayPart $part, SeasonalFactors $season, float $noise = 1.0): float
     {
+        $surface = $profile->footfallByDayPart[$part->value] ?? null;
+        $footfall = $surface ?? $profile->footfall;
+
         $perHour = $this->sheet->float('demand.potential_per_hour_at_footfall_10')
-            * ($profile->footfall / 10) ** $this->sheet->float('demand.footfall_exponent');
+            * ($footfall / 10) ** $this->sheet->float('demand.footfall_exponent');
 
         return $perHour
             * $this->sheet->float("day_parts.{$part->value}.intensity")
-            * $this->demandMix($profile->neighbourhood, $part)
+            * ($surface !== null ? 1.0 : $this->demandMix($profile->neighbourhood, $part))
             * $this->appeal($profile, $part)
             * (new DayPartSchedule($this->sheet))->hours($part)
             * $season->openDays

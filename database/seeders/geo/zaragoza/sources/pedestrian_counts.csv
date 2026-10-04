@@ -1,0 +1,10 @@
+# Manual pedestrian counts, for geo:calibrate (SPEC §8 "Footfall estimate").
+# Count people walking past a spot on a shopping street for a few minutes
+# (10 is a good length), at 15–20 varied spots and two or three times of
+# day. Only the location, time and count are stored: no photos, no people.
+#   lat, lng   where you stood (e.g. from a map app)
+#   day_part   morning, lunch, afternoon, evening or night
+#   date       when (YYYY-MM-DD)
+#   minutes    how long you counted
+#   count      people who passed
+lat,lng,day_part,date,minutes,count,notes

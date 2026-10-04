@@ -6,11 +6,15 @@ use App\Enums\BusinessStatus;
 use App\Enums\GameStatus;
 use App\Game\GameMapper;
 use App\Generation\BusinessGenerator;
+use App\Generation\CommercialPoints;
 use App\Generation\Geo\LocationPlacer;
+use App\Generation\Location;
+use App\Models\FootfallPoint;
 use App\Models\Game;
 use App\Models\Neighbourhood;
 use App\Models\User;
 use App\Simulation\Rng\SeededRng;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -46,6 +50,7 @@ final class StartGame
             $generated = (new BusinessGenerator($this->mapper->parameters($game)))->generate(
                 (new SeededRng($game->seed))->fork('market'),
                 $neighbourhoods->map(fn (Neighbourhood $n) => $this->mapper->neighbourhood($n))->values()->all(),
+                locations: $this->commercialPoints($neighbourhoods),
             );
 
             $now = now();
@@ -54,9 +59,11 @@ final class StartGame
             foreach ($generated as $index => $business) {
                 $profile = $business->profile;
                 $neighbourhood = $byName[$profile->neighbourhood->name];
-                [$lat, $lng] = $neighbourhood->centre_lat !== null
-                    ? LocationPlacer::inCircle($neighbourhood->centre_lat, $neighbourhood->centre_lng, $neighbourhood->radius_m, $locations->fork((string) $index))
-                    : [null, null];
+                [$lat, $lng] = match (true) {
+                    $business->location !== null => [$business->location->lat, $business->location->lng],
+                    $neighbourhood->centre_lat !== null => LocationPlacer::inCircle($neighbourhood->centre_lat, $neighbourhood->centre_lng, $neighbourhood->radius_m, $locations->fork((string) $index)),
+                    default => [null, null],
+                };
 
                 $rows[] = [
                     'game_id' => $game->id,
@@ -64,6 +71,7 @@ final class StartGame
                     'neighbourhood_id' => $neighbourhood->id,
                     'lat' => $lat,
                     'lng' => $lng,
+                    'footfall_point_id' => $business->location?->pointId,
                     'fictional_name' => $business->name,
                     'street_type' => $business->streetType,
                     'category' => $profile->category->value,
@@ -77,6 +85,7 @@ final class StartGame
                     'condition' => $profile->condition,
                     'equipment_age_years' => $business->equipmentAgeYears,
                     'footfall' => $profile->footfall,
+                    'footfall_by_day_part' => $profile->footfallByDayPart === [] ? null : json_encode($profile->footfallByDayPart, JSON_PRESERVE_ZERO_FRACTION),
                     'base_reputation' => $business->baseReputation,
                     'status' => BusinessStatus::ForSale->value,
                     'created_at' => $now,
@@ -90,5 +99,35 @@ final class StartGame
 
             return $game;
         });
+    }
+
+    /**
+     * The footfall surface's commercial points, by neighbourhood, or null
+     * before geo:build has produced one (businesses then get generated
+     * footfall and a position in their neighbourhood's circle).
+     *
+     * @param  Collection<int, Neighbourhood>  $neighbourhoods
+     */
+    private function commercialPoints($neighbourhoods): ?CommercialPoints
+    {
+        if (FootfallPoint::query()->doesntExist()) {
+            return null;
+        }
+
+        $names = $neighbourhoods->pluck('name', 'id');
+        $byNeighbourhood = [];
+
+        foreach (FootfallPoint::query()->orderBy('id')->lazy(2000) as $point) {
+            $byNeighbourhood[$names[$point->neighbourhood_id]][] = new Location(
+                lat: $point->lat,
+                lng: $point->lng,
+                footfall: $point->footfall,
+                footfallByDayPart: $point->footfallByDayPart(),
+                streetType: $point->street_type,
+                pointId: $point->id,
+            );
+        }
+
+        return new CommercialPoints($byNeighbourhood);
     }
 }

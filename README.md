@@ -44,9 +44,25 @@ php artisan test                 # the whole test suite (Pest)
 php artisan market:placeholders  # which market parameters still need real research
 ```
 
-## Map
+## Map and real geo data
 
 The map uses OpenStreetMap tiles, loaded by your browser
-(© OpenStreetMap contributors). Neighbourhood areas, landmarks and business
-positions are approximate placeholders until the real geo data is imported
-(SPEC.md milestone 8).
+(© OpenStreetMap contributors).
+
+Out of the box, neighbourhood areas, landmarks and business positions are
+approximate placeholders. To build the real data (district boundaries,
+points of interest and the footfall surface) from OpenStreetMap, on a
+machine with internet access:
+
+```bash
+php artisan geo:fetch    # downloads OSM data for the city (a few minutes)
+php artisan geo:build    # derives the files in database/seeders/geo/zaragoza (a minute or two)
+php artisan db:seed --class=NeighbourhoodSeeder
+php artisan db:seed --class=PointOfInterestSeeder
+php artisan db:seed --class=FootfallPointSeeder
+```
+
+Then start a new game. Fill in `database/seeders/geo/zaragoza/sources/population.csv`
+with real district populations before building, and see
+[database/seeders/geo/zaragoza/README.md](database/seeders/geo/zaragoza/README.md)
+for calibrating footfall against your own pedestrian counts.

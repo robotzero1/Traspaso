@@ -356,6 +356,16 @@ function BusinessDetails({
                         : ', no terrace'}
                 </Detail>
                 <Detail label="Footfall">{b.footfall.toFixed(1)} / 10</Detail>
+                {b.footfall_by_day_part && (
+                    <Detail label="By time of day">
+                        {Object.entries(b.footfall_by_day_part)
+                            .map(
+                                ([part, value]) =>
+                                    `${humanize(part)} ${value.toFixed(1)}`,
+                            )
+                            .join(' · ')}
+                    </Detail>
+                )}
                 <Detail label="Condition">{b.condition} / 10</Detail>
                 <Detail label="Equipment age">
                     {b.equipment_age_years}{' '}

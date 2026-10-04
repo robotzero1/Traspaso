@@ -65,6 +65,7 @@ final class GameMapper
             rentMonthCents: $business->rent_month_cents,
             footfall: $business->footfall,
             condition: $business->condition,
+            footfallByDayPart: array_map('floatval', $business->footfall_by_day_part ?? []),
         );
     }
 

@@ -26,6 +26,14 @@ final readonly class BusinessProfile
         public float $footfall,
         /** 1–10, the state of the premises when the game starts. */
         public int $condition,
+        /**
+         * Footfall 0–10 per day part from the footfall surface, keyed by
+         * DayPart value. Empty before real geo data: then footfall and the
+         * neighbourhood's demand mix stand in.
+         *
+         * @var array<string, float>
+         */
+        public array $footfallByDayPart = [],
     ) {
         Guard::positive('floorAreaM2', $floorAreaM2);
         Guard::nonNegative('indoorSeats', $indoorSeats);
@@ -33,6 +41,14 @@ final readonly class BusinessProfile
         Guard::nonNegative('rentMonthCents', $rentMonthCents);
         Guard::between('footfall', $footfall, 0, 10);
         Guard::between('condition', $condition, 1, 10);
+
+        foreach ($footfallByDayPart as $part => $value) {
+            if (DayPart::tryFrom((string) $part) === null) {
+                throw new \InvalidArgumentException("footfallByDayPart has an unknown day part [{$part}].");
+            }
+
+            Guard::between("footfallByDayPart.{$part}", $value, 0, 10);
+        }
     }
 
     public function totalSeats(): int

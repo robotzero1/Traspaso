@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $fictional_name
  * @property float|null $lat
  * @property float|null $lng
+ * @property int|null $footfall_point_id
+ * @property array<string, float>|null $footfall_by_day_part
  * @property string $street_type
  * @property string $category
  * @property int $floor_area_m2
@@ -34,9 +36,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read Neighbourhood $neighbourhood
  */
 #[Fillable([
-    'game_id', 'market_index', 'neighbourhood_id', 'fictional_name', 'lat', 'lng', 'street_type', 'category', 'floor_area_m2',
+    'game_id', 'market_index', 'neighbourhood_id', 'fictional_name', 'lat', 'lng', 'footfall_point_id', 'street_type', 'category', 'floor_area_m2',
     'indoor_seats', 'terrace_seats', 'rent_month_cents', 'traspaso_cents', 'licence', 'kitchen', 'condition',
-    'equipment_age_years', 'footfall', 'base_reputation', 'status',
+    'equipment_age_years', 'footfall', 'footfall_by_day_part', 'base_reputation', 'status',
 ])]
 class Business extends Model
 {
@@ -66,6 +68,7 @@ class Business extends Model
             'condition' => 'integer',
             'equipment_age_years' => 'integer',
             'footfall' => 'float',
+            'footfall_by_day_part' => 'array',
             'base_reputation' => 'float',
             'status' => BusinessStatus::class,
         ];

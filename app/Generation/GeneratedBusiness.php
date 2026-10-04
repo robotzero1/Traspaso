@@ -6,8 +6,8 @@ use App\Simulation\Data\BusinessProfile;
 use App\Simulation\Data\Concerns\Guard;
 
 /**
- * A fictional business for sale, as drawn by the BusinessGenerator.
- * Persistence (and a map location on a real street) comes later.
+ * A fictional business for sale, as drawn by the BusinessGenerator. It has
+ * a location when the generator had real commercial points to place it on.
  */
 final readonly class GeneratedBusiness
 {
@@ -19,6 +19,7 @@ final readonly class GeneratedBusiness
         public int $equipmentAgeYears,
         /** 0–100. */
         public float $baseReputation,
+        public ?Location $location = null,
     ) {
         Guard::notBlank('name', $name);
         Guard::notBlank('streetType', $streetType);

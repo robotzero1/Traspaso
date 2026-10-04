@@ -1,0 +1,20 @@
+# Population by district, for geo:build. Replace the PLACEHOLDER rows with
+# the municipal padrón (Ayuntamiento de Zaragoza, "Cifras de población") or INE
+# figures, and say where each number came from. Names are matched loosely
+# (case, accents and a leading "Distrito"/"Junta Municipal" are ignored).
+name,population,year,source
+"Casco Histórico",46000,,"PLACEHOLDER estimate"
+Centro,52000,,"PLACEHOLDER estimate"
+Delicias,105000,,"PLACEHOLDER estimate"
+Universidad,50000,,"PLACEHOLDER estimate"
+"San José",65000,,"PLACEHOLDER estimate"
+"Las Fuentes",43000,,"PLACEHOLDER estimate"
+"La Almozara",25000,,"PLACEHOLDER estimate"
+Oliver-Valdefierro,31000,,"PLACEHOLDER estimate"
+"Torrero-La Paz",40000,,"PLACEHOLDER estimate"
+"Actur-Rey Fernando",58000,,"PLACEHOLDER estimate"
+"El Rabal",79000,,"PLACEHOLDER estimate"
+Casablanca,27000,,"PLACEHOLDER estimate"
+"Santa Isabel",13000,,"PLACEHOLDER estimate"
+Miralbueno,13000,,"PLACEHOLDER estimate"
+Sur,38000,,"PLACEHOLDER estimate"

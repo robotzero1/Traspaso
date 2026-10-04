@@ -100,7 +100,7 @@ Each field is tagged by where its value comes from:
 ### footfall_points
 A precomputed footfall surface, sampled at points along streets (about every 25 m), [real→derived]:
 `id, lat, lng, osm_way_id, neighbourhood_id, poi_score, centrality_score, catchment_score, transport_score, footfall 0–10, footfall_<day part> 0–10 (one per day part), commercial (bool)`.
-`commercial` marks points with shops or hospitality on the street nearby; businesses are only placed on those.
+`commercial` marks points with shops or hospitality on the street nearby; businesses are only placed on those, so only commercial points are stored.
 
 ### businesses
 | field | source |
@@ -228,7 +228,7 @@ Opening hours are a choice of **which parts of the day** to open for, not a numb
 
 ### Footfall estimate
 
-There is no open pedestrian-count data for Zaragoza, so footfall is estimated from open-data proxies, calibrated against a small set of manual counts. It is computed once, offline, by a script run locally (e.g. Python with `osmnx`/`networkx`), and the output is committed to `database/seeders/geo/`. The app never computes it at runtime.
+There is no open pedestrian-count data for Zaragoza, so footfall is estimated from open-data proxies, calibrated against a small set of manual counts. It is computed once, offline, by artisan commands run locally (`geo:fetch`, `geo:build`, `geo:calibrate`; settings in `config/geo.php`), and the output is committed to `database/seeders/geo/zaragoza/`. The app never computes it at runtime.
 
 For each street point, four component scores are worked out, each normalised to 0–1 across the city:
 
@@ -236,7 +236,7 @@ For each street point, four component scores are worked out, each normalised to 
 |---|---|---|
 | `poi_score` | shops, cafés, bars, banks, pharmacies, schools, offices… nearby, weighted by type and fading with distance (≈150–300 m) | OSM |
 | `centrality_score` | how many short walking routes pass along the street (betweenness on the pedestrian network within ≈800 m); separates main streets from side streets | OSM street network |
-| `catchment_score` | residents and workers within a 5–10 minute walk | INE census sections, Catastro / OSM offices |
+| `catchment_score` | residents and workers within a 5–10 minute walk | district population density (INE census sections later), OSM offices |
 | `transport_score` | tram and bus stops nearby, tram stops and interchanges weighted higher | OSM, Zaragoza open data (stop boardings, if published) |
 
 - `footfall` is a weighted sum of the components, rescaled to 0–10 so the city's percentiles match the parameter sheet.

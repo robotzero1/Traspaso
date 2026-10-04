@@ -69,9 +69,10 @@ final class BusinessGenerator
     /**
      * @param  list<NeighbourhoodProfile>  $neighbourhoods
      * @param  int|null  $count  defaults to a draw from business_count
+     * @param  LocationSource|null  $locations  real locations with footfall; without, footfall comes from the indices
      * @return list<GeneratedBusiness>
      */
-    public function generate(SeededRng $rng, array $neighbourhoods, ?int $count = null): array
+    public function generate(SeededRng $rng, array $neighbourhoods, ?int $count = null, ?LocationSource $locations = null): array
     {
         if ($neighbourhoods === [] || ! array_is_list($neighbourhoods)) {
             throw new InvalidArgumentException('generate() needs a non-empty list of neighbourhoods.');
@@ -89,7 +90,7 @@ final class BusinessGenerator
         $streams = [];
 
         foreach (['neighbourhood', 'category', 'licence', 'kitchen', 'street', 'footfall', 'area', 'condition',
-            'seats', 'terrace', 'age', 'reputation', 'rent', 'traspaso', 'name'] as $label) {
+            'seats', 'terrace', 'age', 'reputation', 'rent', 'traspaso', 'name', 'location'] as $label) {
             $streams[$label] = $rng->fork($label);
         }
 
@@ -101,7 +102,8 @@ final class BusinessGenerator
         for ($i = 0; $i < $count; $i++) {
             $neighbourhood = $neighbourhoods[$streams['neighbourhood']->weightedKey($neighbourhoodWeights)];
             $category = BusinessCategory::from($streams['category']->weightedKey($this->sheet->array('categories.weights')));
-            $streetType = (string) $streams['street']->weightedKey($this->streetTypeWeights());
+            $location = $locations?->draw($neighbourhood, $streams['location']);
+            $streetType = $location?->streetType ?? (string) $streams['street']->weightedKey($this->streetTypeWeights());
 
             $zArea = $streams['area']->normal();
             $zCondition = $streams['condition']->normal();
@@ -117,7 +119,8 @@ final class BusinessGenerator
                     $this->sheet->array("kitchens.weights.{$category->value}"),
                 )),
                 'streetType' => $streetType,
-                'footfall' => $this->footfall($neighbourhood, $streetType, $streams['footfall']),
+                'location' => $location,
+                'footfall' => $location?->footfall ?? $this->footfall($neighbourhood, $streetType, $streams['footfall']),
                 'floorArea' => $floorArea,
                 'zArea' => $zArea,
                 'zCondition' => $zCondition,
@@ -147,6 +150,7 @@ final class BusinessGenerator
                 rentMonthCents: $this->money($this->rent, 'rent', $scores, $streams['rent']),
                 footfall: $draft['footfall'],
                 condition: $draft['condition'],
+                footfallByDayPart: $draft['location']?->footfallByDayPart ?? [],
             );
 
             $businesses[] = new GeneratedBusiness(
@@ -158,6 +162,7 @@ final class BusinessGenerator
                     Normal::cdf($this->blend('equipment_age_years', $scores, $streams['age'])),
                 )),
                 baseReputation: $this->baseReputation($scores, $streams['reputation']),
+                location: $draft['location'],
             );
         }
 
