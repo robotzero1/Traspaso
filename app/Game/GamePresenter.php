@@ -3,11 +3,14 @@
 namespace App\Game;
 
 use App\Enums\BusinessStatus;
+use App\Generation\Geo\Geo;
 use App\Models\Business;
 use App\Models\Game;
 use App\Models\GameCompetitor;
 use App\Models\GameEvent;
 use App\Models\MonthResult;
+use App\Models\Neighbourhood;
+use App\Models\PointOfInterest;
 use App\Simulation\Costs\MonthlyCosts;
 use App\Simulation\Data\DayPart;
 use App\Simulation\Data\EventRecord;
@@ -59,7 +62,7 @@ final class GamePresenter
     /** @return array<string, mixed> */
     public function show(Game $game): array
     {
-        $props = ['game' => $this->summary($game)];
+        $props = ['game' => $this->summary($game), 'map' => $this->map()];
 
         if ($game->business_id === null) {
             if ($game->isActive()) {
@@ -130,10 +133,61 @@ final class GamePresenter
             'events' => $game->events()->get()->map(fn (GameEvent $e) => $e->only([
                 'month', 'type', 'payload', 'choices', 'choice', 'resolved_month',
             ]))->all(),
-            'competitors' => $game->competitors()->get()->map(fn (GameCompetitor $c) => $c->only([
-                'key', 'name', 'distance_metres', 'price_level', 'quality', 'reputation', 'seats',
-            ]))->all(),
+            'competitors' => $game->competitors()->with('business')->get()->map(fn (GameCompetitor $c) => [
+                ...$c->only(['key', 'name', 'distance_metres', 'price_level', 'quality', 'reputation', 'seats']),
+                ...$this->competitorLocation($c, $game->business),
+            ])->all(),
         ];
+    }
+
+    /**
+     * What every map needs: tiles and their attribution, the neighbourhood
+     * overlays and the points of interest.
+     *
+     * @return array<string, mixed>
+     */
+    public function map(): array
+    {
+        return [
+            'tile_url' => config('map.tile_url'),
+            'attribution' => config('map.attribution'),
+            'max_zoom' => config('map.max_zoom'),
+            'centre' => config('map.centre'),
+            'zoom' => config('map.zoom'),
+            'neighbourhoods' => Neighbourhood::query()->whereNotNull('centre_lat')->orderBy('name')->get()
+                ->map(fn (Neighbourhood $n) => [
+                    'name' => $n->name,
+                    'lat' => $n->centre_lat,
+                    'lng' => $n->centre_lng,
+                    'radius_m' => $n->radius_m,
+                    'boundary' => $n->boundary,
+                ])->all(),
+            'points_of_interest' => PointOfInterest::query()->orderBy('type')->orderBy('name')->get()
+                ->map(fn (PointOfInterest $p) => $p->only(['type', 'name', 'lat', 'lng']))->all(),
+            'placeholder' => PointOfInterest::query()->whereNotNull('osm_id')->doesntExist(),
+        ];
+    }
+
+    /**
+     * A rival's position: its listing's, or for rivals that opened during
+     * the game, a point at its recorded distance from the player on a
+     * bearing fixed by its id.
+     *
+     * @return array{lat: float|null, lng: float|null}
+     */
+    private function competitorLocation(GameCompetitor $competitor, Business $own): array
+    {
+        if ($competitor->business?->lat !== null) {
+            return ['lat' => $competitor->business->lat, 'lng' => $competitor->business->lng];
+        }
+
+        if ($own->lat === null) {
+            return ['lat' => null, 'lng' => null];
+        }
+
+        [$lat, $lng] = Geo::offset($own->lat, $own->lng, $competitor->distance_metres, crc32($competitor->key) % 360);
+
+        return ['lat' => round($lat, 6), 'lng' => round($lng, 6)];
     }
 
     /** @return array<string, mixed> */
@@ -141,7 +195,7 @@ final class GamePresenter
     {
         return [
             ...$business->only([
-                'id', 'fictional_name', 'street_type', 'category', 'floor_area_m2', 'indoor_seats', 'terrace_seats',
+                'id', 'fictional_name', 'lat', 'lng', 'street_type', 'category', 'floor_area_m2', 'indoor_seats', 'terrace_seats',
                 'rent_month_cents', 'traspaso_cents', 'licence', 'kitchen', 'condition', 'equipment_age_years',
                 'footfall', 'base_reputation',
             ]),

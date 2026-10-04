@@ -20,6 +20,8 @@ export type GameSummary = {
 export type BusinessForSale = {
     id: number;
     fictional_name: string;
+    lat: number | null;
+    lng: number | null;
     neighbourhood: string;
     street_type: string;
     category: 'cafe' | 'cafe_bar';
@@ -146,6 +148,8 @@ export type GameEventRow = {
 export type Competitor = {
     key: string;
     name: string;
+    lat: number | null;
+    lng: number | null;
     distance_metres: number;
     price_level: number;
     quality: number;
@@ -159,4 +163,27 @@ export type CostHints = {
     utilities_base_cents: number;
     utilities_per_open_hour_cents: number;
     cogs_share: Record<'budget' | 'standard' | 'premium', number>;
+};
+
+export type MapProps = {
+    tile_url: string;
+    attribution: string;
+    max_zoom: number;
+    centre: [number, number];
+    zoom: number;
+    neighbourhoods: {
+        name: string;
+        lat: number;
+        lng: number;
+        radius_m: number;
+        boundary: GeoJSON.GeoJsonObject | null;
+    }[];
+    points_of_interest: {
+        type: string;
+        name: string;
+        lat: number;
+        lng: number;
+    }[];
+    /** True until real OSM data is imported: positions are approximate. */
+    placeholder: boolean;
 };

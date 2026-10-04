@@ -7,9 +7,10 @@ use App\Simulation\Data\ParameterSheet;
 use App\Simulation\Rng\SeededRng;
 
 /**
- * Turns neighbouring businesses into the rivals the engine models when
- * the player buys. Until real locations arrive (milestone 8) distances
- * are drawn at random.
+ * Turns nearby businesses into the rivals the engine models when the
+ * player buys: the nearest ones within the configured distance, at their
+ * real distance. Candidates without a known location are picked at random
+ * and placed at a random distance.
  */
 final readonly class CompetitorPicker
 {
@@ -21,7 +22,7 @@ final readonly class CompetitorPicker
      */
     public function pick(array $candidates, SeededRng $rng): array
     {
-        $chosen = array_slice($rng->fork('choice')->shuffle($candidates), 0, $this->sheet->int('competitors.nearby_count'));
+        $chosen = array_slice($this->ranked($candidates, $rng), 0, $this->sheet->int('competitors.nearby_count'));
         $competitors = [];
 
         foreach ($chosen as $candidate) {
@@ -32,10 +33,12 @@ final readonly class CompetitorPicker
             $competitors[] = new CompetitorState(
                 id: $candidate->id,
                 name: $candidate->name,
-                distanceMetres: round($own->floatBetween(
-                    $this->sheet->float('competitors.distance_metres.min'),
-                    $this->sheet->float('competitors.distance_metres.max'),
-                )),
+                distanceMetres: round($candidate->distanceMetres !== null
+                    ? max($this->sheet->float('competitors.distance_metres.min'), $candidate->distanceMetres)
+                    : $own->floatBetween(
+                        $this->sheet->float('competitors.distance_metres.min'),
+                        $this->sheet->float('competitors.distance_metres.max'),
+                    )),
                 priceLevel: round($own->floatBetween(
                     $this->sheet->float('competitors.price_level.min'),
                     $this->sheet->float('competitors.price_level.max'),
@@ -49,5 +52,26 @@ final readonly class CompetitorPicker
         usort($competitors, fn (CompetitorState $a, CompetitorState $b) => $a->distanceMetres <=> $b->distanceMetres);
 
         return $competitors;
+    }
+
+    /**
+     * Located candidates within range, nearest first; then the unlocated
+     * ones in random order.
+     *
+     * @param  list<CompetitorCandidate>  $candidates
+     * @return list<CompetitorCandidate>
+     */
+    private function ranked(array $candidates, SeededRng $rng): array
+    {
+        $max = $this->sheet->float('competitors.distance_metres.max');
+        $located = array_values(array_filter(
+            $candidates,
+            fn (CompetitorCandidate $c) => $c->distanceMetres !== null && $c->distanceMetres <= $max,
+        ));
+        usort($located, fn (CompetitorCandidate $a, CompetitorCandidate $b) => [$a->distanceMetres, $a->id] <=> [$b->distanceMetres, $b->id]);
+
+        $unlocated = array_values(array_filter($candidates, fn (CompetitorCandidate $c) => $c->distanceMetres === null));
+
+        return [...$located, ...$rng->fork('choice')->shuffle($unlocated)];
     }
 }

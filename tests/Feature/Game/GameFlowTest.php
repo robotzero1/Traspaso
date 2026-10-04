@@ -3,6 +3,7 @@
 use App\Actions\Game\StartGame;
 use App\Enums\BusinessStatus;
 use App\Enums\GameStatus;
+use App\Generation\Geo\Geo;
 use App\Models\Business;
 use App\Models\Game;
 use App\Models\User;
@@ -120,7 +121,13 @@ it('buys a business: pays traspaso and deposit, sets it up and picks rivals', fu
         ->assertRedirect(route('games.show', $game));
 
     $game->refresh();
-    $neighbours = $game->businesses()->where('neighbourhood_id', $business->neighbourhood_id)->whereKeyNot($business->id)->count();
+    $config = config('market.zaragoza_cafe.competitors');
+    // The nearest other businesses within range become rivals.
+    $nearby = $game->businesses()->whereKeyNot($business->id)->get()
+        ->map(fn (Business $b) => [$b->id, Geo::distanceMetres($business->lat, $business->lng, $b->lat, $b->lng)])
+        ->filter(fn (array $pair) => $pair[1] <= $config['distance_metres']['max'])
+        ->sortBy(fn (array $pair) => $pair[1])
+        ->take($config['nearby_count']);
 
     expect($game->business_id)->toBe($business->id)
         ->and($game->cash_cents)->toBe(5_000_000 - 1_800_000 - $deposit)
@@ -128,8 +135,13 @@ it('buys a business: pays traspaso and deposit, sets it up and picks rivals', fu
         ->and($game->decisions['open_day_parts'])->toBe(['morning', 'lunch', 'afternoon'])
         ->and($game->states()->where('month', 0)->exists())->toBeTrue()
         ->and($business->refresh()->status)->toBe(BusinessStatus::OwnedByPlayer)
-        ->and($game->competitors()->count())->toBe(min(5, $neighbours))
-        ->and($game->businesses()->where('status', BusinessStatus::Competitor)->count())->toBe(min(5, $neighbours));
+        ->and($game->competitors()->pluck('business_id')->sort()->values()->all())->toBe($nearby->pluck(0)->sort()->values()->all())
+        ->and($game->businesses()->where('status', BusinessStatus::Competitor)->count())->toBe($nearby->count());
+
+    foreach ($game->competitors as $rival) {
+        expect($rival->distance_metres)->toBeGreaterThanOrEqual($config['distance_metres']['min'])
+            ->toBeLessThanOrEqual($config['distance_metres']['max']);
+    }
 });
 
 it("won't buy what you can't afford", function () {

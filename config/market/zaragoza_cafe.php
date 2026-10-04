@@ -709,9 +709,10 @@ return [
         // Quality points a month a rival adds while the player out-attracts it.
         'quality_response' => 1.0,
         'reputation_adjustment_rate' => 0.2,
-        // Picking rivals when the player buys: other businesses in the
-        // same neighbourhood, up to nearby_count, placed at a random
-        // distance. Quality comes from their condition (1–10).
+        // Picking rivals when the player buys: the nearest other
+        // businesses within distance_metres.max, up to nearby_count, at
+        // their distance on the map (never closer than the min). Quality
+        // comes from their condition (1–10).
         'nearby_count' => 5,
         'distance_metres' => ['min' => 40, 'max' => 500],
         'price_level' => ['min' => 0.9, 'max' => 1.1],

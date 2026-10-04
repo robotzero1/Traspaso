@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property float $quality
  * @property float $reputation
  * @property int $seats
+ * @property-read Business|null $business
  */
 #[Fillable(['game_id', 'key', 'business_id', 'name', 'distance_metres', 'price_level', 'quality', 'reputation', 'seats'])]
 class GameCompetitor extends Model
@@ -25,6 +26,16 @@ class GameCompetitor extends Model
     public function game(): BelongsTo
     {
         return $this->belongsTo(Game::class);
+    }
+
+    /**
+     * The listing it came from; null for rivals opened by events.
+     *
+     * @return BelongsTo<Business, $this>
+     */
+    public function business(): BelongsTo
+    {
+        return $this->belongsTo(Business::class);
     }
 
     protected function casts(): array

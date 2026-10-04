@@ -3,7 +3,8 @@
 namespace App\Generation;
 
 /**
- * Another business in the neighbourhood that could become a rival.
+ * Another business that could become a rival. $distanceMetres is its
+ * distance from the player's business when locations are known.
  */
 final readonly class CompetitorCandidate
 {
@@ -13,5 +14,6 @@ final readonly class CompetitorCandidate
         public int $seats,
         public int $condition,
         public float $reputation,
+        public ?float $distanceMetres = null,
     ) {}
 }

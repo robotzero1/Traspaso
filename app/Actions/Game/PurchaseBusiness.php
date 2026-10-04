@@ -6,6 +6,7 @@ use App\Enums\BusinessStatus;
 use App\Game\GameMapper;
 use App\Generation\CompetitorCandidate;
 use App\Generation\CompetitorPicker;
+use App\Generation\Geo\Geo;
 use App\Generation\Takeover;
 use App\Models\Business;
 use App\Models\Game;
@@ -56,20 +57,29 @@ final class PurchaseBusiness
         });
     }
 
+    /**
+     * The other businesses near the one bought become its rivals. With map
+     * locations that means the nearest ones, wherever the district line
+     * falls; without, the others in the same neighbourhood.
+     */
     private function pickCompetitors(Game $game, Business $bought): void
     {
-        $neighbours = $game->businesses()
-            ->where('neighbourhood_id', $bought->neighbourhood_id)
+        $located = $bought->lat !== null;
+        $others = $game->businesses()
             ->whereKeyNot($bought->id)
+            ->when(! $located, fn ($q) => $q->where('neighbourhood_id', $bought->neighbourhood_id))
             ->orderBy('market_index')
             ->get();
 
-        $candidates = $neighbours->map(fn (Business $b) => new CompetitorCandidate(
+        $candidates = $others->map(fn (Business $b) => new CompetitorCandidate(
             id: $this->mapper->competitorKey($b),
             name: $b->fictional_name,
             seats: $b->indoor_seats + $b->terrace_seats,
             condition: $b->condition,
             reputation: $b->base_reputation,
+            distanceMetres: $located && $b->lat !== null
+                ? Geo::distanceMetres($bought->lat, $bought->lng, $b->lat, $b->lng)
+                : null,
         ))->values()->all();
 
         $competitors = (new CompetitorPicker($this->mapper->sheet($game)))

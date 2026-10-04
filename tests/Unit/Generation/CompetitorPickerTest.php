@@ -43,3 +43,30 @@ it('picks the same rivals for the same seed', function () {
     expect($picker->pick(candidates(10), new SeededRng(4)))->toEqual($picker->pick(candidates(10), new SeededRng(4)))
         ->and($picker->pick(candidates(10), new SeededRng(4)))->not->toEqual($picker->pick(candidates(10), new SeededRng(5)));
 });
+
+it('picks the nearest located rivals within range, at their real distance', function () {
+    $config = SimulationFixtures::parameters()['competitors'];
+    $at = fn (string $id, float $metres) => new CompetitorCandidate($id, $id, 30, 5, 50.0, $metres);
+
+    $picked = (new CompetitorPicker(SimulationFixtures::sheet()))->pick([
+        $at('far', $config['distance_metres']['max'] + 1),
+        $at('c', 300.0),
+        $at('a', 10.0),
+        $at('b', 120.0),
+    ], new SeededRng(1));
+
+    expect(array_map(fn ($c) => $c->id, $picked))->toBe(['a', 'b', 'c'])
+        // Never closer than the configured minimum.
+        ->and($picked[0]->distanceMetres)->toBe((float) $config['distance_metres']['min'])
+        ->and($picked[1]->distanceMetres)->toBe(120.0);
+});
+
+it('stops at the configured number even when more are close', function () {
+    $count = SimulationFixtures::parameters()['competitors']['nearby_count'];
+    $close = array_map(fn (int $i) => new CompetitorCandidate("c{$i}", "C{$i}", 30, 5, 50.0, 50.0 + $i), range(1, $count + 4));
+
+    $picked = (new CompetitorPicker(SimulationFixtures::sheet()))->pick($close, new SeededRng(1));
+
+    expect($picked)->toHaveCount($count)
+        ->and(end($picked)->id)->toBe("c{$count}");
+});

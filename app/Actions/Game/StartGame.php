@@ -6,6 +6,7 @@ use App\Enums\BusinessStatus;
 use App\Enums\GameStatus;
 use App\Game\GameMapper;
 use App\Generation\BusinessGenerator;
+use App\Generation\Geo\LocationPlacer;
 use App\Models\Game;
 use App\Models\Neighbourhood;
 use App\Models\User;
@@ -40,7 +41,8 @@ final class StartGame
                 'status' => GameStatus::Active,
             ]);
 
-            $idsByName = $neighbourhoods->pluck('id', 'name');
+            $byName = $neighbourhoods->keyBy('name');
+            $locations = (new SeededRng($game->seed))->fork('locations');
             $generated = (new BusinessGenerator($this->mapper->parameters($game)))->generate(
                 (new SeededRng($game->seed))->fork('market'),
                 $neighbourhoods->map(fn (Neighbourhood $n) => $this->mapper->neighbourhood($n))->values()->all(),
@@ -51,10 +53,17 @@ final class StartGame
 
             foreach ($generated as $index => $business) {
                 $profile = $business->profile;
+                $neighbourhood = $byName[$profile->neighbourhood->name];
+                [$lat, $lng] = $neighbourhood->centre_lat !== null
+                    ? LocationPlacer::inCircle($neighbourhood->centre_lat, $neighbourhood->centre_lng, $neighbourhood->radius_m, $locations->fork((string) $index))
+                    : [null, null];
+
                 $rows[] = [
                     'game_id' => $game->id,
                     'market_index' => $index + 1,
-                    'neighbourhood_id' => $idsByName[$profile->neighbourhood->name],
+                    'neighbourhood_id' => $neighbourhood->id,
+                    'lat' => $lat,
+                    'lng' => $lng,
                     'fictional_name' => $business->name,
                     'street_type' => $business->streetType,
                     'category' => $profile->category->value,

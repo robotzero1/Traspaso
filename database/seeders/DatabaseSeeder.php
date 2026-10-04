@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(NeighbourhoodSeeder::class);
+        $this->call([NeighbourhoodSeeder::class, PointOfInterestSeeder::class]);
 
         // User::factory(10)->create();
 

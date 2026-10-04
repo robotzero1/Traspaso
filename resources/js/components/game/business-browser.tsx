@@ -15,7 +15,8 @@ import {
 } from '@/components/ui/sheet';
 import { formatCents, humanize } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { BusinessForSale, GameSummary } from '@/types/game';
+import type { BusinessForSale, GameSummary, MapProps } from '@/types/game';
+import { GameMap } from './game-map';
 
 type SortKey = 'traspaso' | 'rent' | 'footfall' | 'condition' | 'seats';
 
@@ -58,12 +59,15 @@ const totalPrice = (b: BusinessForSale) => b.traspaso_cents + b.deposit_cents;
 export function BusinessBrowser({
     game,
     businesses,
+    map,
 }: {
     game: GameSummary;
     businesses: BusinessForSale[];
+    map: MapProps;
 }) {
     const [filters, setFilters] = useState<Filters>(initialFilters);
     const [selected, setSelected] = useState<BusinessForSale | null>(null);
+    const [view, setView] = useState<'list' | 'map'>('list');
     const set = <K extends keyof Filters>(key: K, value: Filters[K]) =>
         setFilters((f) => ({ ...f, [key]: value }));
 
@@ -202,13 +206,44 @@ export function BusinessBrowser({
                 </Button>
             </div>
 
-            <p className="text-sm text-muted-foreground" aria-live="polite">
-                Showing {shown.length} of {businesses.length} businesses. Buying
-                costs the traspaso plus a deposit for the landlord, which you
-                get back when you sell.
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm text-muted-foreground" aria-live="polite">
+                    Showing {shown.length} of {businesses.length} businesses.
+                    Buying costs the traspaso plus a deposit for the landlord,
+                    which you get back when you sell.
+                </p>
+                <div
+                    role="group"
+                    aria-label="View"
+                    className="flex rounded-md border p-0.5 text-sm"
+                >
+                    {(['list', 'map'] as const).map((v) => (
+                        <button
+                            key={v}
+                            type="button"
+                            aria-pressed={view === v}
+                            onClick={() => setView(v)}
+                            className={cn(
+                                'rounded px-3 py-1',
+                                view === v
+                                    ? 'bg-muted font-medium'
+                                    : 'text-muted-foreground',
+                            )}
+                        >
+                            {v === 'list' ? 'List' : 'Map'}
+                        </button>
+                    ))}
+                </div>
+            </div>
 
-            {shown.length === 0 ? (
+            {view === 'map' ? (
+                <GameMap
+                    map={map}
+                    forSale={shown}
+                    selectedId={selected?.id}
+                    onSelect={setSelected}
+                />
+            ) : shown.length === 0 ? (
                 <p className="rounded-lg border p-6 text-center text-sm text-muted-foreground">
                     Nothing matches these filters.
                 </p>

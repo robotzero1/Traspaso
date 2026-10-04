@@ -9,6 +9,7 @@ import {
     EffectsSummary,
 } from '@/components/game/decisions-form';
 import { GameHeader } from '@/components/game/game-header';
+import { GameMap } from '@/components/game/game-map';
 import { DayPartBreakdown, PnlTable } from '@/components/game/pnl-table';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -27,12 +28,14 @@ import type {
     Decisions,
     GameEventRow,
     GameSummary,
+    MapProps,
     MonthResultRow,
     PendingEvent,
 } from '@/types/game';
 
 type Props = {
     game: GameSummary;
+    map: MapProps;
     businesses?: BusinessForSale[];
     business?: BusinessForSale;
     state?: BusinessStateProps;
@@ -49,7 +52,13 @@ type Props = {
     competitors?: Competitor[];
 };
 
-type Tab = 'decisions' | 'results' | 'business' | 'competitors' | 'events';
+type Tab =
+    | 'decisions'
+    | 'results'
+    | 'business'
+    | 'map'
+    | 'competitors'
+    | 'events';
 
 export default function GameShow(props: Props) {
     const { game } = props;
@@ -69,6 +78,7 @@ export default function GameShow(props: Props) {
                         <BusinessBrowser
                             game={game}
                             businesses={props.businesses}
+                            map={props.map}
                         />
                     </section>
                 )}
@@ -112,6 +122,7 @@ function Playing(
         },
         { id: 'results', label: 'Results', show: true },
         { id: 'business', label: 'Your business', show: true },
+        { id: 'map', label: 'Map', show: true },
         { id: 'competitors', label: 'Competitors', show: true },
         {
             id: 'events',
@@ -183,6 +194,13 @@ function Playing(
                         business={props.business}
                         state={props.state}
                         value={props.business_value_cents ?? 0}
+                    />
+                )}
+                {tab === 'map' && (
+                    <GameMap
+                        map={props.map}
+                        own={props.business}
+                        competitors={props.competitors ?? []}
                     />
                 )}
                 {tab === 'competitors' && (

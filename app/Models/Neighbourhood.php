@@ -15,8 +15,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property float $office_index
  * @property float $transport_index
  * @property float $competition_density
+ * @property float|null $centre_lat
+ * @property float|null $centre_lng
+ * @property int|null $radius_m
+ * @property array<string, mixed>|null $boundary
  */
-#[Fillable(['name', 'population', 'student_index', 'tourist_index', 'office_index', 'transport_index', 'competition_density'])]
+#[Fillable([
+    'name', 'population', 'student_index', 'tourist_index', 'office_index', 'transport_index', 'competition_density',
+    'centre_lat', 'centre_lng', 'radius_m', 'boundary',
+])]
 class Neighbourhood extends Model
 {
     /** @return HasMany<Business, $this> */
@@ -34,6 +41,10 @@ class Neighbourhood extends Model
             'office_index' => 'float',
             'transport_index' => 'float',
             'competition_density' => 'float',
+            'centre_lat' => 'float',
+            'centre_lng' => 'float',
+            'radius_m' => 'integer',
+            'boundary' => 'array',
         ];
     }
 }

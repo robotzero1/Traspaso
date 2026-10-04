@@ -23,6 +23,10 @@ class NeighbourhoodSeeder extends Seeder
                 'office_index' => $row['office'],
                 'transport_index' => $row['transport'],
                 'competition_density' => $row['competition_density'],
+                'centre_lat' => $row['centre'][0] ?? null,
+                'centre_lng' => $row['centre'][1] ?? null,
+                'radius_m' => $row['radius_m'] ?? null,
+                'boundary' => $row['boundary'] ?? null,
             ]);
         }
     }

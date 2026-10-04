@@ -149,6 +149,8 @@
  */
 :root {
     --viz-series-1: #2a78d6;
+    --viz-series-2: #eb6834;
+    --viz-series-3: #1baf7a;
     --viz-negative: #e34948;
     --viz-grid: #e1e0d9;
     --viz-baseline: #c3c2b7;
@@ -157,8 +159,58 @@
 
 .dark {
     --viz-series-1: #3987e5;
+    --viz-series-2: #d95926;
+    --viz-series-3: #199e70;
     --viz-negative: #e66767;
     --viz-grid: #2c2c2a;
     --viz-baseline: #383835;
     --viz-muted: #898781;
+}
+
+/*
+ * Map markers. Leaflet draws SVG paths; these classes colour them from the
+ * chart tokens (slots 1–3, validated all-pairs). The white ring keeps
+ * markers readable on the light map tiles, and shape/size tell the kinds
+ * apart without colour.
+ */
+.leaflet-container {
+    font: inherit;
+}
+
+.map-marker {
+    stroke: #fff;
+    stroke-width: 2;
+    fill-opacity: 1;
+}
+
+.map-marker--for-sale {
+    fill: var(--viz-series-1);
+}
+
+.map-marker--own {
+    fill: var(--viz-series-2);
+    stroke-width: 3;
+}
+
+.map-marker--rival {
+    fill: var(--viz-series-3);
+}
+
+.map-marker--selected {
+    stroke: #0b0b0b;
+}
+
+.map-poi {
+    fill: #52514e;
+    stroke: #fff;
+    stroke-width: 2;
+    fill-opacity: 1;
+}
+
+.map-neighbourhood {
+    stroke: #52514e;
+    stroke-width: 1;
+    stroke-opacity: 0.6;
+    fill: #52514e;
+    fill-opacity: 0.04;
 }
