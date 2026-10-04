@@ -28,6 +28,15 @@ php artisan tinker --execute="App\Models\User::factory()->create(['email' => 'me
 # then log in as me@example.com with the password: password
 ```
 
+### On Windows
+
+- Use a PHP build with a `php.ini`: copy `php.ini-development` to `php.ini`
+  in the PHP folder and enable `extension=curl`, `fileinfo`, `intl`,
+  `mbstring`, `openssl`, `pdo_sqlite`, `sqlite3` and `zip`.
+- If `composer dev` fails (its log viewer needs a Unix-only extension), run
+  `php artisan serve` instead. `composer setup` has already built the
+  frontend, so that's all you need.
+
 ## Useful commands
 
 ```bash
