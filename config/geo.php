@@ -65,7 +65,18 @@ return [
         'city_relation_name' => 'Zaragoza',
         'city_admin_level' => 8,
         'district_admin_level' => 9,
+        // Districts left out of the game: Zaragoza's Distrito Rural is the
+        // outlying villages and countryside around the city.
+        'exclude' => ['Distrito Rural'],
     ],
+
+    // The built-up part of each district: grid cells of cell_metres with
+    // at least min_street_metres of street in them. Densities (indices,
+    // competition, residents for footfall) are per built-up km², so
+    // farmland inside a boundary doesn't dilute them. A dense city block
+    // has 15–25 km of street per km² (600–1,000 m per 200 m cell); a
+    // country road crossing a cell is under 300 m.
+    'built_up' => ['cell_metres' => 200, 'min_street_metres' => 400],
 
     // Streets that people walk along. Footways and service roads are left
     // out: sidewalks mapped separately would double the network.

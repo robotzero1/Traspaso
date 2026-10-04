@@ -167,6 +167,32 @@ it('builds the committed files from the downloads', function () {
         ->and($manifest['footfall']['calibrated'])->toBeFalse();
 });
 
+it('measures districts by their built-up area and leaves out excluded ones', function () {
+    writeRawFixtures($this->root);
+    config(['geo.boundaries.exclude' => ['Distrito West']]);
+
+    $this->artisan('geo:build')->assertSuccessful();
+
+    $features = json_decode(File::get(base_path("{$this->root}/out/neighbourhoods.geojson")), true)['features'];
+    $east = $features[0]['properties'];
+
+    expect(array_column(array_column($features, 'properties'), 'name'))->toBe(['East'])
+        ->and($east['area_km2'])->toBeGreaterThan(0)
+        ->and($east['area_km2'])->toBeLessThanOrEqual($east['boundary_area_km2'] + 0.1);
+});
+
+it('drops points of interest outside the city', function () {
+    writeRawFixtures($this->root);
+    $pois = GeoFixtures::pointsOfInterest();
+    // A university relation whose centre falls between its campuses, far away.
+    $pois['elements'][] = ['type' => 'relation', 'id' => 99, 'center' => ['lat' => 40.99, 'lon' => -0.98], 'tags' => ['amenity' => 'university', 'name' => 'Far Campus']];
+    File::put(base_path("{$this->root}/raw/pois.json"), json_encode($pois));
+
+    $this->artisan('geo:build')->assertSuccessful();
+
+    expect(File::get(base_path("{$this->root}/out/points_of_interest.csv")))->not->toContain('Far Campus')->toContain('Campus Este');
+});
+
 it('fails clearly without downloads', function () {
     $this->artisan('geo:build')->assertFailed()->expectsOutputToContain('Run geo:fetch first');
 });

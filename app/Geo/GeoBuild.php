@@ -2,6 +2,7 @@
 
 namespace App\Geo;
 
+use App\Generation\Geo\BuiltUpArea;
 use App\Generation\Geo\FootfallSurfaceBuilder;
 use App\Generation\Geo\NeighbourhoodIndexer;
 use App\Generation\Geo\OsmExtract;
@@ -36,11 +37,28 @@ final class GeoBuild
             ?? throw new RuntimeException('No pois.json in '.$this->files->rawPath.'. Run geo:fetch first.');
 
         $streets = OsmExtract::streets($streetsJson, $this->config['street_highway_types']);
-        $pois = OsmExtract::pointsOfInterest($poisJson, $this->config['poi_types'], $this->config['competitor_tags']);
+        // A relation's centre can land far away: "Universidad de Zaragoza"
+        // spans campuses in three cities and centres 70 km south.
+        [$south, $west, $north, $east] = $this->config['bbox'];
+        $pois = array_values(array_filter(
+            OsmExtract::pointsOfInterest($poisJson, $this->config['poi_types'], $this->config['competitor_tags']),
+            fn (array $p) => $p['lat'] >= $south && $p['lat'] <= $north && $p['lng'] >= $west && $p['lng'] <= $east,
+        ));
         $neighbourhoods = $this->neighbourhoods();
 
         if ($neighbourhoods === []) {
             throw new RuntimeException('No neighbourhood boundaries: add sources/neighbourhoods.geojson or fetch boundaries.json.');
+        }
+
+        $builtUp = (new BuiltUpArea((float) $this->config['built_up']['cell_metres'], (float) $this->config['built_up']['min_street_metres']))
+            ->measure($neighbourhoods, $streets);
+
+        foreach ($neighbourhoods as $i => $n) {
+            $neighbourhoods[$i]['built_up'] = $builtUp[$i];
+
+            if ($builtUp[$i] === null) {
+                $this->warnings[] = "No built-up area found in [{$n['name']}]; using its whole boundary.";
+            }
         }
 
         $indexed = NeighbourhoodIndexer::index($neighbourhoods, $pois, $this->config['indices']);
@@ -91,6 +109,9 @@ final class GeoBuild
             ? array_map(fn (array $f) => ['name' => (string) $f['properties']['name'], 'geometry' => $f['geometry']], $manual['features'] ?? [])
             : OsmExtract::boundaries($this->files->readJson("{$this->files->rawPath}/boundaries.json") ?? []);
 
+        $excluded = array_map(self::normalise(...), $this->config['boundaries']['exclude'] ?? []);
+        $boundaries = array_values(array_filter($boundaries, fn (array $b) => ! in_array(self::normalise($b['name']), $excluded, true)));
+
         $population = [];
 
         foreach ($this->files->readCsv("{$this->files->sourcesPath}/population.csv") as $row) {
@@ -124,6 +145,7 @@ final class GeoBuild
                     'name' => $n['name'],
                     'population' => $row['population'],
                     'area_km2' => $row['area_km2'],
+                    'boundary_area_km2' => $row['boundary_area_km2'],
                     'student' => $row['student'],
                     'tourist' => $row['tourist'],
                     'office' => $row['office'],

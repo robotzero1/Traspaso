@@ -5,12 +5,14 @@ namespace App\Generation\Geo;
 /**
  * Derives each neighbourhood's indices from the points of interest inside
  * it: a weighted density per km² for each index, ranked across the city
- * onto 0–10; and competition density as cafés and bars per km².
+ * onto 0–10; and competition density as cafés and bars per km². Densities
+ * use the built-up area when it's given (see BuiltUpArea), so farmland
+ * inside a district boundary doesn't dilute them.
  */
 final class NeighbourhoodIndexer
 {
     /**
-     * @param  list<array{name: string, geometry: array<string, mixed>, population: int}>  $neighbourhoods
+     * @param  list<array{name: string, geometry: array<string, mixed>, population: int, built_up?: array{area_km2: float, centre: array{0: float, 1: float}}|null}>  $neighbourhoods
      * @param  list<array{type: string, lat: float, lng: float, competitor: bool}>  $pois
      * @param  array<string, array<string, float>|string>  $indexWeights  index → POI type → weight (other keys, like a source note, are ignored)
      * @return list<array<string, mixed>> one row per neighbourhood
@@ -24,7 +26,8 @@ final class NeighbourhoodIndexer
 
         foreach ($neighbourhoods as $i => $n) {
             $polygon = new Polygon($n['geometry']);
-            $area = max(0.01, $polygon->areaKm2());
+            $boundaryArea = $polygon->areaKm2();
+            $area = max(0.01, $n['built_up']['area_km2'] ?? $boundaryArea);
             $counts = [];
             $competitors = 0;
 
@@ -45,14 +48,15 @@ final class NeighbourhoodIndexer
                 $densities[$index][$i] = $weighted / $area;
             }
 
-            [$lat, $lng] = $polygon->centroid();
+            [$lat, $lng] = $n['built_up']['centre'] ?? $polygon->centroid();
             $rows[$i] = [
                 'name' => $n['name'],
                 'population' => $n['population'],
                 'area_km2' => round($area, 3),
+                'boundary_area_km2' => round($boundaryArea, 3),
                 'competition_density' => round($competitors / $area, 1),
                 'centre' => [round($lat, 6), round($lng, 6)],
-                // For the map's fallback circle: the radius of a circle with the same area.
+                // For the map's fallback circle: the radius of a circle with the built-up area.
                 'radius_m' => (int) round(sqrt($area / M_PI) * 1000),
                 'poi_counts' => $counts,
             ];

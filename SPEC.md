@@ -92,7 +92,7 @@ Each field is tagged by where its value comes from:
 | tourist_index 0–10 | [real→derived] | proximity to the Pilar, the old town and OSM tourism POIs |
 | office_index 0–10 | [real→derived] | OSM office/commercial density |
 | transport_index 0–10 | [real→derived] | tram/bus stops within 300 m |
-| competition_density | [real→derived] | OSM `amenity=cafe|bar` count per km² |
+| competition_density | [real→derived] | OSM `amenity=cafe|bar` count per built-up km² (grid cells with a city's worth of streets, so farmland inside a district boundary doesn't dilute it) |
 
 ### points_of_interest
 `id, type (university|school|station|park|office|competitor_seed…), name, lat, lng, osm_id` — [real], imported from OSM extracts.

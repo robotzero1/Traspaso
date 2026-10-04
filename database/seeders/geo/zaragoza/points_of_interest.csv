@@ -962,7 +962,6 @@ office,Serviberica,41.601744,-0.826007,way/976686731
 park,"Parque Huerto Frisón",41.603617,-0.822488,way/1422424162
 shop,Clavijo,41.624211,-0.846424,way/1422987793
 shop,,41.623393,-0.846963,way/1422987806
-university,"Universidad de Zaragoza",40.99396,-0.983874,relation/5606825
 hospitality,McDonald's,41.650435,-0.919109,node/259492937
 bus_stop,"Vicente Blanco García / Centro Comercial",41.658312,-0.919692,node/296404757
 bus_stop,"Ramón J. Sender 4",41.656254,-0.918878,node/296409884
@@ -7821,7 +7820,6 @@ shop,,41.676225,-0.950083,way/815860876
 shop,,41.675626,-0.952005,way/815860877
 hospitality,McDonald's,41.676072,-0.95288,way/815862380
 hospitality,"La Tagliatella",41.675291,-0.953574,way/815862381
-school,"Colegio Teresiano del Pilar",41.674409,-0.96002,way/931127695
 hospitality,"Las Terrazas del Parque Deportivo Ebro",41.670757,-0.922331,way/1090198405
 station,"C.I.M. Zaragoza",41.67625,-0.941603,way/1272417645
 station,"Clara Campoamor",41.669712,-0.890588,node/34756870

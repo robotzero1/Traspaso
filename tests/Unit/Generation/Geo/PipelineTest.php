@@ -91,6 +91,21 @@ it('derives indices by ranking densities across neighbourhoods', function () {
 
 // The footfall surface ----------------------------------------------------------
 
+it('measures densities over the built-up area when given', function () {
+    $neighbourhoods = fixtureNeighbourhoods();
+    $plain = collect(NeighbourhoodIndexer::index($neighbourhoods, fixturePois(), geoConfig()['indices']))->keyBy('name');
+
+    $neighbourhoods[0]['built_up'] = ['area_km2' => $plain['West']['area_km2'] / 4, 'centre' => [41.6, -0.9]];
+    $built = collect(NeighbourhoodIndexer::index($neighbourhoods, fixturePois(), geoConfig()['indices']))->keyBy('name');
+
+    expect($built['West']['area_km2'])->toEqualWithDelta($plain['West']['area_km2'] / 4, 0.001)
+        ->and($built['West']['boundary_area_km2'])->toBe($plain['West']['area_km2'])
+        ->and($built['West']['competition_density'])->toEqualWithDelta(4 * $plain['West']['competition_density'], 0.2)
+        ->and($built['West']['centre'])->toBe([41.6, -0.9])
+        // A quarter of the area: half the radius.
+        ->and($built['West']['radius_m'])->toEqualWithDelta($plain['West']['radius_m'] / 2, 1);
+});
+
 it('keeps only commercial points inside a neighbourhood', function () {
     $surface = fixtureSurface();
     $commercialRadius = geoConfig()['footfall']['commercial']['radius_metres'];

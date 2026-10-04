@@ -30,6 +30,8 @@ function solidBusiness(Game $game): Business
     $business->update([
         'footfall' => 6.5, 'rent_month_cents' => 70_000, 'traspaso_cents' => 1_800_000, 'condition' => 7,
         'category' => 'cafe', 'licence' => 'cafe', 'kitchen' => 'basic', 'indoor_seats' => 30, 'terrace_seats' => 12,
+        // Use the overall footfall above, whatever street the business is on.
+        'footfall_by_day_part' => null,
     ]);
 
     return $business->refresh();
@@ -343,6 +345,8 @@ it("can't end the game before the year is out", function () {
 it('goes bankrupt when cash runs out', function () {
     $game = boughtGame($this->user);
     $game->update(['cash_cents' => 100]);
+    // Rent no café could cover, wherever it is.
+    $game->business->update(['rent_month_cents' => 5_000_000]);
     $this->actingAs($this->user)->put(route('games.decisions', $game), decisionsPayload(['staff_count' => 8, 'marketing_spend_cents' => 300_000]));
 
     $this->actingAs($this->user)->post(route('games.months.store', $game));

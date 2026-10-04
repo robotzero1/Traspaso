@@ -39,7 +39,8 @@ final class FootfallSurfaceBuilder
         $areas = array_map(fn (array $n) => [
             'name' => $n['name'],
             'polygon' => $polygon = new Polygon($n['geometry']),
-            'density' => $n['population'] / max(0.01, $polygon->areaKm2()),
+            // Residents per built-up km² (see BuiltUpArea), else per km² of boundary.
+            'density' => $n['population'] / max(0.01, $n['built_up']['area_km2'] ?? $polygon->areaKm2()),
         ], $neighbourhoods);
 
         $points = $this->sampleCommercialPoints($streets, $poiGrid, $areas);
