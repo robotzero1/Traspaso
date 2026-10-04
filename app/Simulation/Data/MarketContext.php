@@ -3,7 +3,6 @@
 namespace App\Simulation\Data;
 
 use App\Simulation\Data\Concerns\Guard;
-use InvalidArgumentException;
 
 /**
  * Everything outside the business that the engine needs for one month:
@@ -36,16 +35,6 @@ final readonly class MarketContext
      */
     public function parameter(string $key): mixed
     {
-        $value = $this->parameters;
-
-        foreach (explode('.', $key) as $segment) {
-            if (! is_array($value) || ! array_key_exists($segment, $value)) {
-                throw new InvalidArgumentException("Market parameter [{$key}] is not defined.");
-            }
-
-            $value = $value[$segment];
-        }
-
-        return $value;
+        return (new ParameterSheet($this->parameters))->get($key);
     }
 }

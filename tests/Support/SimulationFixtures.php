@@ -33,6 +33,22 @@ final class SimulationFixtures
         );
     }
 
+    /**
+     * A spread of made-up neighbourhoods, from a quiet residential area to
+     * a busy old town.
+     *
+     * @return list<NeighbourhoodProfile>
+     */
+    public static function neighbourhoods(): array
+    {
+        return [
+            new NeighbourhoodProfile('Residential', 90_000, 2.0, 1.0, 1.0, 4.0, 20.0),
+            new NeighbourhoodProfile('Campus', 50_000, 9.0, 2.0, 3.0, 7.0, 60.0),
+            new NeighbourhoodProfile('Old town', 40_000, 4.0, 9.0, 6.0, 8.0, 150.0),
+            new NeighbourhoodProfile('Business district', 30_000, 2.0, 3.0, 9.0, 9.0, 90.0),
+        ];
+    }
+
     public static function profile(): BusinessProfile
     {
         return new BusinessProfile(
