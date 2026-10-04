@@ -7,6 +7,7 @@ use App\Simulation\Data\BusinessProfile;
 use App\Simulation\Data\BusinessState;
 use App\Simulation\Data\CompetitorState;
 use App\Simulation\Data\CostBreakdown;
+use App\Simulation\Data\DayPart;
 use App\Simulation\Data\Decisions;
 use App\Simulation\Data\Kitchen;
 use App\Simulation\Data\Licence;
@@ -66,7 +67,7 @@ final class SimulationFixtures
     {
         return new Decisions(
             priceLevel: 1.0,
-            openingHoursPerDay: 12,
+            openDayParts: [DayPart::Morning, DayPart::Lunch, DayPart::Afternoon],
             openDaysPerWeek: 6,
             staffCount: 2,
             marketingSpendCents: 10_000,

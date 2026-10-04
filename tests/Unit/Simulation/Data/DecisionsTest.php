@@ -1,5 +1,6 @@
 <?php
 
+use App\Simulation\Data\DayPart;
 use App\Simulation\Data\QualityTier;
 use Tests\Support\SimulationFixtures;
 
@@ -10,13 +11,23 @@ it('accepts a typical month of decisions', function () {
         ->and($decisions->qualityTier)->toBe(QualityTier::Premium);
 });
 
+it('allows a split shift', function () {
+    $decisions = SimulationFixtures::decisions()->with(openDayParts: [DayPart::Morning, DayPart::Evening]);
+
+    expect($decisions->isOpenFor(DayPart::Morning))->toBeTrue()
+        ->and($decisions->isOpenFor(DayPart::Evening))->toBeTrue()
+        ->and($decisions->isOpenFor(DayPart::Afternoon))->toBeFalse();
+});
+
 it('rejects impossible decisions', function (array $changes) {
     expect(fn () => SimulationFixtures::decisions()->with(...$changes))
         ->toThrow(InvalidArgumentException::class);
 })->with([
     'zero price level' => [['priceLevel' => 0.0]],
-    'zero opening hours' => [['openingHoursPerDay' => 0]],
-    '25 opening hours' => [['openingHoursPerDay' => 25]],
+    'no day parts' => [['openDayParts' => []]],
+    'repeated day part' => [['openDayParts' => [DayPart::Lunch, DayPart::Lunch]]],
+    'day part of the wrong type' => [['openDayParts' => ['lunch']]],
+    'keyed day parts' => [['openDayParts' => ['a' => DayPart::Lunch]]],
     'zero open days' => [['openDaysPerWeek' => 0]],
     '8 open days' => [['openDaysPerWeek' => 8]],
     'negative staff' => [['staffCount' => -1]],
