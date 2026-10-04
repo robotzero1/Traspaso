@@ -63,7 +63,7 @@ final class GamePresenter
     /** @return array<string, mixed> */
     public function show(Game $game): array
     {
-        $props = ['game' => $this->summary($game), 'map' => $this->map()];
+        $props = ['game' => $this->summary($game), 'map' => $this->map($game)];
 
         if ($game->business_id === null) {
             if ($game->isActive()) {
@@ -147,8 +147,10 @@ final class GamePresenter
      *
      * @return array<string, mixed>
      */
-    public function map(): array
+    public function map(Game $game): array
     {
+        $market = "market.{$game->market}";
+
         return [
             'tile_url' => config('map.tile_url'),
             'attribution' => config('map.attribution'),
@@ -169,6 +171,11 @@ final class GamePresenter
                 ->map(fn (PointOfInterest $p) => $p->only(['type', 'name', 'lat', 'lng']))->all(),
             'placeholder' => ! $fromOsm,
             'has_footfall' => FootfallPoint::query()->exists(),
+            // How busy the streets are in each day part: the footfall layer
+            // scales each period's values by it, as the demand model does.
+            'footfall_exponent' => (float) config("{$market}.demand.footfall_exponent"),
+            'day_part_intensity' => collect(DayPart::cases())
+                ->mapWithKeys(fn (DayPart $p) => [$p->value => (float) config("{$market}.day_parts.{$p->value}.intensity")])->all(),
         ];
     }
 

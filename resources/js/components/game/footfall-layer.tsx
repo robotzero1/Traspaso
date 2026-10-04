@@ -60,15 +60,42 @@ export const binOf = (value: number) =>
     Math.min(4, Math.max(0, Math.floor(value / 2)));
 
 /**
+ * Each period's stored footfall ranks the streets against each other at
+ * that time, on the same 0–10 scale, so on its own every period would look
+ * alike. The demand model multiplies by how busy the streets are then
+ * (the day part's intensity), so the layer does the same: the busiest
+ * period shows the stored values and quieter ones fade, in footfall units
+ * (people ∝ (footfall / 10) ^ exponent × intensity).
+ */
+export function periodFactor(
+    view: FootfallView,
+    intensity: Record<string, number>,
+    exponent: number,
+): number {
+    if (view === 'overall') {
+        return 1;
+    }
+
+    const busiest = Math.max(...Object.values(intensity));
+
+    return busiest > 0
+        ? ((intensity[view] ?? 0) / busiest) ** (1 / exponent)
+        : 1;
+}
+
+/**
  * The estimated footfall surface: a dot per commercial street point,
  * darker where more people pass. Drawn on a canvas so thousands of points
  * stay smooth; fetched only when the layer is first shown.
  */
 export function FootfallLayer({
     view,
+    factor,
     onStatus,
 }: {
     view: FootfallView;
+    /** Multiplies the period's values (see periodFactor). */
+    factor: number;
     onStatus?: (status: 'loading' | 'ready' | 'error') => void;
 }) {
     const [points, setPoints] = useState<Row[] | null>(null);
@@ -107,7 +134,7 @@ export function FootfallLayer({
     return (
         <>
             {points.map((p, i) => {
-                const colour = colours[binOf(p[column])];
+                const colour = colours[binOf(p[column] * factor)];
 
                 return (
                     <CircleMarker

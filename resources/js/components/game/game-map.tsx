@@ -15,6 +15,7 @@ import {
     FOOTFALL_BINS,
     FOOTFALL_VIEWS,
     FootfallLayer,
+    periodFactor,
 } from '@/components/game/footfall-layer';
 import type { FootfallView } from '@/components/game/footfall-layer';
 import { formatCents, humanize } from '@/lib/format';
@@ -107,6 +108,11 @@ export function GameMap({
                                     {footfallOn && (
                                         <FootfallLayer
                                             view={footfallView}
+                                            factor={periodFactor(
+                                                footfallView,
+                                                map.day_part_intensity,
+                                                map.footfall_exponent,
+                                            )}
                                             onStatus={setFootfallStatus}
                                         />
                                     )}
@@ -322,7 +328,7 @@ export function GameMap({
                 {map.placeholder &&
                     ' Neighbourhood areas and landmarks are approximate until real OpenStreetMap data is imported.'}
                 {footfallOn &&
-                    ' Footfall is a 0–10 estimate from OpenStreetMap streets and places, not a pedestrian count.'}
+                    ' Footfall is a 0–10 estimate from OpenStreetMap streets and places, not a pedestrian count. Each time of day is scaled by how busy the streets are then, so quieter periods look lighter.'}
             </figcaption>
         </figure>
     );

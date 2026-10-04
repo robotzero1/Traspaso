@@ -190,4 +190,7 @@ export type MapProps = {
     placeholder: boolean;
     /** True when the footfall surface is loaded (GET /map/footfall). */
     has_footfall: boolean;
+    /** The demand model's footfall exponent and per-day-part street intensity. */
+    footfall_exponent: number;
+    day_part_intensity: Record<string, number>;
 };

@@ -59,6 +59,9 @@ it('sends the map with OpenStreetMap attribution, areas, landmarks and locations
         ->where('map.attribution', fn (string $attribution) => str_contains($attribution, 'OpenStreetMap'))
         ->where('map.placeholder', true)
         ->where('map.has_footfall', false)
+        ->where('map.footfall_exponent', config('market.zaragoza_cafe.demand.footfall_exponent'))
+        ->where('map.day_part_intensity.morning', config('market.zaragoza_cafe.day_parts.morning.intensity'))
+        ->has('map.day_part_intensity', 5)
         ->has('map.neighbourhoods', Neighbourhood::query()->count())
         ->has('map.points_of_interest', PointOfInterest::query()->count())
         ->has('businesses.0', fn (Assert $b) => $b->whereType('lat', 'double')->whereType('lng', 'double')->etc()));
