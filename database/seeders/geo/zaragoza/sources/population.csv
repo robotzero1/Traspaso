@@ -1,20 +1,21 @@
-# Population by district, for geo:build. Replace the PLACEHOLDER rows with
-# the municipal padrón (Ayuntamiento de Zaragoza, "Cifras de población") or INE
-# figures, and say where each number came from. Names are matched loosely
-# (case, accents and a leading "Distrito"/"Junta Municipal" are ignored).
+# Population by district, for geo:build: the municipal padrón by distrito
+# municipal (Ayuntamiento de Zaragoza, padrón layer with id_padron), 2020.
+# The juntas vecinales (outlying villages) make up Distrito Rural, which the
+# game leaves out (config geo.boundaries.exclude). Names are matched loosely
+# (case, accents, spacing and a leading "Distrito"/"Junta Municipal" are ignored).
 name,population,year,source
-"Casco Histórico",46000,,"PLACEHOLDER estimate"
-Centro,52000,,"PLACEHOLDER estimate"
-Delicias,105000,,"PLACEHOLDER estimate"
-Universidad,50000,,"PLACEHOLDER estimate"
-"San José",65000,,"PLACEHOLDER estimate"
-"Las Fuentes",43000,,"PLACEHOLDER estimate"
-"La Almozara",25000,,"PLACEHOLDER estimate"
-Oliver-Valdefierro,31000,,"PLACEHOLDER estimate"
-"Torrero-La Paz",40000,,"PLACEHOLDER estimate"
-"Actur-Rey Fernando",58000,,"PLACEHOLDER estimate"
-"El Rabal",79000,,"PLACEHOLDER estimate"
-Casablanca,27000,,"PLACEHOLDER estimate"
-"Santa Isabel",13000,,"PLACEHOLDER estimate"
-Miralbueno,13000,,"PLACEHOLDER estimate"
-Sur,38000,,"PLACEHOLDER estimate"
+"Casco Histórico",47210,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 1)"
+Centro,53436,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 2)"
+Delicias,104563,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 3)"
+"La Almozara",30098,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 4)"
+Universidad,50747,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 5)"
+Casablanca,10395,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 6)"
+"San José",67678,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 7)"
+"Las Fuentes",43003,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 8)"
+Miralbueno,12806,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 10)"
+"Oliver - Valdefierro",32474,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 11)"
+"Torrero - La Paz",42473,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 12)"
+"Actur - Rey Fernando",58714,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 14)"
+"El Rabal",79162,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 15)"
+"Santa Isabel",13492,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 22)"
+Sur,38774,2020,"Padrón municipal, Ayuntamiento de Zaragoza (id_padron 29)"
