@@ -141,3 +141,24 @@
         @apply bg-background text-foreground;
     }
 }
+
+/*
+ * Chart tokens (validated with the dataviz palette checker against the
+ * app's surfaces: white in light mode, #0a0a0a in dark). Series colours
+ * carry identity only; text stays in the normal ink colours.
+ */
+:root {
+    --viz-series-1: #2a78d6;
+    --viz-negative: #e34948;
+    --viz-grid: #e1e0d9;
+    --viz-baseline: #c3c2b7;
+    --viz-muted: #898781;
+}
+
+.dark {
+    --viz-series-1: #3987e5;
+    --viz-negative: #e66767;
+    --viz-grid: #2c2c2a;
+    --viz-baseline: #383835;
+    --viz-muted: #898781;
+}

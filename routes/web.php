@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Route;
 Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+    // The starter kit's dashboard; the game list is the real home.
+    Route::redirect('dashboard', 'games')->name('dashboard');
 
     Route::get('games', [GameController::class, 'index'])->name('games.index');
     Route::post('games', [GameController::class, 'store'])->name('games.store');

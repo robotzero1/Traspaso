@@ -30,6 +30,8 @@ class UpdateDecisionsRequest extends FormRequest
             'quality_tier' => ['required', Rule::enum(QualityTier::class)],
             'event_choices' => ['sometimes', 'array'],
             'event_choices.*' => ['string'],
+            // Save and play the month in one go.
+            'and_play' => ['sometimes', 'boolean'],
         ];
     }
 }

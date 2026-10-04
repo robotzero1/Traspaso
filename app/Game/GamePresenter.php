@@ -8,6 +8,7 @@ use App\Models\Game;
 use App\Models\GameCompetitor;
 use App\Models\GameEvent;
 use App\Models\MonthResult;
+use App\Simulation\Costs\MonthlyCosts;
 use App\Simulation\Data\DayPart;
 use App\Simulation\Data\EventRecord;
 use App\Simulation\Data\Modifier;
@@ -76,6 +77,8 @@ final class GamePresenter
 
         $sheet = $this->mapper->sheet($game);
         $state = $this->mapper->state($game);
+        $results = $game->monthResults()->get();
+        $costs = new MonthlyCosts($sheet);
 
         return [
             ...$props,
@@ -105,7 +108,19 @@ final class GamePresenter
                 'choices' => $e->choices,
                 'payload' => $e->payload,
             ], $state->pendingEvents),
-            'results' => $game->monthResults()->get()->map(fn (MonthResult $r) => [
+            // Cash on the day the business was bought, where the cash chart starts.
+            'opening_cash_cents' => $results->isEmpty()
+                ? $game->cash_cents
+                : $results->first()->cash_after_cents - $results->first()->profit_cents,
+            // For the decisions screen's cost estimate; the engine's own numbers.
+            'cost_hints' => [
+                'staff_per_person_cents' => $costs->staff(1),
+                'rent_cents' => $state->profile->rentMonthCents,
+                'utilities_base_cents' => $sheet->int('utilities.base_month_cents'),
+                'utilities_per_open_hour_cents' => $sheet->int('utilities.per_open_hour_cents'),
+                'cogs_share' => $sheet->array('cogs.share_of_revenue'),
+            ],
+            'results' => $results->map(fn (MonthResult $r) => [
                 ...$r->only([
                     'month', 'calendar_month', 'customers', 'revenue_cents', 'event_revenue_cents', 'cogs_cents',
                     'staff_cents', 'rent_cents', 'utilities_cents', 'marketing_cents', 'other_cents', 'taxes_cents',

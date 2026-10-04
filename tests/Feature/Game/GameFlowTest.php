@@ -6,6 +6,8 @@ use App\Enums\GameStatus;
 use App\Models\Business;
 use App\Models\Game;
 use App\Models\User;
+use App\Simulation\Costs\MonthlyCosts;
+use App\Simulation\Data\ParameterSheet;
 use Database\Seeders\NeighbourhoodSeeder;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -342,4 +344,44 @@ it('goes bankrupt when cash runs out', function () {
     $this->actingAs($this->user)->post(route('games.months.store', $game))->assertSessionHasErrors('game');
     $this->actingAs($this->user)->get(route('games.show', $game))
         ->assertInertia(fn (Assert $page) => $page->where('game.phase', 'over')->where('game.status', 'bankrupt'));
+});
+
+// The decisions screen -----------------------------------------------------
+
+it('saves decisions and plays the month in one go', function () {
+    $game = boughtGame($this->user);
+
+    $this->actingAs($this->user)
+        ->put(route('games.decisions', $game), decisionsPayload(['staff_count' => 3, 'and_play' => '1']))
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('games.show', $game));
+
+    $game->refresh();
+
+    expect($game->current_month)->toBe(2)
+        ->and($game->states()->where('month', 1)->sole()->decisions['staff_count'])->toBe(3)
+        ->and($game->decisions)->not->toHaveKey('and_play');
+});
+
+it("doesn't play the month when the decisions are invalid", function () {
+    $game = boughtGame($this->user);
+
+    $this->actingAs($this->user)
+        ->put(route('games.decisions', $game), decisionsPayload(['staff_count' => 99, 'and_play' => '1']))
+        ->assertSessionHasErrors('staff_count');
+
+    expect($game->refresh()->current_month)->toBe(1);
+});
+
+it('gives the screens the opening cash and cost hints', function () {
+    $game = boughtGame($this->user);
+    $openingCash = $game->cash_cents;
+    $this->actingAs($this->user)->post(route('games.months.store', $game));
+
+    $this->actingAs($this->user)->get(route('games.show', $game))->assertInertia(fn (Assert $page) => $page
+        ->where('opening_cash_cents', $openingCash)
+        ->where('cost_hints.rent_cents', 70_000)
+        ->where('cost_hints.staff_per_person_cents', (new MonthlyCosts(new ParameterSheet(config('market.zaragoza_cafe'))))->staff(1))
+        ->has('cost_hints.cogs_share.premium')
+        ->has('results.0.day_parts', 3));
 });

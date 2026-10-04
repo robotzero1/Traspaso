@@ -152,3 +152,11 @@ export type Competitor = {
     reputation: number;
     seats: number;
 };
+
+export type CostHints = {
+    staff_per_person_cents: number;
+    rent_cents: number;
+    utilities_base_cents: number;
+    utilities_per_open_hour_cents: number;
+    cogs_share: Record<'budget' | 'standard' | 'premium', number>;
+};
