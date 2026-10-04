@@ -19,7 +19,7 @@ The businesses are **fictional**. Their starting parameters are generated from *
 - 100–200 generated businesses for sale
 - Starting capital chosen at setup
 - 12-month game, advanced one month per turn
-- Monthly decisions: prices, opening hours, staffing level, marketing spend, quality tier
+- Monthly decisions: prices, opening hours (which day parts to open for, and days per week), staffing level, marketing spend, quality tier
 - Simple monthly P&L and running cash balance
 - Random events (equipment failure, inspection, staff quits, heatwave, local festival…)
 - AI competitors nearby, with simple behaviour
@@ -118,7 +118,7 @@ Each field is tagged by where its value comes from:
 `id, user_id, seed, starting_capital_cents, current_month (1–12), start_date, cash_cents, status (active|bankrupt|finished), business_id nullable`
 
 ### game_business_states
-A snapshot per game per month: `reputation, staff_count, staff_morale, equipment_health, stock_quality, price_level, opening_hours, marketing_spend_cents, …`
+A snapshot per game per month: `reputation, staff_count, staff_morale, equipment_health, stock_quality, price_level, open_day_parts, open_days_per_week, marketing_spend_cents, …`
 
 ### month_results
 `game_id, month, customers, revenue_cents, cogs_cents, staff_cents, rent_cents, utilities_cents, marketing_cents, other_cents, taxes_cents, profit_cents, cash_after_cents, events_json`
@@ -132,13 +132,18 @@ A snapshot per game per month: `reputation, staff_count, staff_morale, equipment
 simulateMonth(state, decisions, context, rng) -> MonthResult
 
 1. Seasonality & weather   month → demand multiplier; terrace usable-days
-2. Potential customers     footfall × neighbourhood indices × opening hours × seasonality
+2. Potential customers     for each open day part:
+                             footfall × (neighbourhood indices weighted by that
+                             day part's demand mix) × seasonality
 3. Capture rate            f(reputation, price vs. local average, quality, marketing,
                              competitor attractiveness)
-4. Covers                  min(potential × capture, capacity × turnover × open_days)
-5. Revenue                 covers × average ticket (adjusted by price level)
-6. Costs                   COGS % (by quality tier), staff, rent, utilities,
-                             cuota de autónomo, marketing, insurance, maintenance
+4. Covers                  per day part: min(potential × capture,
+                             capacity × turnover × open_days)
+5. Revenue                 Σ day parts: covers × that day part's average ticket
+                             (adjusted by price level)
+6. Costs                   COGS % (by quality tier), staff and utilities (scaled by
+                             hours open), rent, cuota de autónomo, marketing,
+                             insurance, maintenance
 7. Events                  roll each event's probability; apply its effects
 8. State evolution         reputation moves toward (quality − price gap + service);
                              equipment wears; staff morale reacts to workload
@@ -147,6 +152,23 @@ simulateMonth(state, decisions, context, rng) -> MonthResult
 ```
 
 Each step is its own small class with its own unit tests. `Engine` only orchestrates them.
+
+### Day parts
+
+Opening hours are a choice of **which parts of the day** to open for, not a number of hours. Each day part draws a different crowd, so the right hours depend on the location:
+
+| day part | typical trade | main demand drivers |
+|---|---|---|
+| `morning` | desayuno, almuerzo | office, transport, student |
+| `lunch` | menú del día, vermut | office, tourist |
+| `afternoon` | merienda, coffee after lunch | student, resident population |
+| `evening` | cañas, tapas, cena | tourist, resident population |
+| `night` | copas after midnight | tourist, student; needs a `cafe_bar` or `bar_musical` licence |
+
+- The player picks any non-empty set of day parts, with gaps allowed (a split shift), plus open days per week.
+- Each day part's hour span (for staff and utility costs), demand mix and average ticket live in `config/market/*.php`.
+- Opening for a day part with little local demand should cost more in wages and utilities than it brings in.
+- Which day parts a licence allows is a rule the engine enforces, not something the DTO checks.
 
 **Balance tests** (Pest, using fixed seeds):
 
@@ -168,6 +190,10 @@ Each step is its own small class with its own unit tests. `Engine` only orchestr
 | Seats per m² (indoor) | ~0.5 | same sample |
 | Average ticket € (café) | 3.50–5.00 | own observation / menus |
 | Average ticket € (café-bar, evenings) | 6–10 | own observation |
+| Day part hour spans | morning 7–12, lunch 12–16, afternoon 16–20, evening 20–24, night 0–3 | typical Zaragoza trading hours |
+| Demand mix per day part (weight of each neighbourhood index) | see §6 Day parts | own observation / footfall counts |
+| Average ticket by day part | morning ≈ café ticket, evening/night ≈ café-bar ticket | own observation / menus |
+| Day parts allowed per licence | `night` only with `cafe_bar` / `bar_musical` | Zaragoza licensing ordinance (opening-hours rules) |
 | COGS % of revenue | 28–35% | hospitality benchmarks |
 | IVA (hostelería) | 10% | AEAT |
 | Employee gross/month (full-time, 14 pays) | ~SMI–€1,500 | current SMI / hostelería collective agreement for Zaragoza |
