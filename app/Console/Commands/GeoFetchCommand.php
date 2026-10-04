@@ -40,6 +40,12 @@ class GeoFetchCommand extends Command
             } catch (Throwable $e) {
                 $this->components->error("Downloading {$name} failed: {$e->getMessage()}");
 
+                if (str_contains($e->getMessage(), 'cURL error 60')) {
+                    $this->line('  PHP has no trusted certificate authorities configured (common on Windows).');
+                    $this->line('  Download https://curl.se/ca/cacert.pem, then in php.ini set curl.cainfo and');
+                    $this->line('  openssl.cafile to its full path. Don\'t turn certificate checks off.');
+                }
+
                 return self::FAILURE;
             }
         }

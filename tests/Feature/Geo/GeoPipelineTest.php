@@ -11,6 +11,7 @@ use App\Models\User;
 use Database\Seeders\FootfallPointSeeder;
 use Database\Seeders\NeighbourhoodSeeder;
 use Database\Seeders\PointOfInterestSeeder;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -68,6 +69,14 @@ it('downloads streets, points of interest and boundaries from Overpass', functio
 
     Http::assertSentCount(3);
     Http::assertSent(fn (Request $r) => str_contains($r['data'], '[bbox:41.6,-0.96,41.7,-0.82]') || str_contains($r['data'], 'area['));
+});
+
+it('explains a missing certificate bundle', function () {
+    Http::fake(fn () => throw new ConnectionException('cURL error 60: SSL certificate problem: unable to get local issuer certificate'));
+
+    $this->artisan('geo:fetch')
+        ->expectsOutputToContain('curl.cainfo')
+        ->assertFailed();
 });
 
 it('reports a failed download', function () {
