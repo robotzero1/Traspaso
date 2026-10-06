@@ -15,9 +15,84 @@ draws its starting capital (€20k–€100k, whole thousands) and its starting 
 from the seed. Net worth = cash + the landlord's deposit + the business's value;
 cash below zero ends the game with cash + deposit.
 
-Results are after all the changes listed below. Data: the committed Zaragoza build (15 districts, 2020 padrón populations,
-7,013 commercial street points, 1,129 cafés and bars). Code and config as of
-this pass.
+## Calibrated to real closure rates (current)
+
+The game aims to be a realistic simulation, so it is now calibrated to
+published closure statistics rather than to invented targets:
+
+- **1-year mortality:** about 20–25% of new cafés and bars close within their
+  first 12 months (INE via DIRCE; Hostelería de España).
+- **5-year survival:** about 45–50% (not usable in a 12-month game).
+- **Density:** Zaragoza has about 3,000–3,500 hospitality establishments
+  (IAEST; Asociación Café Bares de Zaragoza). OpenStreetMap maps 2,152 of them,
+  about 65%.
+
+What changed:
+
+1. **The owner takes €1,200 a month to live on** (`owner.pay_month_cents`),
+   about the minimum wage after tax. It isn't a business cost (profit and
+   taxes are before it), but it leaves the cash every month. The P&L shows
+   "Your pay" and "Left after your pay"; goodwill in the business valuation
+   counts only profit after the owner's pay.
+2. **Failure counts what the statistics count:** a café fails in year 1 if its
+   cash runs out *or* over the year it doesn't earn enough to pay its owner
+   (a real owner would close or sell up). The end-of-game screen says whether
+   the café paid its way.
+3. **Competition density is corrected for OpenStreetMap's coverage**
+   (`geo.osm_coverage.hospitality` 0.65): densities are scaled up by 1/0.65.
+4. **Demand recalibrated:** `capture.base_rate` 0.040 → **0.077**, so that a
+   typical new owner (a random café on default settings) fails 20–25% of the
+   time. Before this, with the owner paid, 81% failed: the economy was far too
+   poor for three in four new cafés to survive.
+
+### Results: 1,000 games per strategy
+
+| Strategy | Median net worth | Ahead | Bankrupt | **Failed in year 1** | Profit/month before your pay (median) |
+|---|---|---|---|---|---|
+| thoughtful | +55% | 88% | 0.6% | **9%** | €3,339 |
+| default (typical new owner) | +24% | 70% | 2.6% | **24%** | €2,418 |
+| cheapest | −36% | 8% | 10.1% | **91%** | −€530 |
+| premium | +145% | 95% | 0.5% | **2%** | €6,524 |
+| careless | −106% | 0% | 97.8% | **100%** | −€6,622 |
+
+| Target | Actual | |
+|---|---|---|
+| Typical new owner (default settings): 20–25% fail in year 1 | 24% | pass |
+| Thoughtful player: 12% or fewer fail in year 1 | 9% | pass |
+| Thoughtful player: median net worth doesn't fall | +55% | pass |
+| Thoughtful player: no district (10+ games) where over 30% fail | 23% (worst: La Almozara) | pass |
+| Thoughtful beats default settings by 5+ points (median net worth) | +31 points | pass |
+| Careless player: 90% or more fail | 100% | pass |
+
+Thoughtful players fail most in La Almozara (23%) and Casco Histórico (20%),
+least in El Rabal (2%) and Universidad (3%). By footfall: 22% fail at 2–4,
+1% at 8–10.
+
+### Still unrealistic: rents and traspasos
+
+With demand calibrated to real survival, the placeholder rent and traspaso
+distributions are now visibly out of line with what cafés earn:
+
+- **Traspasos are about 0.4–0.6 years of profit.** In Spain they are usually
+  quoted at 1–2 years. A café earning €29,000 a year for €16,500 is a bargain
+  no seller would offer, which is why net worth gains are large (+24% to
+  +55% medians).
+- **Rents are about 3–5% of sales.** Cafés usually pay 8–15%. A busy spot
+  (footfall 9+) rents for about €1,400 a month, where prime streets in
+  Zaragoza cost several thousand. So the premium player (the busiest
+  affordable spot) almost never fails and gains +145%.
+
+Real listing data, a sample of Zaragoza café traspasos with asking price, rent
+and floor area, would fix both. Failing that, rents and traspasos could be
+derived from each café's expected earnings by those rules of thumb. Either
+way, `market:balance` then needs rerunning and `capture.base_rate` retuning to
+keep year-1 failure at 20–25%.
+
+## History: the first balancing pass
+
+Everything below is the first pass, before the owner's pay and the closure-rate
+calibration. Its figures are superseded by the section above, but the changes
+it made still stand.
 
 ## Strategies
 

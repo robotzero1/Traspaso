@@ -68,6 +68,7 @@ final class AdvanceMonth
                 'other_cents' => $result->costs->otherCents,
                 'taxes_cents' => $result->costs->taxesCents,
                 'profit_cents' => $result->profitCents(),
+                'owner_pay_cents' => $result->ownerPayCents,
                 'cash_after_cents' => $result->cashAfterCents(),
                 'day_parts' => array_map(fn (DayPartResult $p) => [
                     'day_part' => $p->dayPart->value,

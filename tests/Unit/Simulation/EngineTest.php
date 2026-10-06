@@ -38,10 +38,12 @@ it('reports one result per open day part, adding up to the totals', function () 
     }
 });
 
-it('moves cash by the profit', function () {
+it('moves cash by the profit, less the owner\'s pay', function () {
     $result = simulate(['cashCents' => 1_000_000]);
 
-    expect($result->cashAfterCents())->toBe(1_000_000 + $result->profitCents())
+    expect($result->ownerPayCents)->toBe(SimulationFixtures::parameters()['owner']['pay_month_cents'])
+        ->and($result->cashAfterCents())->toBe(1_000_000 + $result->profitCents() - $result->ownerPayCents)
+        ->and($result->profitAfterOwnerPayCents())->toBe($result->profitCents() - $result->ownerPayCents)
         ->and($result->stateAfter->equipmentAgeMonths)->toBe(SimulationFixtures::state()->equipmentAgeMonths + 1);
 });
 

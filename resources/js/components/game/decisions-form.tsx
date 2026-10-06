@@ -471,7 +471,9 @@ export function DecisionsForm({
                             </div>
                             <p className="pt-1 text-xs text-muted-foreground">
                                 Plus stock, insurance, maintenance, the cuota de
-                                autónomo, taxes and any events.
+                                autónomo, taxes and any events. On top, you take{' '}
+                                {formatCents(costHints.owner_pay_cents)} a month
+                                to live on.
                             </p>
                         </div>
 

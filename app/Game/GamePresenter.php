@@ -115,7 +115,7 @@ final class GamePresenter
             // Cash on the day the business was bought, where the cash chart starts.
             'opening_cash_cents' => $results->isEmpty()
                 ? $game->cash_cents
-                : $results->first()->cash_after_cents - $results->first()->profit_cents,
+                : $results->first()->cash_after_cents - $results->first()->profit_cents + $results->first()->owner_pay_cents,
             // For the decisions screen's cost estimate; the engine's own numbers.
             'cost_hints' => [
                 'staff_per_person_cents' => $costs->staff(1),
@@ -123,6 +123,7 @@ final class GamePresenter
                 'full_time_hours_per_week' => $sheet->float('staff.full_time_hours_per_week'),
                 'owner_hours_per_week' => $sheet->float('service.owner_hours_per_week'),
                 'min_on_shift' => $sheet->float('staff.min_on_shift'),
+                'owner_pay_cents' => $sheet->int('owner.pay_month_cents'),
                 'rent_cents' => $state->profile->rentMonthCents,
                 'utilities_base_cents' => $sheet->int('utilities.base_month_cents'),
                 'utilities_per_open_hour_cents' => $sheet->int('utilities.per_open_hour_cents'),
@@ -132,7 +133,7 @@ final class GamePresenter
                 ...$r->only([
                     'month', 'calendar_month', 'customers', 'revenue_cents', 'event_revenue_cents', 'cogs_cents',
                     'staff_cents', 'rent_cents', 'utilities_cents', 'marketing_cents', 'other_cents', 'taxes_cents',
-                    'profit_cents', 'cash_after_cents', 'day_parts',
+                    'profit_cents', 'owner_pay_cents', 'cash_after_cents', 'day_parts',
                 ]),
             ])->all(),
             'events' => $game->events()->get()->map(fn (GameEvent $e) => $e->only([

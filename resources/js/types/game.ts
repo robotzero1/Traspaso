@@ -105,6 +105,8 @@ export type MonthResultRow = {
     other_cents: number;
     taxes_cents: number;
     profit_cents: number;
+    /** What you took out to live on that month (not a business cost). */
+    owner_pay_cents: number;
     cash_after_cents: number;
     day_parts: DayPartResult[];
 };
@@ -164,6 +166,7 @@ export type CostHints = {
     full_time_hours_per_week: number;
     owner_hours_per_week: number;
     min_on_shift: number;
+    owner_pay_cents: number;
     rent_cents: number;
     utilities_base_cents: number;
     utilities_per_open_hour_cents: number;

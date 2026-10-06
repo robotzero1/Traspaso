@@ -47,6 +47,15 @@ return [
     ],
 
     // The business as the player finds it on the first day.
+    // What the owner takes out of the business each month to live on. It
+    // isn't a business cost (profit is before it, and taxes are on profit),
+    // but it leaves the cash every month, so a café that can't pay its
+    // owner runs down their savings. Goodwill is valued on profit after it.
+    'owner' => [
+        'source' => 'Game design: about the minimum wage after tax (user, 2026)',
+        'pay_month_cents' => 120_000,
+    ],
+
     'takeover' => [
         'source' => 'PLACEHOLDER: game design',
         // Owner plus one employee (balancing pass: two cost more than a
@@ -400,9 +409,10 @@ return [
     //                × quality factor
     'capture' => [
         'source' => 'PLACEHOLDER: game design, to tune in the balancing pass',
-        // Balancing pass (milestone 9): a thoughtful player's median year
-        // lands near +20% on the real Zaragoza surface (market:balance).
-        'base_rate' => 0.040,
+        // Calibrated (market:balance) so that, once the owner takes their
+        // pay, 20–25% of typical new cafés fail in year 1, as INE/DIRCE and
+        // Hostelería de España report for new cafés and bars.
+        'base_rate' => 0.077,
         'price_elasticity' => 0.7,
         'reputation' => ['base' => 0.3, 'per_point' => 0.014],
         'quality' => ['base' => 0.75, 'per_point' => 0.005],

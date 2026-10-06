@@ -15,9 +15,10 @@ final class NeighbourhoodIndexer
      * @param  list<array{name: string, geometry: array<string, mixed>, population: int, built_up?: array{area_km2: float, centre: array{0: float, 1: float}}|null}>  $neighbourhoods
      * @param  list<array{type: string, lat: float, lng: float, competitor: bool}>  $pois
      * @param  array<string, array<string, float>|string>  $indexWeights  index → POI type → weight (other keys, like a source note, are ignored)
+     * @param  float  $coverage  share of real cafés and bars mapped in OSM; competition density is scaled up by its inverse
      * @return list<array<string, mixed>> one row per neighbourhood
      */
-    public static function index(array $neighbourhoods, array $pois, array $indexWeights): array
+    public static function index(array $neighbourhoods, array $pois, array $indexWeights, float $coverage = 1.0): array
     {
         $indexWeights = array_filter($indexWeights, 'is_array');
 
@@ -54,7 +55,7 @@ final class NeighbourhoodIndexer
                 'population' => $n['population'],
                 'area_km2' => round($area, 3),
                 'boundary_area_km2' => round($boundaryArea, 3),
-                'competition_density' => round($competitors / $area, 1),
+                'competition_density' => round($competitors / $area / $coverage, 1),
                 'centre' => [round($lat, 6), round($lng, 6)],
                 // For the map's fallback circle: the radius of a circle with the built-up area.
                 'radius_m' => (int) round(sqrt($area / M_PI) * 1000),

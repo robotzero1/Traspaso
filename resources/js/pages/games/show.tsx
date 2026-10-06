@@ -83,7 +83,9 @@ export default function GameShow(props: Props) {
                     </section>
                 )}
 
-                {game.phase === 'over' && <GameOver game={game} />}
+                {game.phase === 'over' && (
+                    <GameOver game={game} results={props.results ?? []} />
+                )}
                 {game.phase === 'ending' && (
                     <EndOfYear
                         game={game}
@@ -476,9 +478,19 @@ function EndOfYear({ game, value }: { game: GameSummary; value: number }) {
     );
 }
 
-function GameOver({ game }: { game: GameSummary }) {
+function GameOver({
+    game,
+    results,
+}: {
+    game: GameSummary;
+    results: MonthResultRow[];
+}) {
     const final = game.final_net_worth_cents ?? game.net_worth_cents;
     const change = final / game.starting_capital_cents - 1;
+    const profit = results.reduce((sum, r) => sum + r.profit_cents, 0);
+    const pay = results.reduce((sum, r) => sum + r.owner_pay_cents, 0);
+    // How the closure statistics count it: out of cash, or couldn't pay its owner.
+    const survived = game.status !== 'bankrupt' && profit >= pay;
 
     return (
         <section className="space-y-2 rounded-xl border p-4">
@@ -504,6 +516,16 @@ function GameOver({ game }: { game: GameSummary }) {
                     ({formatPercent(change, 1)})
                 </span>
             </p>
+            {results.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                    Over {results.length} months the café made{' '}
+                    {formatCents(profit)} and you paid yourself{' '}
+                    {formatCents(pay)}.{' '}
+                    {survived
+                        ? 'It paid its way: it would have survived its first year.'
+                        : "It couldn't pay you a living, so in real life it would have closed or been sold on. One in four or five new cafés and bars in Spain closes within its first year (INE)."}
+                </p>
+            )}
         </section>
     );
 }

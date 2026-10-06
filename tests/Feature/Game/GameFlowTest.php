@@ -223,7 +223,8 @@ it('plays a month and stores the results', function () {
         ->and($result->calendar_month)->toBe($game->calendarMonth(1))
         ->and($result->customers)->toBeGreaterThan(0)
         ->and($result->cash_after_cents)->toBe($game->cash_cents)
-        ->and($game->cash_cents)->toBe($cashBefore + $result->profit_cents)
+        ->and($result->owner_pay_cents)->toBe(config('market.zaragoza_cafe.owner.pay_month_cents'))
+        ->and($game->cash_cents)->toBe($cashBefore + $result->profit_cents - $result->owner_pay_cents)
         ->and($result->day_parts)->toHaveCount(3)
         ->and($game->states()->where('month', 1)->sole()->decisions['staff_count'])->toBe(config('market.zaragoza_cafe.default_decisions.staff_count'));
 });
@@ -399,6 +400,7 @@ it('gives the screens the opening cash and cost hints', function () {
         ->where('cost_hints.rent_cents', 70_000)
         ->where('cost_hints.staff_per_person_cents', (new MonthlyCosts(new ParameterSheet(config('market.zaragoza_cafe'))))->staff(1))
         ->has('cost_hints.cogs_share.premium')
+        ->where('cost_hints.owner_pay_cents', config('market.zaragoza_cafe.owner.pay_month_cents'))
         ->where('cost_hints.min_on_shift', fn ($v) => (float) $v === (float) config('market.zaragoza_cafe.staff.min_on_shift'))
         ->has('results.0.day_parts', 3));
 });

@@ -24,6 +24,12 @@ const lines: Line[] = [
     },
     { label: 'Taxes', value: (r) => r.taxes_cents, kind: 'cost' },
     { label: 'Profit', value: (r) => r.profit_cents, kind: 'total' },
+    { label: 'Your pay', value: (r) => r.owner_pay_cents, kind: 'cost' },
+    {
+        label: 'Left after your pay',
+        value: (r) => r.profit_cents - r.owner_pay_cents,
+        kind: 'total',
+    },
 ];
 
 /** Profit and loss: one column per month and a year-to-date total. */

@@ -121,6 +121,12 @@ return [
     // Cafés and bars counted for competition_density.
     'competitor_tags' => ['amenity' => ['cafe', 'bar', 'pub']],
 
+    // Share of real premises that are mapped in OSM. Zaragoza has about
+    // 3,000–3,500 hospitality establishments (IAEST / Asociación Café Bares
+    // de Zaragoza); OSM had 2,152 cafés, bars and restaurants in October
+    // 2026, so about 65%. competition_density is scaled up by 1 / this.
+    'osm_coverage' => ['source' => 'IAEST, Asociación Café Bares de Zaragoza (user, 2026) vs OSM count', 'hospitality' => 0.65],
+
     // POI types shown on the map's landmark layer (the rest feed the model).
     'map_poi_types' => ['university', 'station', 'tourism', 'park', 'market'],
 

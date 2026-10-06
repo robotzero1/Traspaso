@@ -149,7 +149,8 @@ simulateMonth(state, decisions, context, rng) -> MonthResult
                              (adjusted by price level)
 6. Costs                   COGS % (by quality tier), staff and utilities (scaled by
                              hours open), rent, cuota de autónomo, marketing,
-                             insurance, maintenance
+                             insurance, maintenance; then the owner's own pay
+                             leaves the cash (not a business cost)
 7. Events                  roll each event's probability; apply its effects
 8. State evolution         reputation moves toward (quality − price gap + service);
                              equipment wears; staff morale reacts to workload
@@ -178,7 +179,7 @@ Opening hours are a choice of **which parts of the day** to open for, not a numb
 
 **Balance tests** (Pest, using fixed seeds; rivals at the distances measured on the real surface, see `docs/balance-report.md`):
 
-- An average business, played with average decisions, ends year 1 between −10% and +25%.
+- An average business, played with average decisions, pays its owner and survives year 1 (calibrated to real closure rates: 20–25% of new cafés and bars close within 12 months, INE/DIRCE).
 - A great location with bad management loses money.
 - A mediocre location with good management survives.
 - Raising prices 50% above the local average makes revenue fall within three months.

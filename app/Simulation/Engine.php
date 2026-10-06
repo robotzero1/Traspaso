@@ -129,7 +129,9 @@ final class Engine
 
         // 6. Costs
         $costs = (new MonthlyCosts($sheet))->calculate($state, $decisions, $season, $revenueCents, $modifiers, $eventCostCents);
-        $cashAfter = $state->cashCents + $revenueCents - $costs->totalCents();
+        // The owner's pay leaves the cash too, whatever the month brought in.
+        $ownerPay = $sheet->int('owner.pay_month_cents');
+        $cashAfter = $state->cashCents + $revenueCents - $costs->totalCents() - $ownerPay;
 
         // 8. State evolution, then this month's events on top
         $stateAfter = (new StateEvolution($sheet))->next($state, $decisions, $quality, $utilisation, $cashAfter);
@@ -160,6 +162,7 @@ final class Engine
             dayParts: $dayParts,
             resolvedEvents: array_map(fn (EventOccurrence $o) => $o->record, $resolved),
             eventRevenueCents: $eventRevenueCents,
+            ownerPayCents: $ownerPay,
         );
     }
 

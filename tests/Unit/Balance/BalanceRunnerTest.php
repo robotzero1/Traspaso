@@ -134,12 +134,21 @@ it('checks the milestone targets', function () {
 
     $targets = (new BalanceReport($outcomes))->targets();
 
-    expect(array_column($targets, 'target'))->toContain('Careless player: median year below −20%')
-        ->and(collect($targets)->firstWhere('target', 'Careless player: median year below −20%')['pass'])->toBeTrue();
+    expect(array_column($targets, 'target'))->toContain('Careless player: 90% or more fail', 'Typical new owner (default settings): 20–25% fail in year 1')
+        ->and(collect($targets)->firstWhere('target', 'Careless player: 90% or more fail')['pass'])->toBeTrue();
 });
 
 it('groups footfall into bands of two', function () {
     $at = fn (float $f) => BalanceReport::footfallBand(new GameOutcome('x', 1, 1, true, 'A', $f));
 
     expect($at(0.4))->toBe('0–2')->and($at(5.1))->toBe('4–6')->and($at(10.0))->toBe('8–10');
+});
+
+it('counts a café as failed when the cash runs out or it can not pay its owner', function () {
+    $outcome = fn (int $profit, ?int $bankruptIn = null) => new GameOutcome('x', 1, 100_000, true, 'A', 5.0, monthsPlayed: 12, bankruptInMonth: $bankruptIn, totalProfitCents: $profit, netWorthCents: 0, ownerPaidCents: 1_440_000);
+
+    expect($outcome(1_500_000)->failed())->toBeFalse()
+        ->and($outcome(1_000_000)->failed())->toBeTrue()
+        ->and($outcome(2_000_000, bankruptIn: 7)->failed())->toBeTrue()
+        ->and((new GameOutcome('x', 1, 100_000, bought: false))->failed())->toBeFalse();
 });

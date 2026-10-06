@@ -9,7 +9,8 @@ use App\Simulation\Data\ParameterSheet;
  * What a buyer would pay for the business: the location and licence part
  * of what it was bought for, its fixtures worn down with the equipment,
  * plus goodwill from recent profits and reputation. Used for net worth
- * and for selling at the end of the game.
+ * and for selling at the end of the game. Goodwill counts profit after the
+ * owner's pay: a buyer has to pay themselves too.
  */
 final readonly class BusinessValuation
 {
@@ -48,7 +49,8 @@ final readonly class BusinessValuation
             return 0.0;
         }
 
-        $annualProfit = max(0.0, array_sum($recent) / count($recent) * 12);
+        $monthly = array_sum($recent) / count($recent) - $this->sheet->int('owner.pay_month_cents');
+        $annualProfit = max(0.0, $monthly * 12);
         $reputationFactor = $this->sheet->float('valuation.reputation_base')
             + $this->sheet->float('valuation.reputation_per_point') * $state->reputation;
 

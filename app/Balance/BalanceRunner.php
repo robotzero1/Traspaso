@@ -67,6 +67,7 @@ final readonly class BalanceRunner
 
         $engine = new Engine;
         $profits = [];
+        $ownerPaid = 0;
         $months = $this->sheet->int('game.months');
 
         for ($month = 1; $month <= $months; $month++) {
@@ -78,11 +79,12 @@ final readonly class BalanceRunner
             );
 
             $profits[] = $result->profitCents();
+            $ownerPaid += $result->ownerPayCents;
             $state = $result->stateAfter;
             $competitors = $result->competitorsAfter;
 
             if ($state->cashCents < 0) {
-                return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, $month, $profits, $state->cashCents + $deposit);
+                return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, $month, $profits, $state->cashCents + $deposit, $ownerPaid);
             }
 
             $decisions = $strategy->adjust($decisions->with(eventChoices: []), $result, $business, $this->sheet);
@@ -90,7 +92,7 @@ final readonly class BalanceRunner
 
         $value = (new BusinessValuation($this->sheet))->valueCents($state, $business->traspasoCents, $profits);
 
-        return $this->outcome($strategy, $seed, $capital, $business, $rivals, $months, null, $profits, $state->cashCents + $deposit + $value);
+        return $this->outcome($strategy, $seed, $capital, $business, $rivals, $months, null, $profits, $state->cashCents + $deposit + $value, $ownerPaid);
     }
 
     /**
@@ -145,7 +147,7 @@ final readonly class BalanceRunner
     }
 
     /** @param list<int> $profits */
-    private function outcome(Strategy $strategy, int $seed, int $capital, GeneratedBusiness $business, int $rivals, int $monthsPlayed, ?int $bankruptIn, array $profits, int $netWorth): GameOutcome
+    private function outcome(Strategy $strategy, int $seed, int $capital, GeneratedBusiness $business, int $rivals, int $monthsPlayed, ?int $bankruptIn, array $profits, int $netWorth, int $ownerPaid): GameOutcome
     {
         return new GameOutcome(
             strategy: $strategy->key(),
@@ -161,6 +163,7 @@ final readonly class BalanceRunner
             bankruptInMonth: $bankruptIn,
             totalProfitCents: array_sum($profits),
             netWorthCents: $netWorth,
+            ownerPaidCents: $ownerPaid,
         );
     }
 }

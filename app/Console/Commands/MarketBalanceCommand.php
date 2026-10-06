@@ -119,7 +119,8 @@ class MarketBalanceCommand extends Command
             $rows[] = [$strategy->key(), $s['bought'].'/'.$s['games'], ...$this->spread($s), sprintf('%.1f', $s['rivals'])];
         }
 
-        $this->table(['Strategy', 'Bought', 'p10', 'p25', 'Median', 'p75', 'p90', 'Ahead', 'Bankrupt', 'Rivals'], $rows);
+        $this->table(['Strategy', 'Bought', 'p10', 'p25', 'Median', 'p75', 'p90', 'Ahead', 'Bankrupt', 'Failed', 'Rivals'], $rows);
+        $this->line('  Failed: ran out of cash, or didn\'t earn enough over the year to pay the owner.');
 
         foreach ($strategies as $strategy) {
             $this->line("  <comment>{$strategy->key()}</comment>: {$strategy->description()}");
@@ -132,7 +133,7 @@ class MarketBalanceCommand extends Command
     private function groupTable(string $title, array $groups): void
     {
         $this->line("<info>{$title}</info>");
-        $this->table(['', 'Games', 'p10', 'p25', 'Median', 'p75', 'p90', 'Ahead', 'Bankrupt'], array_map(
+        $this->table(['', 'Games', 'p10', 'p25', 'Median', 'p75', 'p90', 'Ahead', 'Bankrupt', 'Failed'], array_map(
             fn (string $name, array $s) => [$name, $s['bought'], ...$this->spread($s)],
             array_keys($groups),
             $groups,
@@ -144,6 +145,6 @@ class MarketBalanceCommand extends Command
     {
         $pct = fn (float $v) => sprintf('%+.0f%%', $v * 100);
 
-        return [$pct($s['p10']), $pct($s['p25']), $pct($s['median']), $pct($s['p75']), $pct($s['p90']), sprintf('%.0f%%', $s['gained'] * 100), sprintf('%.1f%%', $s['bankrupt'] * 100)];
+        return [$pct($s['p10']), $pct($s['p25']), $pct($s['median']), $pct($s['p75']), $pct($s['p90']), sprintf('%.0f%%', $s['gained'] * 100), sprintf('%.1f%%', $s['bankrupt'] * 100), sprintf('%.0f%%', $s['failed'] * 100)];
     }
 }

@@ -13,7 +13,7 @@ it('plays games for each strategy and reports the distributions and targets', fu
     $this->artisan('market:balance', ['--games' => 3])
         ->expectsOutputToContain('3 games × 5 strategies')
         ->expectsOutputToContain('Thoughtful player by district')
-        ->expectsOutputToContain('Careless player: median year below −20%')
+        ->expectsOutputToContain('Typical new owner (default settings): 20–25% fail in year 1')
         ->assertSuccessful();
 });
 

@@ -61,7 +61,7 @@ final class GeoBuild
             }
         }
 
-        $indexed = NeighbourhoodIndexer::index($neighbourhoods, $pois, $this->config['indices']);
+        $indexed = NeighbourhoodIndexer::index($neighbourhoods, $pois, $this->config['indices'], (float) ($this->config['osm_coverage']['hospitality'] ?? 1.0));
         $surface = (new FootfallSurfaceBuilder($this->config['footfall'], $this->config['street_types']))
             ->build($streets, $pois, $neighbourhoods, $progress);
 

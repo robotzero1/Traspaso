@@ -25,18 +25,30 @@ it('wears the fixtures down with the equipment', function () {
 
 it('adds goodwill from recent profits and reputation', function () {
     $state = SimulationFixtures::state();
+    $pay = SimulationFixtures::parameters()['owner']['pay_month_cents'];
 
-    expect(valuation()->goodwillCents($state, [100_000, 100_000]))->toBeGreaterThan(0.0)
-        ->and(valuation()->goodwillCents($state->with(reputation: 90.0), [100_000]))
-        ->toBeGreaterThan(valuation()->goodwillCents($state->with(reputation: 20.0), [100_000]))
-        ->and(valuation()->valueCents($state, 2_000_000, [200_000]))
+    expect(valuation()->goodwillCents($state, [$pay + 100_000, $pay + 100_000]))->toBeGreaterThan(0.0)
+        ->and(valuation()->goodwillCents($state->with(reputation: 90.0), [$pay + 100_000]))
+        ->toBeGreaterThan(valuation()->goodwillCents($state->with(reputation: 20.0), [$pay + 100_000]))
+        ->and(valuation()->valueCents($state, 2_000_000, [$pay + 200_000]))
         ->toBeGreaterThan(valuation()->valueCents($state, 2_000_000, [0]));
+});
+
+it('values only the profit left after paying the owner', function () {
+    $state = SimulationFixtures::state();
+    $config = SimulationFixtures::parameters();
+    $pay = $config['owner']['pay_month_cents'];
+    $factor = $config['valuation']['reputation_base'] + $config['valuation']['reputation_per_point'] * $state->reputation;
+
+    expect(valuation()->goodwillCents($state, [$pay]))->toBe(0.0)
+        ->and(valuation()->goodwillCents($state, [$pay + 50_000]))
+        ->toEqualWithDelta($config['valuation']['profit_multiple_years'] * 50_000 * 12 * $factor, 1e-6);
 });
 
 it('counts only the most recent months', function () {
     $months = SimulationFixtures::parameters()['valuation']['profit_months'];
     $old = array_fill(0, 5, -1_000_000);
-    $recent = array_fill(0, $months, 100_000);
+    $recent = array_fill(0, $months, SimulationFixtures::parameters()['owner']['pay_month_cents'] + 100_000);
 
     expect(valuation()->goodwillCents(SimulationFixtures::state(), [...$old, ...$recent]))
         ->toBe(valuation()->goodwillCents(SimulationFixtures::state(), $recent));

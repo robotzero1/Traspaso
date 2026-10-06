@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $other_cents
  * @property int $taxes_cents
  * @property int $profit_cents
+ * @property int $owner_pay_cents
  * @property int $cash_after_cents
  * @property list<array<string, mixed>> $day_parts
  * @property list<array<string, mixed>> $events
@@ -32,7 +33,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'game_id', 'month', 'calendar_month', 'customers', 'revenue_cents', 'event_revenue_cents', 'cogs_cents',
     'staff_cents', 'rent_cents', 'utilities_cents', 'marketing_cents', 'other_cents', 'taxes_cents',
-    'profit_cents', 'cash_after_cents', 'day_parts', 'events',
+    'profit_cents', 'owner_pay_cents', 'cash_after_cents', 'day_parts', 'events',
 ])]
 class MonthResult extends Model
 {
@@ -58,6 +59,7 @@ class MonthResult extends Model
             'other_cents' => 'integer',
             'taxes_cents' => 'integer',
             'profit_cents' => 'integer',
+            'owner_pay_cents' => 'integer',
             'cash_after_cents' => 'integer',
             'day_parts' => 'array',
             'events' => 'array',
