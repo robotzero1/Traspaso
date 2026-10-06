@@ -172,7 +172,7 @@ Opening hours are a choice of **which parts of the day** to open for, not a numb
 | `night` | copas after midnight | tourist, student; needs a `cafe_bar` or `bar_musical` licence |
 
 - The player picks any non-empty set of day parts, with gaps allowed (a split shift), plus open days per week.
-- Each day part's hour span (for staff and utility costs), demand mix and average ticket live in `config/market/*.php`.
+- Each day part's hour span (for staff and utility costs), demand mix, average ticket and stop factor (how readily passers-by stop in: high for a quick coffee, lower for a meal) live in `config/market/*.php`.
 - Opening for a day part with little local demand should cost more in wages and utilities than it brings in. Every open hour needs at least `staff.min_on_shift` people on the floor; hours the owner and staff can't cover are paid as part-time cover at the hourly staff cost.
 - Which day parts a licence allows is a rule the engine enforces, not something the DTO checks.
 

@@ -11,7 +11,9 @@ use InvalidArgumentException;
 
 /**
  * Step 2: how many people near the business might come in during a day
- * part over the month, before reputation, price and competition.
+ * part over the month, before reputation, price and competition. The day
+ * part's stop factor counts how readily people stop: more for a quick
+ * coffee than for a meal.
  *
  * With the footfall surface (SPEC §8), the business has a footfall for
  * each day part, which already says when people are about. Without it, the
@@ -39,6 +41,7 @@ final readonly class PotentialCustomers
 
         return $perHour
             * $this->sheet->float("day_parts.{$part->value}.intensity")
+            * $this->sheet->float("day_parts.{$part->value}.stop_factor")
             * ($surface !== null ? 1.0 : $this->demandMix($profile->neighbourhood, $part))
             * $this->appeal($profile, $part)
             * (new DayPartSchedule($this->sheet))->hours($part)

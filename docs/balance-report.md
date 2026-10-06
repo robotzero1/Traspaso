@@ -15,7 +15,7 @@ draws its starting capital (€20k–€100k, whole thousands) and its starting 
 from the seed. Net worth = cash + the landlord's deposit + the business's value;
 cash below zero ends the game with cash + deposit.
 
-Data: the committed Zaragoza build (15 districts, 2020 padrón populations,
+Results are after all the changes listed below. Data: the committed Zaragoza build (15 districts, 2020 padrón populations,
 7,013 commercial street points, 1,129 cafés and bars). Code and config as of
 this pass.
 
@@ -35,20 +35,20 @@ Net worth change over the year, as a share of starting capital.
 
 | Strategy | p10 | p25 | Median | p75 | p90 | Ahead | Bankrupt | Profit/month (median) |
 |---|---|---|---|---|---|---|---|---|
-| thoughtful | −19% | −4% | **+20%** | +50% | +87% | 71% | 1.1% | €900 |
-| default | −43% | −22% | **−5%** | +17% | +39% | 43% | 4.3% | €161 |
-| cheapest | −85% | −56% | **−36%** | −26% | −15% | 2% | 8.6% | −€1,813 |
-| premium | −60% | −20% | **+22%** | +77% | +135% | 62% | 9.9% | €1,403 |
-| careless | −118% | −112% | **−107%** | −102% | −99% | 0% | 100% | −€9,990 |
+| thoughtful | −18% | −3% | **+20%** | +51% | +88% | 72% | 1.1% | €923 |
+| default | −43% | −22% | **−5%** | +17% | +40% | 44% | 4.2% | €184 |
+| cheapest | −85% | −55% | **−36%** | −25% | −15% | 2% | 8.4% | −€1,801 |
+| premium | −46% | −16% | **+27%** | +84% | +143% | 66% | 7.5% | €1,574 |
+| careless | −119% | −112% | **−107%** | −102% | −99% | 0% | 100% | −€10,074 |
 
 ### Targets
 
 | Target | Actual | |
 |---|---|---|
 | Thoughtful player: median year between +5% and +25% | +20% | pass |
-| Thoughtful player: at least 60% end up ahead | 71% | pass |
+| Thoughtful player: at least 60% end up ahead | 72% | pass |
 | Thoughtful player: under 5% go bankrupt | 1.1% | pass |
-| Thoughtful player: no district (10+ games) with a median below −10% | −1% (worst) | pass |
+| Thoughtful player: no district (10+ games) with a median below −10% | 0% (worst) | pass |
 | Default settings: median year between −10% and +10% | −5% | pass |
 | Thoughtful beats default settings by 5+ points (median) | +25 points | pass |
 | Careless player: median year below −20% | −107% | pass |
@@ -129,6 +129,15 @@ The first run on the real data, before any change:
    at a quiet café now roughly breaks even; at a busy one it still pays.
 5. **Overall level.** → `capture.base_rate` 0.0455 → **0.040**, which puts the
    thoughtful player's median near +20%.
+6. **Morning and afternoon tickets were too high** (€3.50–€5.00, a full
+   breakfast). Most people just have a coffee at the bar, about €1.50 in
+   Zaragoza. → `average_ticket_cents` morning **€1.80–€3.00**, afternoon
+   **€2.00–€3.50**. A cheap coffee is an easy stop, so more passers-by come
+   in: a new per-day-part `stop_factor` (morning **1.8**, afternoon **1.55**,
+   others 1.0) multiplies potential customers, and morning seat turnover is
+   **2.5** an hour (many drink standing at the bar). Morning revenue is about
+   what it was, from roughly twice the customers each spending half as much,
+   so the balance above holds.
 
 The SPEC §6 balance tests were brought in line with the real game:
 

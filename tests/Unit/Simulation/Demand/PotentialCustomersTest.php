@@ -21,13 +21,14 @@ function evenNeighbourhood(): NeighbourhoodProfile
     return new NeighbourhoodProfile('Even', 60_000, 5.0, 5.0, 5.0, 5.0, 50.0);
 }
 
-it('computes potential from footfall, intensity, appeal, hours, days and season', function () {
+it('computes potential from footfall, intensity, stop factor, appeal, hours, days and season', function () {
     $parameters = SimulationFixtures::parameters();
     $profile = SimulationFixtures::profile()->with(neighbourhood: evenNeighbourhood(), footfall: 10.0, kitchen: Kitchen::Basic);
     $part = $parameters['day_parts']['morning'];
 
     $expected = $parameters['demand']['potential_per_hour_at_footfall_10']
         * $part['intensity']
+        * $part['stop_factor']
         * 1.0 // an even neighbourhood's mix
         * $parameters['appeal']['category']['cafe']['morning']
         * ($part['end_hour'] - $part['start_hour'])
@@ -35,6 +36,15 @@ it('computes potential from footfall, intensity, appeal, hours, days and season'
 
     expect((new PotentialCustomers(SimulationFixtures::sheet()))->forDayPart($profile, DayPart::Morning, season(1.1), 0.9))
         ->toEqualWithDelta($expected, 1e-6);
+});
+
+it('brings more people in for a quick coffee than for a meal', function () {
+    $parameters = SimulationFixtures::parameters();
+    $sheet = fn (float $factor) => new ParameterSheet(array_replace_recursive($parameters, ['day_parts' => ['morning' => ['stop_factor' => $factor]]]));
+    $at = fn (float $factor) => (new PotentialCustomers($sheet($factor)))->forDayPart(SimulationFixtures::profile(), DayPart::Morning, season());
+
+    expect($at(2.0))->toEqualWithDelta(2 * $at(1.0), 1e-6)
+        ->and($parameters['day_parts']['morning']['stop_factor'])->toBeGreaterThan($parameters['day_parts']['lunch']['stop_factor']);
 });
 
 it('scales with footfall', function () {

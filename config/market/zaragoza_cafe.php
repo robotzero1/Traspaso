@@ -271,29 +271,33 @@ return [
         // Hours are on a 0–27 clock so night (0–3) sorts after evening.
         // intensity: how busy the street is in that day part (1.0 = typical).
         // turnover_per_seat_hour: covers a seat can serve per hour.
+        // stop_factor: how readily passers-by stop in (1.0 = typical). A
+        // quick coffee at the bar is an easy stop, so mornings and
+        // afternoons bring more customers who each spend less.
         // demand_mix: how much each driver contributes to that day part.
         'morning' => [
-            'intensity' => 1.2, 'turnover_per_seat_hour' => 1.5,
+            // Many drink their coffee standing at the bar: quick turnover.
+            'intensity' => 1.2, 'turnover_per_seat_hour' => 2.5, 'stop_factor' => 1.8,
             'start_hour' => 7, 'end_hour' => 12,
             'demand_mix' => ['office' => 0.35, 'transport' => 0.30, 'student' => 0.20, 'population' => 0.15],
         ],
         'lunch' => [
-            'intensity' => 1.0, 'turnover_per_seat_hour' => 1.0,
+            'intensity' => 1.0, 'turnover_per_seat_hour' => 1.0, 'stop_factor' => 1.0,
             'start_hour' => 12, 'end_hour' => 16,
             'demand_mix' => ['office' => 0.40, 'tourist' => 0.25, 'population' => 0.20, 'transport' => 0.15],
         ],
         'afternoon' => [
-            'intensity' => 0.8, 'turnover_per_seat_hour' => 1.0,
+            'intensity' => 0.8, 'turnover_per_seat_hour' => 1.0, 'stop_factor' => 1.55,
             'start_hour' => 16, 'end_hour' => 20,
             'demand_mix' => ['student' => 0.35, 'population' => 0.35, 'tourist' => 0.15, 'transport' => 0.15],
         ],
         'evening' => [
-            'intensity' => 0.9, 'turnover_per_seat_hour' => 0.8,
+            'intensity' => 0.9, 'turnover_per_seat_hour' => 0.8, 'stop_factor' => 1.0,
             'start_hour' => 20, 'end_hour' => 24,
             'demand_mix' => ['population' => 0.40, 'tourist' => 0.35, 'student' => 0.25],
         ],
         'night' => [
-            'intensity' => 0.6, 'turnover_per_seat_hour' => 0.6,
+            'intensity' => 0.6, 'turnover_per_seat_hour' => 0.6, 'stop_factor' => 1.0,
             'start_hour' => 24, 'end_hour' => 27,
             'demand_mix' => ['tourist' => 0.50, 'student' => 0.50],
         ],
@@ -329,12 +333,15 @@ return [
         'kitchen_day_parts' => ['lunch', 'evening'],
     ],
 
-    // Average spend per customer, including IVA, before price level.
+    // Average spend per customer, including IVA, before price level: the
+    // mix of what people order, not the price of a full meal. Many just
+    // have a coffee at the bar (a café con leche is about €1.50 in
+    // Zaragoza), others add a tostada or a pastry (about €3–3.50).
     'average_ticket_cents' => [
-        'source' => 'PLACEHOLDER: own observation / menus',
-        'morning' => ['min' => 350, 'max' => 500],
+        'source' => 'PLACEHOLDER: own observation / menus (morning and afternoon revised: most orders are a coffee)',
+        'morning' => ['min' => 180, 'max' => 300],
         'lunch' => ['min' => 450, 'max' => 1_000],
-        'afternoon' => ['min' => 350, 'max' => 500],
+        'afternoon' => ['min' => 200, 'max' => 350],
         'evening' => ['min' => 600, 'max' => 1_000],
         'night' => ['min' => 700, 'max' => 1_200],
     ],
