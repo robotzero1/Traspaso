@@ -187,9 +187,11 @@ return [
     |--------------------------------------------------------------------------
     */
 
+    // From Zaragoza café/bar traspaso listings (Oct 2026): compact coffee
+    // shops of 25–50 m² up to flagship cafés of ~200 m².
     'floor_area_m2' => [
-        'source' => 'PLACEHOLDER: manual sample of ~100 listings',
-        'percentiles' => [0 => 35, 10 => 40, 25 => 47, 50 => 55, 75 => 66, 90 => 80, 100 => 90],
+        'source' => 'Zaragoza café/bar listings sample, Oct 2026 (aggregated; no listings stored)',
+        'percentiles' => [0 => 25, 10 => 35, 25 => 45, 50 => 60, 75 => 90, 90 => 130, 100 => 220],
     ],
 
     'seating' => [
@@ -236,16 +238,19 @@ return [
     |
     */
 
+    // Zaragoza café/bar listings (Oct 2026): neighbourhood spots €400–700 a
+    // month, established cafés in active districts €800–1,800, prime
+    // streets €2,500 and up (flagships far more; capped here).
     'rent' => [
-        'source' => 'PLACEHOLDER: manual sample of ~100 listings',
+        'source' => 'Zaragoza café/bar listings sample and market tiers, Oct 2026 (aggregated; no listings stored)',
         'percentiles_cents' => [
             0 => 35_000,
-            10 => 50_000,
+            10 => 45_000,
             25 => 60_000,
-            50 => 72_500,
-            75 => 90_000,
-            90 => 115_000,
-            100 => 200_000,
+            50 => 90_000,
+            75 => 150_000,
+            90 => 250_000,
+            100 => 800_000,
         ],
         'rounding_cents' => 2_500,
         // Balancing pass: busy spots must cost more to rent, or the busiest
@@ -253,20 +258,25 @@ return [
         'correlation' => ['location' => 0.85, 'floor_area' => 0.4],
     ],
 
+    // Zaragoza café/bar listings (Oct 2026): €10–30k for small or
+    // neighbourhood places, €40–80k for established cafés in active
+    // districts, €90–250k+ on prime streets.
     'traspaso' => [
-        'source' => 'PLACEHOLDER: manual sample of ~100 listings',
+        'source' => 'Zaragoza café/bar listings sample and market tiers, Oct 2026 (aggregated; no listings stored)',
         'percentiles_cents' => [
-            0 => 300_000,
-            10 => 800_000,
-            25 => 1_200_000,
-            50 => 1_800_000,
-            75 => 2_700_000,
-            90 => 4_500_000,
-            100 => 9_000_000,
+            0 => 600_000,
+            10 => 1_200_000,
+            25 => 2_000_000,
+            50 => 4_000_000,
+            75 => 7_000_000,
+            90 => 11_000_000,
+            100 => 25_000_000,
         ],
         'rounding_cents' => 50_000,
-        // Balancing pass: the asking price follows the location (was 0.45).
-        'correlation' => ['location' => 0.8, 'condition' => 0.35, 'floor_area' => 0.2],
+        // The asking price follows the location, then condition and size;
+        // a kitchen with a smoke outlet (salida de humos, hard to get in a
+        // residential building) and a terrace permit add to it.
+        'correlation' => ['location' => 0.85, 'condition' => 0.25, 'floor_area' => 0.2, 'kitchen' => 0.2, 'terrace' => 0.15],
     ],
 
     /*
@@ -412,7 +422,7 @@ return [
         // Calibrated (market:balance) so that, once the owner takes their
         // pay, 20–25% of typical new cafés fail in year 1, as INE/DIRCE and
         // Hostelería de España report for new cafés and bars.
-        'base_rate' => 0.077,
+        'base_rate' => 0.091,
         'price_elasticity' => 0.7,
         'reputation' => ['base' => 0.3, 'per_point' => 0.014],
         'quality' => ['base' => 0.75, 'per_point' => 0.005],

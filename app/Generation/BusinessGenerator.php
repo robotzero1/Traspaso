@@ -133,11 +133,18 @@ final class BusinessGenerator
         // Second pass: location only means something relative to the rest
         // of the market, so score footfall by rank.
         $zLocation = $this->rankScores(array_column($drafts, 'footfall'));
+        // Features buyers pay extra for: a kitchen with a smoke outlet (hard
+        // to add in a residential building) and a terrace permit.
+        $zKitchen = $this->standardised(array_map(fn (array $d) => $d['kitchen'] === Kitchen::Full ? 1.0 : 0.0, $drafts));
+        $zTerrace = $this->standardised(array_map(fn (array $d) => $d['terraceSeats'] > 0 ? 1.0 : 0.0, $drafts));
         $names = new NameDrawer($this->sheet, $streams['name']);
         $businesses = [];
 
         foreach ($drafts as $i => $draft) {
-            $scores = ['location' => $zLocation[$i], 'floor_area' => $draft['zArea'], 'condition' => $draft['zCondition']];
+            $scores = [
+                'location' => $zLocation[$i], 'floor_area' => $draft['zArea'], 'condition' => $draft['zCondition'],
+                'kitchen' => $zKitchen[$i], 'terrace' => $zTerrace[$i],
+            ];
 
             $profile = new BusinessProfile(
                 category: $draft['category'],
@@ -287,6 +294,22 @@ final class BusinessGenerator
         }
 
         return sqrt(1.0 - $explained);
+    }
+
+    /**
+     * A yes/no feature as a score with mean 0 and variance 1 across the
+     * market, so it can sit beside the normal scores in a blend.
+     *
+     * @param  list<float>  $values
+     * @return list<float>
+     */
+    private function standardised(array $values): array
+    {
+        $n = count($values);
+        $mean = $n ? array_sum($values) / $n : 0.0;
+        $sd = $n ? sqrt(array_sum(array_map(fn (float $v) => ($v - $mean) ** 2, $values)) / $n) : 0.0;
+
+        return array_map(fn (float $v) => $sd > 0 ? ($v - $mean) / $sd : 0.0, $values);
     }
 
     /**

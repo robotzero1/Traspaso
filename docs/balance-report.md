@@ -15,17 +15,28 @@ draws its starting capital (€20k–€100k, whole thousands) and its starting 
 from the seed. Net worth = cash + the landlord's deposit + the business's value;
 cash below zero ends the game with cash + deposit.
 
-## Calibrated to real closure rates (current)
+## Calibrated to real closure rates and listing prices (current)
 
-The game aims to be a realistic simulation, so it is now calibrated to
-published closure statistics rather than to invented targets:
+The game aims to be a realistic simulation, so it is calibrated to real data
+rather than to invented targets:
 
 - **1-year mortality:** about 20–25% of new cafés and bars close within their
   first 12 months (INE via DIRCE; Hostelería de España).
-- **5-year survival:** about 45–50% (not usable in a 12-month game).
 - **Density:** Zaragoza has about 3,000–3,500 hospitality establishments
   (IAEST; Asociación Café Bares de Zaragoza). OpenStreetMap maps 2,152 of them,
   about 65%.
+- **Listing prices:** a sample of Zaragoza café and bar traspaso listings
+  (October 2026) with the market tiers around it. Only the resulting
+  distributions are stored, never the listings themselves:
+
+  | Tier | Traspaso | Rent a month | Typical premises |
+  |---|---|---|---|
+  | Low | €10–30k | €400–700 | 25–50 m², neighbourhood bars, coffee takeaways |
+  | Mid | €40–80k | €800–1,800 | established cafés in active districts |
+  | Prime | €90–250k+ | €2,500 and up | prime pedestrian streets |
+
+  A kitchen with a smoke outlet (salida de humos, often impossible to add in a
+  residential building) and a terrace permit raise the asking price.
 
 What changed:
 
@@ -40,53 +51,50 @@ What changed:
    the café paid its way.
 3. **Competition density is corrected for OpenStreetMap's coverage**
    (`geo.osm_coverage.hospitality` 0.65): densities are scaled up by 1/0.65.
-4. **Demand recalibrated:** `capture.base_rate` 0.040 → **0.077**, so that a
-   typical new owner (a random café on default settings) fails 20–25% of the
-   time. Before this, with the owner paid, 81% failed: the economy was far too
-   poor for three in four new cafés to survive.
+4. **Prices from the listings:** traspaso median €18k → **€40k** (0–100th
+   percentile €6k–€250k), rent median €725 → **€900** (€350–€8,000), floor area
+   35–90 m² → **25–220 m²**. The asking price follows location (0.85), then
+   condition, size, a full kitchen and a terrace.
+5. **Demand recalibrated:** `capture.base_rate` 0.040 → **0.091**, so that a
+   typical new owner (a random affordable café on default settings) fails
+   20–25% of the time. With the owner paid and the old demand, 81% failed.
 
 ### Results: 1,000 games per strategy
 
-| Strategy | Median net worth | Ahead | Bankrupt | **Failed in year 1** | Profit/month before your pay (median) |
-|---|---|---|---|---|---|
-| thoughtful | +55% | 88% | 0.6% | **9%** | €3,339 |
-| default (typical new owner) | +24% | 70% | 2.6% | **24%** | €2,418 |
-| cheapest | −36% | 8% | 10.1% | **91%** | −€530 |
-| premium | +145% | 95% | 0.5% | **2%** | €6,524 |
-| careless | −106% | 0% | 97.8% | **100%** | −€6,622 |
+| Strategy | Median net worth | Ahead | Bankrupt | **Failed in year 1** | Profit/month before your pay | Traspaso paid | Traspaso ÷ a year's profit after pay |
+|---|---|---|---|---|---|---|---|
+| thoughtful | +45% | 84% | 1.0% | **11%** | €2,966 | €16,500 | 0.7 |
+| default (typical new owner) | +24% | 68% | 3.8% | **23%** | €2,496 | €21,000 | 1.2 |
+| cheapest | −32% | 8% | 10.0% | **90%** | −€258 | €6,500 | — |
+| premium | +128% | 94% | 1.3% | **3%** | €6,083 | €38,500 | 0.6 |
+| careless | −106% | 0% | 99.0% | **100%** | — | — | — |
+
+(Medians. Players start with €20k–€100k, so most buy below the market's
+median traspaso.)
 
 | Target | Actual | |
 |---|---|---|
-| Typical new owner (default settings): 20–25% fail in year 1 | 24% | pass |
-| Thoughtful player: 12% or fewer fail in year 1 | 9% | pass |
-| Thoughtful player: median net worth doesn't fall | +55% | pass |
-| Thoughtful player: no district (10+ games) where over 30% fail | 23% (worst: La Almozara) | pass |
-| Thoughtful beats default settings by 5+ points (median net worth) | +31 points | pass |
+| Typical new owner (default settings): 20–25% fail in year 1 | 23% | pass |
+| Thoughtful player: 12% or fewer fail in year 1 | 11% | pass |
+| Thoughtful player: median net worth doesn't fall | +45% | pass |
+| Thoughtful player: no district (10+ games) where over 30% fail | 24% (worst: Casco Histórico) | pass |
+| Thoughtful beats default settings by 5+ points (median net worth) | +20 points | pass |
 | Careless player: 90% or more fail | 100% | pass |
 
-Thoughtful players fail most in La Almozara (23%) and Casco Histórico (20%),
-least in El Rabal (2%) and Universidad (3%). By footfall: 22% fail at 2–4,
-1% at 8–10.
+A typical owner's traspaso comes to about 1.2 years of profit after their pay,
+in line with the usual Spanish rule of thumb of 1–2 years.
 
-### Still unrealistic: rents and traspasos
+### Still unrealistic: the premium strategy
 
-With demand calibrated to real survival, the placeholder rent and traspaso
-distributions are now visibly out of line with what cafés earn:
-
-- **Traspasos are about 0.4–0.6 years of profit.** In Spain they are usually
-  quoted at 1–2 years. A café earning €29,000 a year for €16,500 is a bargain
-  no seller would offer, which is why net worth gains are large (+24% to
-  +55% medians).
-- **Rents are about 3–5% of sales.** Cafés usually pay 8–15%. A busy spot
-  (footfall 9+) rents for about €1,400 a month, where prime streets in
-  Zaragoza cost several thousand. So the premium player (the busiest
-  affordable spot) almost never fails and gains +145%.
-
-Real listing data, a sample of Zaragoza café traspasos with asking price, rent
-and floor area, would fix both. Failing that, rents and traspasos could be
-derived from each café's expected earnings by those rules of thumb. Either
-way, `market:balance` then needs rerunning and `capture.base_rate` retuning to
-keep year-1 failure at 20–25%.
+Buying the busiest affordable spot and running it upmarket (premium quality,
+prices 15% above average) almost never fails and gains +128%. Busy spots now
+cost much more, but the premium settings themselves are too generous: the
+better product and higher prices raise revenue per customer by about 30% while
+the 15% price rise loses only a few percent of customers. How customers in
+Zaragoza respond to quality and price (`capture.price_elasticity`,
+`capture.quality`, `ticket_position.tier`) needs real data, such as what
+speciality and upmarket cafés charge and how busy they are next to ordinary
+ones.
 
 ## History: the first balancing pass
 

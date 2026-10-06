@@ -254,6 +254,21 @@ it('asks a higher traspaso for busier, better-kept businesses', function () {
         ->and(spearman(array_map(fn ($b) => $b->profile->condition, $market), $traspaso))->toBeGreaterThan(0.2);
 });
 
+it('asks more for a kitchen with a smoke outlet and for a terrace', function () {
+    $market = largeMarket();
+    $median = function (array $businesses) {
+        $values = array_map(fn ($b) => $b->traspasoCents, $businesses);
+        sort($values);
+
+        return $values[intdiv(count($values), 2)];
+    };
+    $kitchen = fn (bool $full) => array_filter($market, fn ($b) => ($b->profile->kitchen === App\Simulation\Data\Kitchen::Full) === $full);
+    $terrace = fn (bool $has) => array_filter($market, fn ($b) => ($b->profile->terraceSeats > 0) === $has);
+
+    expect($median($kitchen(true)))->toBeGreaterThan($median($kitchen(false)))
+        ->and($median($terrace(true)))->toBeGreaterThan($median($terrace(false)));
+});
+
 it('pairs worse condition with older equipment', function () {
     $market = largeMarket();
 

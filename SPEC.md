@@ -191,9 +191,9 @@ Opening hours are a choice of **which parts of the day** to open for, not a numb
 
 | parameter | placeholder | to verify against |
 |---|---|---|
-| Rent €/month: P10 / P25 / median / P75 / P90 | 500 / 600 / 725 / 900 / 1,150 | manual sample of ~100 listings |
-| Traspaso €: P10 / P25 / median / P75 / P90 | 8k / 12k / 18k / 27k / 45k | same sample |
-| Floor area m² | 35–90, median 55 | same sample |
+| Rent €/month: P10 / P25 / median / P75 / P90 | 450 / 600 / 900 / 1,500 / 2,500 | Zaragoza listings sample and market tiers, Oct 2026 (aggregated) |
+| Traspaso €: P10 / P25 / median / P75 / P90 | 12k / 20k / 40k / 70k / 110k | same sample |
+| Floor area m² | 25–220, median 60 | Zaragoza listings sample, Oct 2026 (aggregated) |
 | Seats per m² (indoor) | ~0.5 | same sample |
 | Average ticket € (café) | 3.50–5.00 | own observation / menus |
 | Average ticket € (café-bar, evenings) | 6–10 | own observation |
