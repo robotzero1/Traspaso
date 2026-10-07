@@ -16,6 +16,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('games', [GameController::class, 'index'])->name('games.index');
     Route::post('games', [GameController::class, 'store'])->name('games.store');
+    Route::get('games/latest', [GameController::class, 'latest'])->name('games.latest');
     Route::get('games/{game}', [GameController::class, 'show'])->name('games.show');
     Route::post('games/{game}/purchase', [PurchaseController::class, 'store'])->name('games.purchase');
     Route::put('games/{game}/decisions', [DecisionsController::class, 'update'])->name('games.decisions');

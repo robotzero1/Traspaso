@@ -9,6 +9,7 @@ import {
     EffectsSummary,
 } from '@/components/game/decisions-form';
 import { GameHeader } from '@/components/game/game-header';
+import { LatestDayCard } from '@/components/game/latest-day';
 import { GameMap } from '@/components/game/game-map';
 import { DayPartBreakdown, PnlTable } from '@/components/game/pnl-table';
 import Heading from '@/components/heading';
@@ -26,6 +27,8 @@ import type {
     DayPartValue,
     DecisionLimits,
     DayResultRow,
+    LatestDay,
+    MonthToDate,
     Decisions,
     GameEventRow,
     GameSummary,
@@ -52,6 +55,8 @@ type Props = {
     cost_hints?: CostHints;
     results?: MonthResultRow[];
     days?: DayResultRow[];
+    latest_day?: LatestDay | null;
+    month_to_date?: MonthToDate | null;
     events?: GameEventRow[];
     competitors?: Competitor[];
 };
@@ -140,6 +145,12 @@ function Playing(
 
     return (
         <div className="space-y-4">
+            {props.latest_day && (
+                <LatestDayCard
+                    day={props.latest_day}
+                    monthToDate={props.month_to_date ?? null}
+                />
+            )}
             <div
                 role="tablist"
                 aria-label="Game"

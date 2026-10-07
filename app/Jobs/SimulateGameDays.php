@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Actions\Game\SimulateDays;
 use App\Models\Game;
+use App\Push\NightlyNotifier;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -26,12 +27,12 @@ class SimulateGameDays implements ShouldBeUnique, ShouldQueue
         return (string) $this->gameId;
     }
 
-    public function handle(SimulateDays $days): void
+    public function handle(SimulateDays $days, NightlyNotifier $notifier): void
     {
         $game = Game::query()->find($this->gameId);
 
-        if ($game !== null) {
-            $days->handle($game, Game::today());
+        if ($game !== null && $days->handle($game, Game::today()) > 0) {
+            $notifier->notify($game->refresh());
         }
     }
 }

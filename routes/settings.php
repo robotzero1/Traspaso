@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\Settings\NotificationsController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -9,6 +11,10 @@ Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', '/settings/profile');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::get('settings/notifications', [NotificationsController::class, 'edit'])->name('notifications.edit');
+    Route::patch('settings/notifications', [NotificationsController::class, 'update'])->name('notifications.update');
+    Route::post('push/subscriptions', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
+    Route::delete('push/subscriptions', [PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
 });
 

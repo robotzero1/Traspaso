@@ -116,6 +116,17 @@ export type MonthResultRow = {
 };
 
 /** One day of the last month played. */
+export type LatestDay = DayResultRow & {
+    month: number;
+    cash_after_cents: number;
+};
+
+export type MonthToDate = {
+    days_open: number;
+    customers: number;
+    revenue_cents: number;
+};
+
 export type DayResultRow = {
     date: string;
     open: boolean;

@@ -53,6 +53,20 @@ php artisan market:balance --years=5   # the same over five years, with a surviv
 `market:balance` plays on whatever geo data is seeded; see
 `docs/balance-report.md` for the latest results and what they led to.
 
+## Push notifications and the app
+
+The game can be installed as an app (Settings → Notifications → Install, or
+the browser's "Add to Home Screen") and sends each night's results as a push
+notification. Push needs a key pair, generated once:
+
+```bash
+php artisan webpush:vapid   # prints WEBPUSH_PUBLIC_KEY / WEBPUSH_PRIVATE_KEY / WEBPUSH_SUBJECT for .env
+```
+
+Then turn notifications on for each device in Settings → Notifications.
+Browsers only allow push on HTTPS or `localhost`; on iPhone the app must be
+added to the home screen first. Without keys the game works but sends nothing.
+
 ## Map and real geo data
 
 The map uses OpenStreetMap tiles, loaded by your browser

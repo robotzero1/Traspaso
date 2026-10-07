@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Game;
 
 use App\Actions\Game\StartGame;
+use App\Enums\GameStatus;
 use App\Game\GamePresenter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Game\StoreGameRequest;
@@ -15,6 +16,14 @@ use Inertia\Response;
 
 class GameController extends Controller
 {
+    /** Where the installed app opens: the player's latest active café, else the game list. */
+    public function latest(Request $request): RedirectResponse
+    {
+        $game = $request->user()->games()->where('status', GameStatus::Active)->latest('updated_at')->latest('id')->first();
+
+        return $game ? to_route('games.show', $game) : to_route('games.index');
+    }
+
     public function index(Request $request, GamePresenter $presenter): Response
     {
         $capital = config('market.zaragoza_cafe.game.starting_capital_cents');

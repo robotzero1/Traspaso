@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#2a78d6"/>
+  <!-- Saucer -->
+  <rect x="110" y="352" width="292" height="26" rx="13" fill="#ffffff"/>
+  <!-- Cup -->
+  <path d="M136 196 h208 v84 a84 84 0 0 1 -84 84 h-40 a84 84 0 0 1 -84 -84 z" fill="#ffffff"/>
+  <!-- Handle -->
+  <path d="M344 220 h22 a42 42 0 0 1 0 84 h-26" fill="none" stroke="#ffffff" stroke-width="22" stroke-linecap="round"/>
+  <!-- Steam -->
+  <path d="M200 160 c-16 -20 16 -36 0 -60 M256 160 c-16 -20 16 -36 0 -60 M312 160 c-16 -20 16 -36 0 -60" fill="none" stroke="#ffffff" stroke-width="14" stroke-linecap="round"/>
+</svg>

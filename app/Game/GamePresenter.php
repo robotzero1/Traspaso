@@ -142,6 +142,9 @@ final class GamePresenter
                     'profit_cents', 'owner_pay_cents', 'cash_after_cents', 'day_parts',
                 ]),
             ])->all(),
+            // The app opens on this (SPEC §11): the last day traded, and the
+            // month so far.
+            ...$this->latestDay($game),
             // The last month played, day by day.
             'days' => $results->isEmpty() ? [] : $game->dayResults()->where('month', $results->last()->month)->get()
                 ->map(fn (DayResult $d) => [
@@ -155,6 +158,31 @@ final class GamePresenter
                 ...$c->only(['key', 'name', 'distance_metres', 'price_level', 'quality', 'reputation', 'seats']),
                 ...$this->competitorLocation($c, $game->business),
             ])->all(),
+        ];
+    }
+
+    /** @return array{latest_day: array<string, mixed>|null, month_to_date: array<string, int>|null} */
+    private function latestDay(Game $game): array
+    {
+        $day = $game->dayResults()->reorder()->latest('date')->first();
+
+        if ($day === null) {
+            return ['latest_day' => null, 'month_to_date' => null];
+        }
+
+        $month = $game->dayResults()->where('month', $day->month);
+
+        return [
+            'latest_day' => [
+                'date' => $day->date->toDateString(),
+                'month' => $day->month,
+                ...$day->only(['open', 'weather', 'terrace_usable', 'customers', 'revenue_cents', 'events', 'cash_after_cents']),
+            ],
+            'month_to_date' => [
+                'days_open' => (clone $month)->where('open', true)->count(),
+                'customers' => (int) (clone $month)->sum('customers'),
+                'revenue_cents' => (int) (clone $month)->sum('revenue_cents'),
+            ],
         ];
     }
 
