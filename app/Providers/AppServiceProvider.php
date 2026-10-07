@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Generation\BusinessGenerator;
+use App\Payments\PaymentGateway;
+use App\Payments\StripeGateway;
 use App\Push\PushSender;
 use App\Push\WebPushSender;
 use Carbon\CarbonImmutable;
@@ -21,6 +23,7 @@ class AppServiceProvider extends ServiceProvider
         // The MVP has one market; the generator itself is market-agnostic.
         $this->app->bind(BusinessGenerator::class, fn () => new BusinessGenerator(config('market.zaragoza_cafe')));
         $this->app->bind(PushSender::class, WebPushSender::class);
+        $this->app->bind(PaymentGateway::class, StripeGateway::class);
     }
 
     /**

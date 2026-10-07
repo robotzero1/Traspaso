@@ -60,6 +60,24 @@ figures, and it runs 1,000 simulated five-year futures on the queue (about half
 a minute; keep `php artisan queue:work` running). The full report is meant to
 be paid for; for local testing put `VIABILITY_UNLOCK_ALL=true` in `.env`.
 
+## Payments
+
+The full viability report and the bigger capital tiers are paid for with
+Stripe Checkout (prices in `config/payments.php`). Put the keys in `.env`:
+
+```bash
+STRIPE_SECRET=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...   # from the webhook endpoint, or `stripe listen`
+STRIPE_TAX_RATE_ID=txr_...        # optional: an inclusive 21% IVA rate, shown on receipts
+```
+
+The webhook endpoint is `/stripe/webhook` (events `checkout.session.completed`
+and `checkout.session.async_payment_succeeded`). Locally, forward it with
+`stripe listen --forward-to localhost:8000/stripe/webhook`; a card payment is
+also confirmed when the buyer returns from Checkout, so the webhook isn't
+needed for a quick test (card `4242 4242 4242 4242`). Without keys nothing can
+be bought and the rest works as before.
+
 ## Push notifications and the app
 
 The game can be installed as an app (Settings → Notifications → Install, or

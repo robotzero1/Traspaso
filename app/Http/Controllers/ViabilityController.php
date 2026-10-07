@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\RunViabilityCheck;
 use App\Models\ViabilityReport;
+use App\Payments\PaymentGateway;
 use App\Simulation\Data\DayPart;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -127,6 +128,8 @@ class ViabilityController extends Controller
                 'open_year_1' => $results['open'][1] ?? $results['open']['1'],
             ],
             'full' => $results !== null && $unlocked ? $results : null,
+            'price_cents' => config('payments.products.viability_report.price_cents'),
+            'payments_enabled' => app(PaymentGateway::class)->configured(),
         ]);
     }
 }

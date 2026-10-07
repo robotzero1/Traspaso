@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { PinMap } from '@/components/viability/pin-map';
 import type { Pin } from '@/components/viability/pin-map';
 import { humanize } from '@/lib/format';
+import { LegalLinks } from '@/pages/viability/show';
 
 type Props = {
     map: {
@@ -239,7 +240,7 @@ export default function ViabilityCreate(props: Props) {
                     estimates and the real cafés and bars nearby (from
                     OpenStreetMap), and market figures calibrated so that, as
                     INE reports, about a quarter of new cafés close in their
-                    first year and about half within five.
+                    first year and about half within five. <LegalLinks />
                 </p>
             </main>
         </>

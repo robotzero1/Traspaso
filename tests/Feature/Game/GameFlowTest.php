@@ -69,17 +69,18 @@ it('lists your games and the capital range', function () {
         ->component('games/index')
         ->has('games', 1)
         ->where('starting_capital.min_euros', 20_000)
-        ->where('starting_capital.max_euros', 100_000));
+        // Free up to €30,000; more is bought (payments).
+        ->where('starting_capital.max_euros', 30_000));
 });
 
 it('starts a game with a market of businesses for sale', function () {
-    $response = $this->actingAs($this->user)->post(route('games.store'), ['starting_capital_euros' => 40_000]);
+    $response = $this->actingAs($this->user)->post(route('games.store'), ['starting_capital_euros' => 30_000]);
 
     $game = Game::query()->sole();
     $response->assertRedirect(route('games.show', $game));
 
     expect($game->user_id)->toBe($this->user->id)
-        ->and($game->cash_cents)->toBe(4_000_000)
+        ->and($game->cash_cents)->toBe(3_000_000)
         ->and($game->status)->toBe(GameStatus::Active)
         ->and($game->current_month)->toBe(1)
         ->and($game->businesses()->count())->toBeGreaterThanOrEqual(100)->toBeLessThanOrEqual(200)

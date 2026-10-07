@@ -2,6 +2,9 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useEffect } from 'react';
 import { PinMap } from '@/components/viability/pin-map';
 import { formatCents, humanize } from '@/lib/format';
+import { BuyForm } from '@/components/payments/buy-form';
+import { disclaimer, privacy, terms } from '@/routes/legal';
+import payments from '@/routes/payments';
 import { create } from '@/routes/viability';
 
 type Spot = {
@@ -50,12 +53,21 @@ type Props = {
         open_year_1: number;
     } | null;
     full: Full | null;
+    price_cents: number;
+    payments_enabled: boolean;
 };
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 /** A viability report: the free preview, and the full report once paid. */
-export default function ViabilityShow({ report, map, preview, full }: Props) {
+export default function ViabilityShow({
+    report,
+    map,
+    preview,
+    full,
+    price_cents,
+    payments_enabled,
+}: Props) {
     const waiting = report.status === 'queued' || report.status === 'running';
 
     // The check runs on the queue (about half a minute): look again until it's done.
@@ -112,7 +124,12 @@ export default function ViabilityShow({ report, map, preview, full }: Props) {
                     (full ? (
                         <FullReport full={full} />
                     ) : (
-                        <Locked years={preview.years} />
+                        <Locked
+                            years={preview.years}
+                            uuid={report.uuid}
+                            priceCents={price_cents}
+                            enabled={payments_enabled}
+                        />
                     ))}
 
                 <p className="text-xs text-muted-foreground">
@@ -120,7 +137,7 @@ export default function ViabilityShow({ report, map, preview, full }: Props) {
                     possible futures of this café on a model calibrated to real
                     closure rates (INE), real footfall estimates and the real
                     cafés and bars nearby. Map data © OpenStreetMap
-                    contributors.
+                    contributors. <LegalLinks />
                 </p>
             </main>
         </>
@@ -184,15 +201,31 @@ function Preview({ preview }: { preview: NonNullable<Props['preview']> }) {
     );
 }
 
-function Locked({ years }: { years: number }) {
+function Locked({
+    years,
+    uuid,
+    priceCents,
+    enabled,
+}: {
+    years: number;
+    uuid: string;
+    priceCents: number;
+    enabled: boolean;
+}) {
     return (
         <section className="space-y-2 rounded-xl border border-dashed p-4">
             <h2 className="font-medium">The full {years}-year report</h2>
             <p className="text-sm text-muted-foreground">
                 The chance it's still open after 3 and {years} years, what it
                 would pay you each year, when you'd earn back the traspaso, and
-                the main risks. The full report will be available to buy soon.
+                the main risks.
             </p>
+            <BuyForm
+                action={payments.viability(uuid)}
+                label="Buy the full report"
+                priceCents={priceCents}
+                enabled={enabled}
+            />
         </section>
     );
 }
@@ -307,4 +340,20 @@ function riskText(risk: { type: string; value: number }): string {
         default:
             return humanize(risk.type);
     }
+}
+
+export function LegalLinks() {
+    return (
+        <span className="space-x-2">
+            <Link href={terms()} className="underline">
+                Terms
+            </Link>
+            <Link href={privacy()} className="underline">
+                Privacy
+            </Link>
+            <Link href={disclaimer()} className="underline">
+                Disclaimer
+            </Link>
+        </span>
+    );
 }

@@ -8,6 +8,8 @@ use App\Game\GamePresenter;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Game\StoreGameRequest;
 use App\Models\Game;
+use App\Payments\PaymentGateway;
+use App\Payments\Payments;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -33,8 +35,15 @@ class GameController extends Controller
                 ->map(fn (Game $game) => $presenter->summary($game))->all(),
             'starting_capital' => [
                 'min_euros' => intdiv($capital['min'], 100),
-                'max_euros' => intdiv($capital['max'], 100),
+                'max_euros' => intdiv(min($capital['max'], Payments::maxCapitalCents($request->user())), 100),
+                'free_euros' => intdiv((int) config('payments.free_capital_cents'), 100),
             ],
+            // Savings tiers this account can still buy.
+            'capital_tiers' => collect(config('payments.products'))
+                ->filter(fn (array $p, string $key) => isset($p['capital_cents']) && $p['capital_cents'] > Payments::maxCapitalCents($request->user()))
+                ->map(fn (array $p, string $key) => ['key' => $key, 'capital_euros' => intdiv($p['capital_cents'], 100), 'price_cents' => $p['price_cents']])
+                ->values()->all(),
+            'payments_enabled' => app(PaymentGateway::class)->configured(),
         ]);
     }
 
