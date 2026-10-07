@@ -116,7 +116,23 @@ With the same seeds, over every month of a year (`DayEngineTest`):
 | Thoughtful beats default settings by 5+ points (median net worth) | +22 points | pass |
 | Careless player: 90% or more fail | 100% | pass |
 
-DAILY_FIVE_YEARS
+Five years on the daily engine (600 games each, `--years=5 --daily`, about
+40 minutes):
+
+| Strategy | Year 1 | Year 2 | Year 3 | Year 4 | Year 5 |
+|---|---|---|---|---|---|
+| thoughtful | 88% | 80% | 73% | 66% | 61% |
+| **default (typical new owner)** | **76%** | 67% | 59% | 54% | **47%** |
+
+Typical owners: 24% fail in year 1, 47% still open after 5 years: both
+targets pass. **One target is borderline on the daily engine:** the worst
+district for the thoughtful player. Casco Histórico, the most crowded
+district, lost 27% of 41 games in year 1 in the 1,000-game run (pass) and
+33% of 21 in the 600-game run (fail, the limit is 30%). The samples are
+small (about ±10 points), and the monthly engine gives 20%: the daily
+engine's busy-day limits bite hardest where competition already squeezes
+margins. Left as it is; worth watching when real counts for the old town
+arrive.
 
 The SPEC §6 balance tests now run on both engines.
 
