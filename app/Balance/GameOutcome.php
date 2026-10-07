@@ -23,6 +23,10 @@ final readonly class GameOutcome
         public int $years = 1,
         /** The year (from purchase, 1 = first) the café closed in; null if still open. */
         public ?int $closedInYear = null,
+        /** @var list<int> profit (before the owner's pay) of each month played */
+        public array $profitsByMonth = [],
+        /** @var list<int> revenue of each month played */
+        public array $revenueByMonth = [],
     ) {}
 
     /** Net worth change as a share of starting capital. */
@@ -55,6 +59,9 @@ final readonly class GameOutcome
     /** @return array<string, mixed> */
     public function toArray(): array
     {
-        return [...get_object_vars($this), 'change' => round($this->change(), 4)];
+        $vars = get_object_vars($this);
+        unset($vars['profitsByMonth'], $vars['revenueByMonth']);
+
+        return [...$vars, 'change' => round($this->change(), 4)];
     }
 }

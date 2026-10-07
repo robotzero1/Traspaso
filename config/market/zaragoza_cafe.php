@@ -58,6 +58,13 @@ return [
         'pay_month_cents' => 120_000,
     ],
 
+    // The viability check (SPEC §11): a real café or bar this close to the
+    // pin is taken to be the café being checked, not a rival.
+    'viability' => [
+        'source' => 'game design',
+        'own_place_metres' => 15,
+    ],
+
     'takeover' => [
         'source' => 'PLACEHOLDER: game design',
         // Owner plus one employee (balancing pass: two cost more than a

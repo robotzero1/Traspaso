@@ -53,6 +53,13 @@ php artisan market:balance --years=5   # the same over five years, with a surviv
 `market:balance` plays on whatever geo data is seeded; see
 `docs/balance-report.md` for the latest results and what they led to.
 
+## The viability check
+
+`/viability` (no account needed): pin a café on the map, enter the listing's
+figures, and it runs 1,000 simulated five-year futures on the queue (about half
+a minute; keep `php artisan queue:work` running). The full report is meant to
+be paid for; for local testing put `VIABILITY_UNLOCK_ALL=true` in `.env`.
+
 ## Push notifications and the app
 
 The game can be installed as an app (Settings → Notifications → Install, or

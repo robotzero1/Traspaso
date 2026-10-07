@@ -6,9 +6,15 @@ use App\Http\Controllers\Game\GameController;
 use App\Http\Controllers\Game\MonthController;
 use App\Http\Controllers\Game\PurchaseController;
 use App\Http\Controllers\Map\FootfallController;
+use App\Http\Controllers\ViabilityController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
+
+// The viability check: standalone, no account needed (SPEC §11).
+Route::get('viability', [ViabilityController::class, 'create'])->name('viability.create');
+Route::post('viability', [ViabilityController::class, 'store'])->middleware('throttle:10,60')->name('viability.store');
+Route::get('viability/{report}', [ViabilityController::class, 'show'])->name('viability.show');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // The starter kit's dashboard; the game list is the real home.

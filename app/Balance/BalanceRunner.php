@@ -73,11 +73,25 @@ final readonly class BalanceRunner
 
         $business = $strategy->choose($affordable, $this->sheet, $rng->fork("choose-{$strategy->key()}"));
         $index = array_search($business, $market, true);
+
+        return $this->run($strategy, $business, $this->competitors($market, $index, $seed), $capital, $seed, $years, $startMonth, $rng);
+    }
+
+    /**
+     * Plays one given café from purchase for up to $years: the loop behind
+     * play(), and what the viability check runs for a café the user
+     * describes (SPEC §11).
+     *
+     * @param  list<CompetitorState>  $competitors
+     */
+    public function run(Strategy $strategy, GeneratedBusiness $business, array $competitors, int $capital, int $seed, int $years, int $startMonth, SeededRng $rng): GameOutcome
+    {
+        $takeover = new Takeover($this->sheet);
         $deposit = $takeover->depositCents($business->profile);
         $state = $takeover->initialState($business->profile, $business->baseReputation, $business->equipmentAgeYears, $capital - $business->traspasoCents - $deposit);
         $decisions = $strategy->openingDecisions($business, $takeover->defaultDecisions(), $this->sheet);
-        $competitors = $this->competitors($market, $index, $seed);
         $rivals = count($competitors);
+        $revenues = [];
 
         $engine = new Engine;
         $dayEngine = new DayEngine;
@@ -95,6 +109,7 @@ final readonly class BalanceRunner
                 : $engine->simulateMonth($state, $decisions, $context, $rng->fork("month-{$month}"));
 
             $profits[] = $result->profitCents();
+            $revenues[] = $result->revenueCents;
             $ownerPaid += $result->ownerPayCents;
             $yearProfit += $result->profitCents();
             $yearPay += $result->ownerPayCents;
@@ -103,14 +118,14 @@ final readonly class BalanceRunner
             $year = intdiv($month - 1, 12) + 1;
 
             if ($state->cashCents < 0) {
-                return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, $month, $year, $profits, $state->cashCents + $deposit, $ownerPaid, $years);
+                return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, $month, $year, $profits, $state->cashCents + $deposit, $ownerPaid, $years, $revenues);
             }
 
             if ($month % 12 === 0) {
                 if ($yearProfit < $yearPay) {
                     $value = (new BusinessValuation($this->sheet))->valueCents($state, $business->traspasoCents, $profits);
 
-                    return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, null, $year, $profits, $state->cashCents + $deposit + $value, $ownerPaid, $years);
+                    return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, null, $year, $profits, $state->cashCents + $deposit + $value, $ownerPaid, $years, $revenues);
                 }
 
                 [$yearProfit, $yearPay] = [0, 0];
@@ -121,7 +136,7 @@ final readonly class BalanceRunner
 
         $value = (new BusinessValuation($this->sheet))->valueCents($state, $business->traspasoCents, $profits);
 
-        return $this->outcome($strategy, $seed, $capital, $business, $rivals, $months, null, null, $profits, $state->cashCents + $deposit + $value, $ownerPaid, $years);
+        return $this->outcome($strategy, $seed, $capital, $business, $rivals, $months, null, null, $profits, $state->cashCents + $deposit + $value, $ownerPaid, $years, $revenues);
     }
 
     /**
@@ -175,8 +190,11 @@ final readonly class BalanceRunner
         return (new CompetitorPicker($this->sheet))->pick($candidates, $rng, $fill);
     }
 
-    /** @param list<int> $profits */
-    private function outcome(Strategy $strategy, int $seed, int $capital, GeneratedBusiness $business, int $rivals, int $monthsPlayed, ?int $bankruptIn, ?int $closedInYear, array $profits, int $netWorth, int $ownerPaid, int $years): GameOutcome
+    /**
+     * @param  list<int>  $profits
+     * @param  list<int>  $revenues
+     */
+    private function outcome(Strategy $strategy, int $seed, int $capital, GeneratedBusiness $business, int $rivals, int $monthsPlayed, ?int $bankruptIn, ?int $closedInYear, array $profits, int $netWorth, int $ownerPaid, int $years, array $revenues): GameOutcome
     {
         return new GameOutcome(
             strategy: $strategy->key(),
@@ -195,6 +213,8 @@ final readonly class BalanceRunner
             ownerPaidCents: $ownerPaid,
             years: $years,
             closedInYear: $closedInYear,
+            profitsByMonth: $profits,
+            revenueByMonth: $revenues,
         );
     }
 }
