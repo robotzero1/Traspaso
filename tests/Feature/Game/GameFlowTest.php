@@ -229,6 +229,35 @@ it('plays a month and stores the results', function () {
         ->and($game->states()->where('month', 1)->sole()->decisions['staff_count'])->toBe(config('market.zaragoza_cafe.default_decisions.staff_count'));
 });
 
+it('plays the month day by day and stores each day', function () {
+    $game = boughtGame($this->user);
+    $cashBefore = $game->cash_cents;
+
+    $this->actingAs($this->user)->post(route('games.months.store', $game));
+
+    $game->refresh();
+    $month = $game->monthResults()->sole();
+    $days = $game->dayResults()->get();
+    $first = $game->firstDayOf(1);
+
+    expect($days)->toHaveCount($first->daysInMonth())
+        ->and($days->first()->date->toDateString())->toBe($first->toString())
+        ->and($days->every(fn ($d) => $d->month === 1))->toBeTrue()
+        ->and($days->sum('customers'))->toBe($month->customers)
+        ->and($days->sum('revenue_cents'))->toBe($month->revenue_cents)
+        ->and($days->sum('cogs_cents'))->toBe($month->cogs_cents)
+        // Six days a week: the quietest weekday is closed (unless a holiday) and takes nothing.
+        ->and($days->where('open', false)->sum('revenue_cents'))->toBe(0)
+        ->and($days->where('open', false)->count())->toBeBetween(3, 5)
+        // The month's bills go out on its last day.
+        ->and($days->last()->cash_after_cents)->toBe($game->cash_cents)
+        ->and($days->first()->cash_after_cents)->toBe($cashBefore + $days->first()->revenue_cents - $days->first()->cogs_cents - $days->first()->event_cost_cents);
+
+    $this->actingAs($this->user)->get(route('games.show', $game))->assertInertia(fn (Assert $page) => $page
+        ->has('days', $first->daysInMonth())
+        ->has('days.0', fn (Assert $day) => $day->hasAll(['date', 'open', 'weather', 'terrace_usable', 'customers', 'revenue_cents', 'events'])));
+});
+
 it('plays on past the first year when the market says games last longer', function () {
     config(['market.zaragoza_cafe.game.months' => 24]);
     $game = boughtGame($this->user);

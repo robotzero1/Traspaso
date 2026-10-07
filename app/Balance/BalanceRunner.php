@@ -9,9 +9,11 @@ use App\Generation\GeneratedBusiness;
 use App\Generation\Geo\Geo;
 use App\Generation\Takeover;
 use App\Generation\UnlistedRivals;
+use App\Simulation\Data\CalendarDate;
 use App\Simulation\Data\CompetitorState;
 use App\Simulation\Data\MarketContext;
 use App\Simulation\Data\ParameterSheet;
+use App\Simulation\DayEngine;
 use App\Simulation\Engine;
 use App\Simulation\Rng\SeededRng;
 use App\Simulation\Valuation\BusinessValuation;
@@ -28,12 +30,18 @@ use App\Simulation\Valuation\BusinessValuation;
  * out or at the end of the first year (from purchase) in which it didn't
  * earn enough to pay its owner: a real owner would close or sell up then.
  * A closed café is valued as it stands (sold on as a traspaso).
+ *
+ * With $daily, months are played day by day (DayEngine) on the real
+ * calendar, starting in the drawn month of FIRST_YEAR.
  */
 final readonly class BalanceRunner
 {
+    /** The calendar year daily games start in (weekdays, holidays and the Pilar fall as they do then). */
+    public const FIRST_YEAR = 2027;
+
     private ParameterSheet $sheet;
 
-    public function __construct(private BalanceMarket $market)
+    public function __construct(private BalanceMarket $market, private bool $daily = false)
     {
         $this->sheet = new ParameterSheet($market->parameters);
     }
@@ -72,6 +80,7 @@ final readonly class BalanceRunner
         $rivals = count($competitors);
 
         $engine = new Engine;
+        $dayEngine = new DayEngine;
         $profits = [];
         $ownerPaid = 0;
         $yearProfit = 0;
@@ -80,12 +89,10 @@ final readonly class BalanceRunner
 
         for ($month = 1; $month <= $months; $month++) {
             $decisions = $decisions->with(eventChoices: $strategy->eventChoices($state, $this->sheet));
-            $result = $engine->simulateMonth(
-                $state,
-                $decisions,
-                new MarketContext(($startMonth + $month - 2) % 12 + 1, $month, $competitors, $this->market->parameters),
-                $rng->fork("month-{$month}"),
-            );
+            $context = new MarketContext(($startMonth + $month - 2) % 12 + 1, $month, $competitors, $this->market->parameters);
+            $result = $this->daily
+                ? $dayEngine->simulateMonth($state, $decisions, $context, (new CalendarDate(self::FIRST_YEAR, $startMonth, 1))->addMonths($month - 1), $rng->fork("month-{$month}"))->month
+                : $engine->simulateMonth($state, $decisions, $context, $rng->fork("month-{$month}"));
 
             $profits[] = $result->profitCents();
             $ownerPaid += $result->ownerPayCents;

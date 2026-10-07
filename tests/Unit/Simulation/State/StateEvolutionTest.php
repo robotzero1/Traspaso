@@ -80,3 +80,31 @@ it('keeps scores within 0–100', function () {
         ->and($best->reputation)->toBeLessThanOrEqual(100.0)
         ->and($best->staffMorale)->toBeLessThanOrEqual(100.0);
 });
+
+it('takes daily steps that add up to the monthly one', function () {
+    $state = SimulationFixtures::state()->with(reputation: 20.0, staffMorale: 40.0);
+    $decisions = SimulationFixtures::decisions();
+    $monthly = evolution()->next($state, $decisions, 55.0, 0.5, 0);
+    $daily = $state;
+
+    for ($day = 0; $day < 30; $day++) {
+        $daily = evolution()->day($daily, $decisions, 55.0, 0.5, 0, open: true, daysInMonth: 30, openDaysInMonth: 30);
+    }
+
+    // Reputation's target follows service, and so morale, which now moves
+    // during the month: close, not exact.
+    expect($daily->reputation)->toEqualWithDelta($monthly->reputation, 0.5)
+        ->and($daily->staffMorale)->toEqualWithDelta($monthly->staffMorale, 1e-9)
+        ->and($daily->equipmentHealth)->toEqualWithDelta($monthly->equipmentHealth, 1e-9)
+        ->and($daily->equipmentAgeMonths)->toBe($state->equipmentAgeMonths)
+        ->and(evolution()->monthEnd($daily)->equipmentAgeMonths)->toBe($state->equipmentAgeMonths + 1);
+});
+
+it('leaves reputation and morale alone on a closed day', function () {
+    $state = SimulationFixtures::state()->with(reputation: 20.0);
+    $closed = evolution()->day($state, SimulationFixtures::decisions(), 55.0, 0.0, 0, open: false, daysInMonth: 30, openDaysInMonth: 26);
+
+    expect($closed->reputation)->toBe(20.0)
+        ->and($closed->staffMorale)->toBe($state->staffMorale)
+        ->and($closed->equipmentHealth)->toBeLessThan($state->equipmentHealth);
+});

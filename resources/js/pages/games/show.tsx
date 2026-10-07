@@ -2,7 +2,7 @@ import { Form, Head } from '@inertiajs/react';
 import { useState } from 'react';
 import EndController from '@/actions/App/Http/Controllers/Game/EndController';
 import { BusinessBrowser } from '@/components/game/business-browser';
-import { CashChart, ProfitChart } from '@/components/game/charts';
+import { CashChart, DailyChart, ProfitChart } from '@/components/game/charts';
 import {
     DecisionsForm,
     describeModifier,
@@ -25,6 +25,7 @@ import type {
     CostHints,
     DayPartValue,
     DecisionLimits,
+    DayResultRow,
     Decisions,
     GameEventRow,
     GameSummary,
@@ -48,6 +49,7 @@ type Props = {
     opening_cash_cents?: number;
     cost_hints?: CostHints;
     results?: MonthResultRow[];
+    days?: DayResultRow[];
     events?: GameEventRow[];
     competitors?: Competitor[];
 };
@@ -186,6 +188,7 @@ function Playing(
                 {tab === 'results' && (
                     <Results
                         results={results}
+                        days={props.days ?? []}
                         openingCashCents={
                             props.opening_cash_cents ?? game.cash_cents
                         }
@@ -216,9 +219,11 @@ function Playing(
 
 function Results({
     results,
+    days,
     openingCashCents,
 }: {
     results: MonthResultRow[];
+    days: DayResultRow[];
     openingCashCents: number;
 }) {
     if (results.length === 0) {
@@ -241,6 +246,12 @@ function Results({
                 />
                 <ProfitChart results={results} />
             </div>
+            {days.length > 0 && (
+                <DailyChart
+                    days={days}
+                    title={`Month ${last.month} (${monthName(last.calendar_month)}) day by day`}
+                />
+            )}
             <section className="space-y-2">
                 <h3 className="font-medium">Profit and loss</h3>
                 <PnlTable results={results} />

@@ -107,3 +107,14 @@ it('rejects a cuota table without an open-ended last band', function () {
 
     (new MonthlyCosts(new ParameterSheet($parameters)))->cuotaAutonomo(500);
 })->throws(InvalidArgumentException::class);
+
+it('settles a month played day by day the same way, with the days\' COGS and one-off costs', function () {
+    $state = SimulationFixtures::state();
+    $decisions = SimulationFixtures::decisions();
+    $season = new SeasonalFactors(1.0, 30, 26, 0.5);
+    $whole = monthlyCosts()->calculate($state, $decisions, $season, 1_000_000, eventCostCents: 50_000);
+    $settled = monthlyCosts()->settleMonth($state, $decisions, $season, 1_000_000, $whole->cogsCents, 50_000);
+
+    expect($settled)->toEqual($whole)
+        ->and(monthlyCosts()->settleMonth($state, $decisions, $season, 1_000_000, 123_456, 0)->cogsCents)->toBe(123_456);
+});

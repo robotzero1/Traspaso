@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\GameStatus;
+use App\Simulation\Data\CalendarDate;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -71,6 +72,12 @@ class Game extends Model
         return $this->hasMany(MonthResult::class)->orderBy('month');
     }
 
+    /** @return HasMany<DayResult, $this> */
+    public function dayResults(): HasMany
+    {
+        return $this->hasMany(DayResult::class)->orderBy('date');
+    }
+
     /** @return HasMany<GameEvent, $this> */
     public function events(): HasMany
     {
@@ -98,6 +105,12 @@ class Game extends Model
     public function calendarMonth(int $gameMonth): int
     {
         return ($this->start_date->month + $gameMonth - 2) % 12 + 1;
+    }
+
+    /** The first day of a game month. */
+    public function firstDayOf(int $gameMonth): CalendarDate
+    {
+        return CalendarDate::parse($this->start_date->toDateString())->addMonths($gameMonth - 1);
     }
 
     protected function casts(): array

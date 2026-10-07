@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import type { TooltipContentProps } from 'recharts';
 import { formatCents, monthName } from '@/lib/format';
-import type { MonthResultRow } from '@/types/game';
+import type { DayResultRow, MonthResultRow } from '@/types/game';
 
 /*
  * Two single-measure charts rather than one dual-axis chart: cash (a level)
@@ -253,6 +253,158 @@ export function ProfitChart({ results }: { results: MonthResultRow[] }) {
             </div>
             <p className="text-xs text-muted-foreground">
                 Bars above the line are profit, below are losses.
+            </p>
+        </figure>
+    );
+}
+
+const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const weatherLabels: Record<DayResultRow['weather'], string> = {
+    fair: 'Fair',
+    rain: 'Rain',
+    hot: 'Hot (35 °C+)',
+};
+
+type DayPoint = {
+    day: number;
+    weekday: string;
+    cents: number;
+    row: DayResultRow;
+};
+
+function DayTooltip({
+    active,
+    payload,
+}: Partial<TooltipContentProps<number, string>>) {
+    if (!active || !payload?.length) {
+        return null;
+    }
+
+    const { day, weekday, row } = payload[0].payload as DayPoint;
+
+    return (
+        <div className="rounded-md border bg-popover px-3 py-2 text-sm text-popover-foreground shadow-sm">
+            <div className="text-muted-foreground">
+                {weekday} {day} · {weatherLabels[row.weather]}
+                {row.open && !row.terrace_usable && ', terrace closed'}
+            </div>
+            {row.open ? (
+                <>
+                    <div>
+                        Takings:{' '}
+                        <span className="font-medium">
+                            {formatCents(row.revenue_cents)}
+                        </span>
+                    </div>
+                    <div>Customers: {row.customers}</div>
+                </>
+            ) : (
+                <div>Closed</div>
+            )}
+            {row.events.length > 0 && (
+                <div className="text-muted-foreground">
+                    {row.events.map((e) => e.replaceAll('_', ' ')).join(', ')}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/**
+ * Takings for each day of a month. Rainy days are drawn in a lighter
+ * tint of the same series, so weekday rhythm and weather both show.
+ */
+export function DailyChart({
+    days,
+    title,
+}: {
+    days: DayResultRow[];
+    title: string;
+}) {
+    const data: DayPoint[] = days.map((row) => {
+        const date = new Date(`${row.date}T12:00:00`);
+
+        return {
+            day: date.getDate(),
+            weekday: weekdays[date.getDay()],
+            cents: row.revenue_cents,
+            row,
+        };
+    });
+    const open = data.filter((p) => p.row.open);
+    const best = open.reduce<DayPoint | null>(
+        (top, p) => (top === null || p.cents > top.cents ? p : top),
+        null,
+    );
+    const rainy = days.filter((d) => d.weather === 'rain').length;
+
+    return (
+        <figure className="space-y-2">
+            <figcaption className="text-sm font-medium">
+                {title}
+                <span className="ml-2 font-normal text-muted-foreground">
+                    {open.length} days open
+                    {best &&
+                        ` · best ${best.weekday} ${best.day}, ${formatCents(best.cents)}`}
+                    {` · ${rainy} rainy`}
+                </span>
+            </figcaption>
+            <div
+                className="h-48"
+                role="img"
+                aria-label={`Daily takings over ${days.length} days, ${open.length} open`}
+            >
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                        data={data}
+                        margin={{ top: 8, right: 16, bottom: 0, left: 8 }}
+                    >
+                        <CartesianGrid
+                            vertical={false}
+                            stroke="var(--viz-grid)"
+                        />
+                        <XAxis
+                            dataKey="day"
+                            tick={axisTick}
+                            tickLine={false}
+                            axisLine={{ stroke: 'var(--viz-baseline)' }}
+                            interval="preserveStartEnd"
+                        />
+                        <YAxis
+                            tickFormatter={compactEuros}
+                            tick={axisTick}
+                            tickLine={false}
+                            axisLine={false}
+                            width={56}
+                        />
+                        <Tooltip
+                            content={<DayTooltip />}
+                            cursor={{ fill: 'var(--viz-grid)', opacity: 0.5 }}
+                        />
+                        <Bar
+                            dataKey="cents"
+                            maxBarSize={16}
+                            radius={[3, 3, 0, 0]}
+                            isAnimationActive={false}
+                        >
+                            {data.map((p) => (
+                                <Cell
+                                    key={p.day}
+                                    fill="var(--viz-series-1)"
+                                    fillOpacity={
+                                        p.row.weather === 'rain' ? 0.45 : 1
+                                    }
+                                />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+            <p className="text-xs text-muted-foreground">
+                Takings net of IVA. Lighter bars are rainy days; gaps are days
+                closed. Rent, wages and your pay go out on the last day of the
+                month.
             </p>
         </figure>
     );

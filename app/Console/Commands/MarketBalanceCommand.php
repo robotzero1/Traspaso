@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\File;
     {--games=200 : Games per strategy}
     {--years=1 : Years each game runs (5 checks five-year survival)}
     {--seed=1 : First seed; game n uses seed + n}
+    {--daily : Play day by day (the stage-two engine) instead of a month at a time}
     {--market=zaragoza_cafe}
     {--strategy=* : Only these strategies (default: all)}
     {--json= : Also write every game\'s outcome to this file}')]
@@ -62,15 +63,16 @@ class MarketBalanceCommand extends Command
         $games = (int) $this->option('games');
         $years = max(1, (int) $this->option('years'));
         $seed = (int) $this->option('seed');
-        $runner = new BalanceRunner($market);
+        $runner = new BalanceRunner($market, daily: (bool) $this->option('daily'));
         $outcomes = [];
 
         $this->components->info(sprintf(
-            '%d games × %d strategies, %d %s each, on %s (%s)',
+            '%d games × %d strategies, %d %s each, %s, on %s (%s)',
             $games,
             count($strategies),
             $years,
             $years === 1 ? 'year' : 'years',
+            $this->option('daily') ? 'day by day' : 'a month at a time',
             $this->option('market'),
             $market->points === null ? 'placeholder locations' : count($market->rivalPlaces).' real cafés and bars, footfall surface',
         ));

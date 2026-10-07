@@ -4,6 +4,7 @@ namespace App\Simulation\Events;
 
 use App\Simulation\Data\BusinessState;
 use App\Simulation\Data\CompetitorState;
+use App\Simulation\Data\Modifier;
 use App\Simulation\Data\ParameterSheet;
 use App\Simulation\Demand\CaptureRate;
 use App\Simulation\Rng\SeededRng;
@@ -17,13 +18,22 @@ final readonly class EffectApplier
 {
     public function __construct(private ParameterSheet $sheet) {}
 
-    public function applyToState(BusinessState $state, EventEffects $effects, string $source): BusinessState
+    /**
+     * @param  bool  $inDays  count the new modifiers in days (an event during the month, in the daily engine)
+     */
+    public function applyToState(BusinessState $state, EventEffects $effects, string $source, bool $inDays = false): BusinessState
     {
+        $modifiers = $effects->modifiersFor($source);
+
+        if ($inDays) {
+            $modifiers = array_map(fn (Modifier $m) => $m->inDays(), $modifiers);
+        }
+
         return $state->with(
             reputation: $this->clamp($state->reputation + $effects->reputation),
             staffMorale: $this->clamp($state->staffMorale + $effects->morale),
             equipmentHealth: $this->clamp($state->equipmentHealth + $effects->equipmentHealth),
-            modifiers: [...$state->modifiers, ...$effects->modifiersFor($source)],
+            modifiers: [...$state->modifiers, ...$modifiers],
         );
     }
 

@@ -58,6 +58,16 @@ final readonly class ModifierSet
         return array_values(array_filter(array_map(fn (Modifier $m) => $m->tick(), $this->modifiers)));
     }
 
+    /**
+     * The modifiers that are still active tomorrow.
+     *
+     * @return list<Modifier>
+     */
+    public function tickDay(): array
+    {
+        return array_values(array_filter(array_map(fn (Modifier $m) => $m->tickDay(), $this->modifiers)));
+    }
+
     private function product(ModifierEffect $effect, ?DayPart $part = null): float
     {
         $product = 1.0;

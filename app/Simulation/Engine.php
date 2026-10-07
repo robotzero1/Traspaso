@@ -2,6 +2,7 @@
 
 namespace App\Simulation;
 
+use App\Simulation\Calendar\TradingCalendar;
 use App\Simulation\Competitors\CompetitorBehaviour;
 use App\Simulation\Costs\MonthlyCosts;
 use App\Simulation\Data\BusinessState;
@@ -47,7 +48,7 @@ final class Engine
     public function simulateMonth(BusinessState $state, Decisions $decisions, MarketContext $context, SeededRng $rng): MonthResult
     {
         $sheet = new ParameterSheet($context->parameters);
-        $this->guardLicence($state, $decisions, $sheet);
+        self::guardLicence($state, $decisions, $sheet);
 
         $applier = new EffectApplier($sheet);
         $competitors = $context->competitors;
@@ -71,6 +72,7 @@ final class Engine
         $covers = new Covers($sheet);
         $revenue = new Revenue($sheet);
         $captureRate = new CaptureRate($sheet);
+        $calendar = new TradingCalendar($sheet);
 
         // 1. Seasonality & weather
         $season = (new Seasonality($sheet))->forMonth($context->calendarMonth, $decisions->openDaysPerWeek);
@@ -88,8 +90,10 @@ final class Engine
         $totalServiceCapacity = 0.0;
 
         foreach ($decisions->openDayParts as $part) {
-            // 2. Potential customers
-            $partPotential = $potential->forDayPart($profile, $part, $season, $noise) * $modifiers->demand($part) * $state->localTrend;
+            // 2. Potential customers. A café that closes its quietest weekdays
+            // trades on busier days than average (the daily engine's calendar).
+            $partPotential = $potential->forDayPart($profile, $part, $season, $noise) * $modifiers->demand($part) * $state->localTrend
+                * $calendar->weekdayFactor($decisions, $part);
 
             // 4. Covers
             $partDemand = $partPotential * $capture;
@@ -168,7 +172,8 @@ final class Engine
         );
     }
 
-    private function guardLicence(BusinessState $state, Decisions $decisions, ParameterSheet $sheet): void
+    /** Which day parts a licence allows is a rule the engine enforces (SPEC §6). */
+    public static function guardLicence(BusinessState $state, Decisions $decisions, ParameterSheet $sheet): void
     {
         $licence = $state->profile->licence->value;
         $allowed = $sheet->array("licence_day_parts.{$licence}");

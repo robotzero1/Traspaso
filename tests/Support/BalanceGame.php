@@ -3,11 +3,13 @@
 namespace Tests\Support;
 
 use App\Simulation\Data\BusinessState;
+use App\Simulation\Data\CalendarDate;
 use App\Simulation\Data\CompetitorState;
 use App\Simulation\Data\Decisions;
 use App\Simulation\Data\MarketContext;
 use App\Simulation\Data\MonthResult;
 use App\Simulation\Data\ParameterSheet;
+use App\Simulation\DayEngine;
 use App\Simulation\Engine;
 use App\Simulation\Rng\SeededRng;
 use App\Simulation\Valuation\BusinessValuation;
@@ -38,10 +40,12 @@ final class BalanceGame
 
     /**
      * @param  Decisions|callable(int, BusinessState): Decisions  $decisions  fixed, or chosen per month
+     * @param  bool  $daily  play day by day (DayEngine), on the calendar of 2027
      */
-    public function play(Decisions|callable $decisions, int $months = 12): self
+    public function play(Decisions|callable $decisions, int $months = 12, bool $daily = false): self
     {
         $engine = new Engine;
+        $dayEngine = new DayEngine;
         $state = $this->start;
 
         for ($month = 1; $month <= $months; $month++) {
@@ -52,7 +56,10 @@ final class BalanceGame
                 parameters: $this->parameters,
             );
             $choice = $decisions instanceof Decisions ? $decisions : $decisions($month, $state);
-            $result = $engine->simulateMonth($state, $choice, $context, (new SeededRng($this->seed))->fork("month-{$month}"));
+            $rng = (new SeededRng($this->seed))->fork("month-{$month}");
+            $result = $daily
+                ? $dayEngine->simulateMonth($state, $choice, $context, (new CalendarDate(2027, $this->startCalendarMonth, 1))->addMonths($month - 1), $rng)->month
+                : $engine->simulateMonth($state, $choice, $context, $rng);
 
             $this->months[] = $result;
             $state = $result->stateAfter;

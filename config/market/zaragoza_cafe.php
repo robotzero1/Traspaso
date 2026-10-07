@@ -384,6 +384,89 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Daily trading (stage two, SPEC §11)
+    |--------------------------------------------------------------------------
+    |
+    | The daily engine spreads each month's demand over its days. The
+    | weights below only say how a month's trade is shared between its
+    | days: each day part's weights are divided by their average over the
+    | month, so a café open every day sells what the monthly engine says
+    | (seasonality already holds the month's typical weather and fiestas).
+    |
+    */
+
+    // Relative trade by weekday, per day part. Public holidays trade like
+    // a Sunday. A café open fewer than 7 days closes its quietest days for
+    // the day parts it opens (the monthly engine counts this too).
+    'day_of_week' => [
+        'source' => 'PLACEHOLDER: a guess shaped on Spanish card spending by weekday (Friday–Saturday peak, Monday the low, Sunday strong at lunch); verify per day part against card-spend data (e.g. CaixaBank Research) or own counts',
+        'weights' => [
+            'morning' => ['mon' => 1.00, 'tue' => 1.00, 'wed' => 1.00, 'thu' => 1.00, 'fri' => 1.05, 'sat' => 1.05, 'sun' => 0.90],
+            'lunch' => ['mon' => 0.85, 'tue' => 0.90, 'wed' => 0.95, 'thu' => 1.00, 'fri' => 1.15, 'sat' => 1.20, 'sun' => 1.10],
+            'afternoon' => ['mon' => 0.90, 'tue' => 0.90, 'wed' => 0.95, 'thu' => 1.00, 'fri' => 1.10, 'sat' => 1.15, 'sun' => 1.00],
+            'evening' => ['mon' => 0.70, 'tue' => 0.75, 'wed' => 0.85, 'thu' => 1.00, 'fri' => 1.35, 'sat' => 1.45, 'sun' => 0.85],
+            'night' => ['mon' => 0.40, 'tue' => 0.40, 'wed' => 0.50, 'thu' => 0.90, 'fri' => 1.70, 'sat' => 2.00, 'sun' => 0.60],
+        ],
+    ],
+
+    // Public holidays in Zaragoza (national, Aragón and local), as
+    // month-day. Holy Thursday and Good Friday move with Easter and are
+    // worked out from the date.
+    'holidays' => [
+        'source' => 'BOE national and BOA Aragón holiday calendars; Zaragoza local holidays (San Valero, Cincomarzada)',
+        'fixed' => [
+            '01-01', '01-06',
+            '01-29', // San Valero (local)
+            '03-05', // Cincomarzada (local)
+            '04-23', // San Jorge, Día de Aragón
+            '05-01', '08-15', '10-12', '11-01', '12-06', '12-08', '12-25',
+        ],
+        'easter' => ['holy_thursday', 'good_friday'],
+    ],
+
+    // The Fiestas del Pilar: nine days ending on the first Sunday on or
+    // after 12 October (2023: 7–15, 2024: 5–13, 2025: 4–12 October).
+    // October's seasonality (1.15) is mostly the Pilar; these weights put
+    // that trade in the fiesta days, leaving the rest of October close to
+    // an ordinary month.
+    'pilar' => [
+        'source' => 'PLACEHOLDER: weights a guess (dates from the Ayuntamiento de Zaragoza programmes 2023–2025); verify against card spending in Pilar week',
+        'anchor_month_day' => '10-12',
+        'days' => 9,
+        'weights' => ['morning' => 1.3, 'lunch' => 1.5, 'afternoon' => 1.5, 'evening' => 1.8, 'night' => 2.0],
+    ],
+
+    // Day-to-day weather. Rain days are AEMET's mean number of days with
+    // ≥ 1 mm at Zaragoza Aeropuerto (normals 1981–2010). Hot days (35 °C
+    // or more) are an estimate from recent summers. Rain closes the
+    // terrace; on dry days the terrace opens often enough to give
+    // terrace_usable_days over the month. Effects multiply demand and are
+    // spread so that the month's average stays 1.
+    'weather' => [
+        'source' => 'PLACEHOLDER: hot days and effects are guesses; rain days are AEMET normals 1981–2010, Zaragoza Aeropuerto (days ≥ 1 mm, read from a search summary: check on aemet.es)',
+        'rain_days' => [
+            1 => 4.0, 2 => 3.9, 3 => 3.7, 4 => 5.7, 5 => 6.4, 6 => 4.0,
+            7 => 2.6, 8 => 2.3, 9 => 3.2, 10 => 5.4, 11 => 5.1, 12 => 4.8,
+        ],
+        'hot_days' => [6 => 2, 7 => 8, 8 => 6, 9 => 1],
+        'effects' => [
+            // Fewer people out; some step in to shelter.
+            'rain' => ['morning' => 0.95, 'lunch' => 0.9, 'afternoon' => 0.85, 'evening' => 0.85, 'night' => 0.85],
+            // Nobody goes out in the afternoon heat; evenings fill up.
+            'hot' => ['morning' => 1.0, 'lunch' => 0.95, 'afternoon' => 0.75, 'evening' => 1.15, 'night' => 1.1],
+        ],
+    ],
+
+    'daily' => [
+        'source' => 'PLACEHOLDER: a guess (a café serving 100–300 people a day varies by roughly 10% from chance alone)',
+        // Day-to-day randomness in demand on top of the month's: normal(1, noise_sd), clamped.
+        'noise_sd' => 0.10,
+        'noise_min' => 0.6,
+        'noise_max' => 1.4,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Demand (used by the engine)
     |--------------------------------------------------------------------------
     |

@@ -41,6 +41,17 @@ function balanceMarket(bool $located = true): BalanceMarket
     );
 }
 
+it('plays games day by day on the daily engine, close to the monthly one', function () {
+    $daily = new BalanceRunner(balanceMarket(), daily: true);
+    $monthly = new BalanceRunner(balanceMarket());
+    $game = $daily->play(new DefaultSettings, 3);
+
+    expect($game)->toEqual($daily->play(new DefaultSettings, 3))
+        ->and($game->monthsPlayed)->toBe($monthly->play(new DefaultSettings, 3)->monthsPlayed)
+        ->and($game->traspasoCents)->toBe($monthly->play(new DefaultSettings, 3)->traspasoCents)
+        ->and($game->totalProfitCents)->not->toBe($monthly->play(new DefaultSettings, 3)->totalProfitCents);
+});
+
 it('plays the same game for the same seed and strategy', function () {
     $runner = new BalanceRunner(balanceMarket());
 

@@ -1,4 +1,4 @@
-# Balancing pass (milestone 9)
+# Balancing pass (milestones 9–11)
 
 How the game plays out on the real Zaragoza data, and what was changed to get
 there. Reproduce with:
@@ -15,7 +15,120 @@ draws its starting capital (€20k–€100k, whole thousands) and its starting 
 from the seed. Net worth = cash + the landlord's deposit + the business's value;
 cash below zero ends the game with cash + deposit.
 
-## Five years (milestone 10, current)
+## Day by day (milestone 11, current)
+
+```bash
+php artisan market:balance --games=1000 --daily      # the day-by-day engine the game uses (about 10 minutes per strategy)
+```
+
+The game now trades one day at a time (`DayEngine`). A month's trade is
+shared out between its days, per day part, by:
+
+- **weekday** (`day_of_week`): Friday and Saturday busiest, Monday the
+  quietest, Sunday strong at lunch; evenings and nights swing the most
+  (Saturday night is about five times a Monday night). **A guess**, shaped
+  on Spanish card-spending by weekday; to check against card-spend data or
+  counts.
+- **public holidays** (`holidays`): national, Aragón (San Jorge) and
+  Zaragoza (San Valero, Cincomarzada), plus Holy Thursday and Good Friday
+  from the date of Easter. They trade like a Sunday.
+- **the Pilar** (`pilar`): the nine days ending on the first Sunday on or
+  after 12 October (2023: 7–15, 2024: 5–13, 2025: 4–12, 2026: 10–18).
+  October's seasonality (1.15) was mostly the Pilar; with the fiesta
+  weights (×1.3 mornings to ×2 nights, **a guess**) the rest of October
+  trades like an ordinary month.
+- **weather** (`weather`): rain days are AEMET's normals for Zaragoza
+  Aeropuerto, 1981–2010 (days with ≥ 1 mm: 4.0, 3.9, 3.7, 5.7, 6.4, 4.0,
+  2.6, 2.3, 3.2, 5.4, 5.1, 4.8 from January), read from a search summary
+  because aemet.es is blocked here: **check them on the AEMET page**. Hot
+  days (≥ 35 °C: 2 in June, 8 in July, 6 in August, 1 in September) and the
+  effects (rain: −5% mornings to −15% evenings; heat: afternoons −25%,
+  evenings +15%) are **guesses**. Rain closes the terrace; dry days open it
+  often enough to give `terrace_usable_days`.
+- **day-to-day noise** (`daily.noise_sd` 0.10, **a guess**) on top of the
+  month's.
+
+Each day part's weights are divided by their average over the month, and
+weather effects by the month's expected weather, so the days of a month
+add up to what the monthly engine gives: **seasonality, calibrated
+before, stays as it was.**
+
+Takings and the stock sold come in daily; rent, wages, utilities,
+marketing, the cuota, the owner's pay and the other monthly costs are
+settled on the month's last day, and bankruptcy is checked then. Events
+roll daily with their monthly odds spread over the month
+(1 − (1 − p)^(1/days)), once per type per month; their lasting effects
+start the next day and are counted in days. Reputation and morale move on
+open days at the daily rate that adds up to the monthly one; equipment
+wears a share each day. Rivals, the street's drift and equipment age move
+at month end, with the same random streams as the monthly engine.
+
+**Which days a café closes.** Open fewer than seven days, a café closes
+its quietest weekdays for the day parts it opens (Monday for a daytime
+café), and its open days are a little busier than average. The monthly
+engine now counts this too (`TradingCalendar::weekdayFactor`), so both
+engines agree. It moved the monthly results slightly (1,000 games per
+strategy, same seeds):
+
+| Strategy | Before: median | Failed in year 1 | After: median | Failed in year 1 |
+|---|---|---|---|---|
+| thoughtful | +54% | 11% | +58% | 9% |
+| default (typical new owner) | +32% | 23% | +34% | 23% |
+| cheapest | −32% | 88% | −31% | 87% |
+| premium | +162% | 3% | +171% | 3% |
+
+Typical owners are unchanged, so `capture.base_rate` stays at 0.091. Five
+years, monthly: 77% of typical owners open after year 1 and **49% after
+5** (target 45–50%), thoughtful 63%.
+
+### Do the days add up to the month?
+
+With the same seeds, over every month of a year (`DayEngineTest`):
+
+- **Demand matches within 1–2%.** What's left is the real calendar: a
+  month with five Mondays has one day fewer open for a café closed on
+  Mondays than the monthly engine's average, and holidays move trade
+  to Sunday-like days.
+- **Covers and revenue come out 1–2% lower** for a typical café (about
+  0.5% with plenty of seats and staff). Each day is capped by its own seats
+  and staff, so a busy Saturday or a Pilar evening turns people away even
+  when the month as a whole wouldn't. Measured on the test café: day-to-day
+  noise accounts for about 0.7 points, the weekly rhythm 0.5, the calendar
+  0.6; weather hardly any. This is the more realistic of the two, so the
+  monthly engine wasn't changed to match it.
+
+### Targets on the daily engine (1,000 games per strategy)
+
+| Strategy | Median net worth | Ahead | Bankrupt | **Failed in year 1** |
+|---|---|---|---|---|
+| thoughtful | +52% | 85% | 1.2% | **11%** |
+| default (typical new owner) | +30% | 70% | 3.8% | **23%** |
+
+(400 games of each of the other strategies: cheapest 89% failed, premium
+2%, careless 100%.)
+
+| Target | Actual | |
+|---|---|---|
+| Typical new owner (default settings): 20–25% fail in year 1 | 23% | pass |
+| Thoughtful player: 12% or fewer fail in year 1 | 11% | pass |
+| Thoughtful player: median net worth doesn't fall | +52% | pass |
+| Thoughtful player: no district (10+ games) where over 30% fail | 27% (Casco Histórico) | pass |
+| Thoughtful beats default settings by 5+ points (median net worth) | +22 points | pass |
+| Careless player: 90% or more fail | 100% | pass |
+
+DAILY_FIVE_YEARS
+
+The SPEC §6 balance tests now run on both engines.
+
+### Still guesses
+
+The weekday weights, the Pilar weights, hot days, weather effects and the
+daily noise are guesses (`php artisan market:placeholders`). They only move
+trade between days, so they can't shift the yearly calibration, but they
+decide how lumpy a month is and so how many busy-day customers a café
+turns away. Rain days need checking on aemet.es.
+
+## Five years (milestone 10)
 
 ```bash
 php artisan market:balance --games=1000 --years=5    # about 100 s
@@ -325,3 +438,16 @@ first: it moves every strategy together.
   capital ranges 5× (€20k–€100k), the same café gives very different
   percentages. A capital-independent score (say, profit over the year) may be
   fairer to show on the end screen.
+- §11 (daily simulation) doesn't say which days a café open fewer than
+  seven days closes. Milestone 11 closes its quietest weekdays for the day
+  parts it opens (public holidays count as Sundays); the player can't pick
+  them yet.
+- §11 asks that "the days add up to what the monthly engine produced".
+  Demand does; covers can't exactly, because a day can be full when the
+  month isn't. The tests allow for this (1–5% fewer covers, depending on
+  how near capacity the café runs).
+- §11 doesn't say when the stock is paid for. The daily engine pays it out
+  of each day's takings (with one-off event costs), and everything else at
+  month end.
+- Until the real-time clock (milestone 12), events waiting for a choice are
+  settled on the first day of the next month, as before.

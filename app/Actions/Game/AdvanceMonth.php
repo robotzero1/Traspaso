@@ -10,21 +10,22 @@ use App\Models\MonthResult;
 use App\Simulation\Data\DayPartResult;
 use App\Simulation\Data\EventRecord;
 use App\Simulation\Data\MarketContext;
-use App\Simulation\Engine;
+use App\Simulation\DayEngine;
 use App\Simulation\Exceptions\DecisionNotAllowed;
 use App\Simulation\Rng\SeededRng;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Plays the current month with the saved decisions and stores the result.
- * Cash below zero ends the game in bankruptcy.
+ * Plays the current month day by day with the saved decisions, stores
+ * each day and the month's P&L, and settles the month's bills on its last
+ * day. Cash below zero after them ends the game in bankruptcy.
  */
 final class AdvanceMonth
 {
     public function __construct(
         private readonly GameMapper $mapper,
-        private readonly Engine $engine,
+        private readonly DayEngine $engine,
     ) {}
 
     public function handle(Game $game): MonthResult
@@ -43,17 +44,45 @@ final class AdvanceMonth
         );
 
         try {
-            $result = $this->engine->simulateMonth(
+            $played = $this->engine->simulateMonth(
                 $this->mapper->state($game),
                 $decisions,
                 $context,
+                $game->firstDayOf($month),
                 (new SeededRng($game->seed))->fork("month-{$month}"),
             );
+            $result = $played->month;
         } catch (DecisionNotAllowed $e) {
             throw ValidationException::withMessages(['decisions' => $e->getMessage()]);
         }
 
-        return DB::transaction(function () use ($game, $month, $decisions, $context, $result) {
+        return DB::transaction(function () use ($game, $month, $decisions, $context, $played, $result) {
+            $lastDay = $played->days[array_key_last($played->days)];
+
+            foreach ($played->days as $day) {
+                $game->dayResults()->create([
+                    'date' => $day->date->toString(),
+                    'month' => $month,
+                    'open' => $day->open,
+                    'weather' => $day->weather->kind->value,
+                    'terrace_usable' => $day->weather->terraceUsable,
+                    'customers' => $day->customers,
+                    'revenue_cents' => $day->revenueCents,
+                    'cogs_cents' => $day->cogsCents,
+                    'event_cost_cents' => $day->eventCostCents + $day->modifierCostCents,
+                    // The month's bills go out on its last day.
+                    'cash_after_cents' => $day === $lastDay ? $result->cashAfterCents() : $day->stateAfter->cashCents,
+                    'day_parts' => array_map(fn (DayPartResult $p) => [
+                        'day_part' => $p->dayPart->value,
+                        'demand' => $p->demand,
+                        'capacity' => $p->capacity,
+                        'covers' => $p->covers,
+                        'revenue_cents' => $p->revenueCents,
+                    ], $day->dayParts),
+                    'events' => array_map(fn (EventRecord $e) => $e->type, $day->events),
+                ]);
+            }
+
             $row = $game->monthResults()->create([
                 'month' => $month,
                 'calendar_month' => $context->calendarMonth,

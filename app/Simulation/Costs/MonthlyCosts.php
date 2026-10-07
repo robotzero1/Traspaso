@@ -31,14 +31,36 @@ final readonly class MonthlyCosts
         ModifierSet $modifiers = new ModifierSet,
         int $eventCostCents = 0,
     ): CostBreakdown {
-        $cogsShare = $this->sheet->float("cogs.share_of_revenue.{$decisions->qualityTier->value}") + $modifiers->cogsShare();
-        $cogs = $this->round($revenueCents * $cogsShare);
+        $cogs = $this->round($revenueCents * $this->cogsShare($decisions, $modifiers));
+
+        return $this->breakdown($state, $decisions, $season, $revenueCents, $cogs, $modifiers->rent(), $modifiers->monthlyCostCents() + $eventCostCents);
+    }
+
+    /**
+     * The month's costs in the daily engine, settled at month end. COGS
+     * and the costs of events and monthly-cost modifiers were counted day
+     * by day; the rest is worked out for the month as above.
+     *
+     * @param  int  $otherCostCents  events and monthly-cost modifiers over the month's days
+     */
+    public function settleMonth(BusinessState $state, Decisions $decisions, SeasonalFactors $season, int $revenueCents, int $cogsCents, int $otherCostCents): CostBreakdown
+    {
+        return $this->breakdown($state, $decisions, $season, $revenueCents, $cogsCents, $state->modifierSet()->rent(), $otherCostCents);
+    }
+
+    /** COGS as a share of revenue: the quality tier's, plus any event modifiers. */
+    public function cogsShare(Decisions $decisions, ModifierSet $modifiers = new ModifierSet): float
+    {
+        return $this->sheet->float("cogs.share_of_revenue.{$decisions->qualityTier->value}") + $modifiers->cogsShare();
+    }
+
+    private function breakdown(BusinessState $state, Decisions $decisions, SeasonalFactors $season, int $revenueCents, int $cogs, float $rentFactor, int $extraOtherCents): CostBreakdown
+    {
         $staff = $this->staff($decisions->staffCount) + $this->coverCents($decisions);
-        $rent = $this->round($state->profile->rentMonthCents * $modifiers->rent());
+        $rent = $this->round($state->profile->rentMonthCents * $rentFactor);
         $utilities = $this->utilities($decisions, $season);
         $marketing = $decisions->marketingSpendCents;
-        $fixedOther = $this->insurance() + $this->maintenance($state) + $this->terraceFee($state)
-            + $modifiers->monthlyCostCents() + $eventCostCents;
+        $fixedOther = $this->insurance() + $this->maintenance($state) + $this->terraceFee($state) + $extraOtherCents;
 
         $beforeCuota = $revenueCents - ($cogs + $staff + $rent + $utilities + $marketing + $fixedOther);
         $cuota = $this->cuotaAutonomo($beforeCuota);

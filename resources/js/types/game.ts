@@ -111,6 +111,18 @@ export type MonthResultRow = {
     day_parts: DayPartResult[];
 };
 
+/** One day of the last month played. */
+export type DayResultRow = {
+    date: string;
+    open: boolean;
+    weather: 'fair' | 'rain' | 'hot';
+    terrace_usable: boolean;
+    customers: number;
+    /** Takings net of IVA. */
+    revenue_cents: number;
+    events: string[];
+};
+
 export type EventEffects = {
     cost_cents?: number;
     revenue_cents?: number;

@@ -76,3 +76,25 @@ it('drops expired modifiers when ticking', function () {
 
     expect(array_map(fn (Modifier $m) => $m->effect, $set->tick()))->toBe([ModifierEffect::Rent, ModifierEffect::Capacity]);
 });
+
+it('counts in days when an event happens during the month', function () {
+    $modifier = modifier(ModifierEffect::Demand, 0.8, 2)->inDays();
+
+    expect($modifier->daysRemaining)->toBe(61)
+        // The month end leaves it alone; each day runs it down.
+        ->and($modifier->tick())->toBe($modifier)
+        ->and($modifier->tickDay()->daysRemaining)->toBe(60)
+        ->and($modifier->with(daysRemaining: 1)->tickDay())->toBeNull()
+        ->and(modifier(ModifierEffect::Rent, 1.05, null)->inDays()->daysRemaining)->toBeNull()
+        ->and(modifier(ModifierEffect::Demand, 1.1, 2)->tickDay()->monthsRemaining)->toBe(2);
+});
+
+it('drops expired day-counted modifiers when ticking a day', function () {
+    $set = new ModifierSet([
+        modifier(ModifierEffect::Demand, 0.8)->with(daysRemaining: 1),
+        modifier(ModifierEffect::Demand, 1.2)->with(daysRemaining: 3),
+        modifier(ModifierEffect::Rent, 1.05),
+    ]);
+
+    expect(array_map(fn (Modifier $m) => [$m->value, $m->daysRemaining], $set->tickDay()))->toBe([[1.2, 2], [1.05, null]]);
+});

@@ -5,6 +5,7 @@ namespace App\Game;
 use App\Enums\BusinessStatus;
 use App\Generation\Geo\Geo;
 use App\Models\Business;
+use App\Models\DayResult;
 use App\Models\FootfallPoint;
 use App\Models\Game;
 use App\Models\GameCompetitor;
@@ -136,6 +137,12 @@ final class GamePresenter
                     'profit_cents', 'owner_pay_cents', 'cash_after_cents', 'day_parts',
                 ]),
             ])->all(),
+            // The last month played, day by day.
+            'days' => $results->isEmpty() ? [] : $game->dayResults()->where('month', $results->last()->month)->get()
+                ->map(fn (DayResult $d) => [
+                    'date' => $d->date->toDateString(),
+                    ...$d->only(['open', 'weather', 'terrace_usable', 'customers', 'revenue_cents', 'events']),
+                ])->all(),
             'events' => $game->events()->get()->map(fn (GameEvent $e) => $e->only([
                 'month', 'type', 'payload', 'choices', 'choice', 'resolved_month',
             ]))->all(),

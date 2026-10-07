@@ -15,39 +15,43 @@ use Tests\Support\EventFixtures;
 
 dataset('seeds', [1, 2, 3, 4, 5]);
 
-it('pays its owner and survives year 1 as an average business with average decisions', function () {
+// The game plays day by day (SPEC §11); the viability check and
+// market:balance a month at a time. The targets hold for both.
+dataset('engines', ['monthly' => false, 'daily' => true]);
+
+it('pays its owner and survives year 1 as an average business with average decisions', function (bool $daily) {
     // Three in four new cafés survive their first year (INE/DIRCE), so an
     // average one, run on the defaults, covers its owner's pay. Read over
     // many years, since events make any single one partly luck.
-    $games = array_map(fn (int $seed) => Scenarios::average($seed)->play(Scenarios::averageDecisions()), range(1, 40));
+    $games = array_map(fn (int $seed) => Scenarios::average($seed)->play(Scenarios::averageDecisions(), daily: $daily), range(1, 40));
     $paidOwner = array_filter($games, fn (BalanceGame $g) => $g->lowestCashCents() > 0
         && $g->totalProfitCents() >= 12 * Scenarios::parameters()['owner']['pay_month_cents']);
 
     expect(count($paidOwner) / count($games))->toBeGreaterThanOrEqual(0.8);
-});
+})->with('engines');
 
-it('loses money at a great location with bad management', function (int $seed) {
-    $game = Scenarios::greatLocation($seed)->play(Scenarios::badDecisions());
+it('loses money at a great location with bad management', function (int $seed, bool $daily) {
+    $game = Scenarios::greatLocation($seed)->play(Scenarios::badDecisions(), daily: $daily);
 
     expect($game->totalProfitCents())->toBeLessThan(0);
-})->with('seeds');
+})->with('seeds')->with('engines');
 
-it('lets a mediocre location with good management survive', function (int $seed) {
-    $game = Scenarios::mediocreLocation($seed)->play(Scenarios::goodDecisions());
+it('lets a mediocre location with good management survive', function (int $seed, bool $daily) {
+    $game = Scenarios::mediocreLocation($seed)->play(Scenarios::goodDecisions(), daily: $daily);
 
     expect($game->lowestCashCents())->toBeGreaterThan(0)
         ->and($game->netWorthChange())->toBeGreaterThan(-0.10);
-})->with('seeds');
+})->with('seeds')->with('engines');
 
-it('makes revenue fall within three months of pricing 50% above the local average', function (int $seed) {
-    $baseline = Scenarios::average($seed)->play(Scenarios::averageDecisions(), 3)->revenueByMonth();
-    $overpriced = Scenarios::average($seed)->play(Scenarios::averageDecisions()->with(priceLevel: 1.5), 3)->revenueByMonth();
+it('makes revenue fall within three months of pricing 50% above the local average', function (int $seed, bool $daily) {
+    $baseline = Scenarios::average($seed)->play(Scenarios::averageDecisions(), 3, $daily)->revenueByMonth();
+    $overpriced = Scenarios::average($seed)->play(Scenarios::averageDecisions()->with(priceLevel: 1.5), 3, $daily)->revenueByMonth();
 
     // The first month can bring in more (same customers, higher tickets)…
     // …but by month 3 the damage to reputation has cost more than it gained.
     expect($overpriced[2])->toBeLessThan($baseline[2])
         ->and($overpriced[2] / $baseline[2])->toBeLessThan($overpriced[0] / $baseline[0]);
-})->with('seeds');
+})->with('seeds')->with('engines');
 
 it('does better with good management than bad at the same location', function () {
     expect(Scenarios::greatLocation()->play(Scenarios::goodDecisions())->totalProfitCents())

@@ -26,7 +26,41 @@ final readonly class EventRoller
      */
     public function roll(EventSignals $signals, EventConditions $conditions, int $gameMonth, SeededRng $rng): array
     {
-        $max = $this->sheet->int('events.max_per_month');
+        return $this->rollWith($signals, $conditions, $gameMonth, $rng, $this->sheet->int('events.max_per_month'), [], fn (float $p) => $p);
+    }
+
+    /**
+     * One day's events for the daily engine: each event's monthly odds
+     * spread over the month's days (1 − (1 − p)^(1/days)), with an event
+     * type at most once a month and at most events.max_per_month in all.
+     *
+     * @param  list<string>  $earlierThisMonth  types that already happened this month
+     * @param  array<string, mixed>  $payload  added to each event's payload (e.g. the date)
+     * @return list<EventOccurrence>
+     */
+    public function rollDay(EventSignals $signals, EventConditions $conditions, int $gameMonth, int $daysInMonth, array $earlierThisMonth, SeededRng $rng, array $payload = []): array
+    {
+        $max = $this->sheet->int('events.max_per_month') - count($earlierThisMonth);
+
+        if ($max <= 0) {
+            return [];
+        }
+
+        return $this->rollWith(
+            $signals, $conditions, $gameMonth, $rng, $max, $earlierThisMonth,
+            fn (float $p) => $p >= 1.0 ? 1.0 : 1 - (1 - $p) ** (1 / $daysInMonth),
+            $payload,
+        );
+    }
+
+    /**
+     * @param  list<string>  $skip
+     * @param  callable(float): float  $odds
+     * @param  array<string, mixed>  $payload
+     * @return list<EventOccurrence>
+     */
+    private function rollWith(EventSignals $signals, EventConditions $conditions, int $gameMonth, SeededRng $rng, int $max, array $skip, callable $odds, array $payload = []): array
+    {
         $happened = [];
 
         foreach ($rng->fork('order')->shuffle(array_keys($this->library->definitions)) as $type) {
@@ -34,23 +68,27 @@ final readonly class EventRoller
                 break;
             }
 
-            $definition = $this->library->get($type);
-            $eventRng = $rng->fork($type);
-
-            if (! $conditions->allow($definition->requires) || ! $eventRng->chance($signals->evaluate($definition->probability))) {
+            if (in_array($type, $skip, true)) {
                 continue;
             }
 
-            $happened[] = $this->occur($definition, $signals, $gameMonth, $eventRng);
+            $definition = $this->library->get($type);
+            $eventRng = $rng->fork($type);
+
+            if (! $conditions->allow($definition->requires) || ! $eventRng->chance($odds($signals->evaluate($definition->probability)))) {
+                continue;
+            }
+
+            $happened[] = $this->occur($definition, $signals, $gameMonth, $eventRng, $payload);
         }
 
         return $happened;
     }
 
-    private function occur(EventDefinition $definition, EventSignals $signals, int $gameMonth, SeededRng $rng): EventOccurrence
+    /** @param array<string, mixed> $payload */
+    private function occur(EventDefinition $definition, EventSignals $signals, int $gameMonth, SeededRng $rng, array $payload = []): EventOccurrence
     {
         $effects = $definition->effects;
-        $payload = [];
 
         if ($definition->outcomes !== []) {
             $weights = array_map(fn (array $o) => $signals->evaluate($o['weight']), $definition->outcomes);

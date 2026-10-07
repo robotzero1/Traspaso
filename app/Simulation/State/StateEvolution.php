@@ -10,6 +10,11 @@ use App\Simulation\Data\ParameterSheet;
  * Step 8: how the business changes over the month. Reputation and staff
  * morale move part of the way towards a target each month; equipment
  * wears and ages; event modifiers count down a month.
+ *
+ * The daily engine takes the same steps a day at a time (day(), then
+ * monthEnd()): reputation and morale move on open days, at the daily rate
+ * that adds up to the monthly one over the month's open days; equipment
+ * wears a share each day.
  */
 final readonly class StateEvolution
 {
@@ -25,14 +30,57 @@ final readonly class StateEvolution
 
         return $state->with(
             cashCents: $cashAfterCents,
-            reputation: $this->approach($state->reputation, $this->reputationTarget($quality, $decisions->priceLevel, $service), 'reputation'),
+            reputation: $this->approach($state->reputation, $this->reputationTarget($quality, $decisions->priceLevel, $service), $this->sheet->float('reputation.adjustment_rate')),
             staffCount: $decisions->staffCount,
-            staffMorale: $this->approach($state->staffMorale, $this->moraleTarget($utilisation), 'morale'),
+            staffMorale: $this->approach($state->staffMorale, $this->moraleTarget($utilisation), $this->sheet->float('morale.adjustment_rate')),
             equipmentHealth: max(0.0, $state->equipmentHealth - $this->wear($state->equipmentAgeMonths)),
             equipmentAgeMonths: $state->equipmentAgeMonths + 1,
             stockQuality: $quality,
             modifiers: $state->modifierSet()->tick(),
         );
+    }
+
+    /**
+     * One day. On a closed day reputation and morale stay where they are.
+     *
+     * @param  int  $openDaysInMonth  the steps reputation and morale take this month
+     */
+    public function day(BusinessState $state, Decisions $decisions, float $quality, float $utilisation, int $cashAfterCents, bool $open, int $daysInMonth, int $openDaysInMonth): BusinessState
+    {
+        $state = $state->with(
+            cashCents: $cashAfterCents,
+            staffCount: $decisions->staffCount,
+            equipmentHealth: max(0.0, $state->equipmentHealth - $this->wear($state->equipmentAgeMonths) / $daysInMonth),
+            modifiers: $state->modifierSet()->tickDay(),
+        );
+
+        if (! $open) {
+            return $state;
+        }
+
+        $service = $this->serviceScore($state->staffMorale, $utilisation);
+        $steps = max(1, $openDaysInMonth);
+
+        return $state->with(
+            reputation: $this->approach($state->reputation, $this->reputationTarget($quality, $decisions->priceLevel, $service), $this->dailyRate('reputation', $steps)),
+            staffMorale: $this->approach($state->staffMorale, $this->moraleTarget($utilisation), $this->dailyRate('morale', $steps)),
+            stockQuality: $quality,
+        );
+    }
+
+    /** What changes once a month in the daily engine: equipment ages, monthly modifiers count down. */
+    public function monthEnd(BusinessState $state): BusinessState
+    {
+        return $state->with(
+            equipmentAgeMonths: $state->equipmentAgeMonths + 1,
+            modifiers: $state->modifierSet()->tick(),
+        );
+    }
+
+    /** The daily rate that, taken $steps times, moves as far as the monthly rate. */
+    public function dailyRate(string $section, int $steps): float
+    {
+        return 1 - (1 - $this->sheet->float("{$section}.adjustment_rate")) ** (1 / $steps);
     }
 
     /** 0–100: how well customers are looked after. */
@@ -70,9 +118,9 @@ final readonly class StateEvolution
             + $this->sheet->float('equipment.wear_per_age_year') * $equipmentAgeMonths / 12;
     }
 
-    private function approach(float $current, float $target, string $section): float
+    private function approach(float $current, float $target, float $rate): float
     {
-        return $this->clamp($current + $this->sheet->float("{$section}.adjustment_rate") * ($target - $current));
+        return $this->clamp($current + $rate * ($target - $current));
     }
 
     private function clamp(float $score): float

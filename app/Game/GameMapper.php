@@ -195,6 +195,7 @@ final class GameMapper
             'effect' => $modifier->effect->value,
             'value' => $modifier->value,
             'months_remaining' => $modifier->monthsRemaining,
+            'days_remaining' => $modifier->daysRemaining,
             'day_parts' => array_map(fn (DayPart $p) => $p->value, $modifier->dayParts),
         ];
     }
@@ -208,6 +209,7 @@ final class GameMapper
             value: (float) $data['value'],
             monthsRemaining: $data['months_remaining'],
             dayParts: array_map(fn (string $p) => DayPart::from($p), $data['day_parts']),
+            daysRemaining: $data['days_remaining'] ?? null,
         );
     }
 
