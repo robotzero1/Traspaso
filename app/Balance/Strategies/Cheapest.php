@@ -12,6 +12,8 @@ use App\Simulation\Rng\SeededRng;
 /** Buys the cheapest traspaso going and runs it lean on the defaults. */
 final class Cheapest implements Strategy
 {
+    use TakesDefaults;
+
     public function key(): string
     {
         return 'cheapest';

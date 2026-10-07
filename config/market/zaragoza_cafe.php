@@ -408,6 +408,11 @@ return [
         'noise_sd' => 0.05,
         'noise_min' => 0.8,
         'noise_max' => 1.2,
+        // How a spot's custom drifts over the years (offices, shops and
+        // residents come and go): a lasting random walk, sd_per_year a year.
+        // Calibrated (market:balance --years=5) so 45–50% of typical new
+        // cafés are still open after 5 years (INE/DIRCE).
+        'local_trend' => ['sd_per_year' => 0.245, 'min' => 0.4, 'max' => 1.6],
     ],
 
     // capture = base_rate × own attractiveness × condition × marketing

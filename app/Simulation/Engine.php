@@ -13,6 +13,7 @@ use App\Simulation\Data\MonthResult;
 use App\Simulation\Data\ParameterSheet;
 use App\Simulation\Demand\CaptureRate;
 use App\Simulation\Demand\Covers;
+use App\Simulation\Demand\LocalTrend;
 use App\Simulation\Demand\PotentialCustomers;
 use App\Simulation\Demand\QualityScore;
 use App\Simulation\Demand\Revenue;
@@ -88,7 +89,7 @@ final class Engine
 
         foreach ($decisions->openDayParts as $part) {
             // 2. Potential customers
-            $partPotential = $potential->forDayPart($profile, $part, $season, $noise) * $modifiers->demand($part);
+            $partPotential = $potential->forDayPart($profile, $part, $season, $noise) * $modifiers->demand($part) * $state->localTrend;
 
             // 4. Covers
             $partDemand = $partPotential * $capture;
@@ -135,6 +136,7 @@ final class Engine
 
         // 8. State evolution, then this month's events on top
         $stateAfter = (new StateEvolution($sheet))->next($state, $decisions, $quality, $utilisation, $cashAfter);
+        $stateAfter = $stateAfter->with(localTrend: (new LocalTrend($sheet))->next($state->localTrend, $rng->fork('trend')));
 
         // 9. Competitors
         $ownAttractiveness = $captureRate->attractiveness($state->reputation, $decisions->priceLevel, $quality);

@@ -22,6 +22,8 @@ use App\Simulation\Rng\SeededRng;
  */
 final class Thoughtful implements Strategy
 {
+    use RepairsWhenAffordable;
+
     public function key(): string
     {
         return 'thoughtful';

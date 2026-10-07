@@ -3,6 +3,7 @@
 namespace App\Balance;
 
 use App\Generation\GeneratedBusiness;
+use App\Simulation\Data\BusinessState;
 use App\Simulation\Data\Decisions;
 use App\Simulation\Data\MonthResult;
 use App\Simulation\Data\ParameterSheet;
@@ -29,6 +30,14 @@ interface Strategy
     public function choose(array $affordable, ParameterSheet $sheet, SeededRng $rng): GeneratedBusiness;
 
     public function openingDecisions(GeneratedBusiness $business, Decisions $defaults, ParameterSheet $sheet): Decisions;
+
+    /**
+     * Answers to the events waiting for a choice (EventRecord key → choice);
+     * events left out take their default.
+     *
+     * @return array<string, string>
+     */
+    public function eventChoices(BusinessState $state, ParameterSheet $sheet): array;
 
     /** Decisions for the next month, after seeing this one. */
     public function adjust(Decisions $current, MonthResult $result, GeneratedBusiness $business, ParameterSheet $sheet): Decisions;

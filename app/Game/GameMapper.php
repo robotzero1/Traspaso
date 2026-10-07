@@ -83,6 +83,7 @@ final class GameMapper
             equipmentHealth: $row->equipment_health,
             equipmentAgeMonths: $row->equipment_age_months,
             stockQuality: $row->stock_quality,
+            localTrend: $row->local_trend,
             modifiers: array_map($this->modifierFromArray(...), $row->modifiers),
             pendingEvents: array_map($this->eventFromArray(...), $row->pending_events),
         );
@@ -98,6 +99,7 @@ final class GameMapper
             'equipment_health' => round($state->equipmentHealth, 2),
             'equipment_age_months' => $state->equipmentAgeMonths,
             'stock_quality' => round($state->stockQuality, 2),
+            'local_trend' => round($state->localTrend, 4),
             'modifiers' => array_map($this->modifierToArray(...), $state->modifiers),
             'pending_events' => array_map($this->eventToArray(...), $state->pendingEvents),
         ];

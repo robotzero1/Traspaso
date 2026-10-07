@@ -13,6 +13,8 @@ use App\Simulation\Rng\SeededRng;
 /** The busiest spot it can afford, run upmarket: dearer, better, well staffed. */
 final class Premium implements Strategy
 {
+    use RepairsWhenAffordable;
+
     public function key(): string
     {
         return 'premium';

@@ -25,7 +25,7 @@ final readonly class BalanceReport
 
     /**
      * @param  list<GameOutcome>  $outcomes
-     * @return array{games: int, bought: int, median: float, p10: float, p25: float, p75: float, p90: float, gained: float, bankrupt: float, failed: float, rivals: float}
+     * @return array{games: int, bought: int, median: float, p10: float, p25: float, p75: float, p90: float, gained: float, bankrupt: float, failed: float, open: array<int, float>, rivals: float}
      */
     public static function summary(array $outcomes): array
     {
@@ -45,6 +45,11 @@ final readonly class BalanceReport
             'gained' => $n ? count(array_filter($changes, fn (float $c) => $c > 0)) / $n : 0.0,
             'bankrupt' => $n ? count(array_filter($bought, fn (GameOutcome $o) => $o->bankrupt())) / $n : 0.0,
             'failed' => $n ? count(array_filter($bought, fn (GameOutcome $o) => $o->failed())) / $n : 0.0,
+            // Share still open at the end of each year played.
+            'open' => array_map(
+                fn (int $year) => $n ? count(array_filter($bought, fn (GameOutcome $o) => ! $o->closedBy($year))) / $n : 0.0,
+                array_combine($years = range(1, max(1, ...array_map(fn (GameOutcome $o) => $o->years, $outcomes ?: [new GameOutcome('', 0, 1, false)]))), $years),
+            ),
             'rivals' => $n ? array_sum(array_map(fn (GameOutcome $o) => $o->rivals, $bought)) / $n : 0.0,
         ];
     }
@@ -90,6 +95,15 @@ final readonly class BalanceReport
         if (isset($s['default'])) {
             $f = $s['default']['failed'];
             $checks[] = ['target' => 'Typical new owner (default settings): 20–25% fail in year 1', 'pass' => $f >= 0.20 && $f <= 0.25, 'actual' => $pct($f)];
+        }
+
+        if (isset($s['default']['open'][5])) {
+            $open = $s['default']['open'][5];
+            $checks[] = ['target' => 'Typical new owner: 45–50% still open after 5 years', 'pass' => $open >= 0.45 && $open <= 0.50, 'actual' => $pct($open)];
+        }
+
+        if (isset($s['thoughtful']['open'][5], $s['default']['open'][5])) {
+            $checks[] = ['target' => 'Thoughtful player: more still open after 5 years than typical owners', 'pass' => $s['thoughtful']['open'][5] > $s['default']['open'][5], 'actual' => $pct($s['thoughtful']['open'][5])];
         }
 
         if (isset($s['thoughtful'])) {

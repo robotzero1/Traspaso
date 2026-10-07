@@ -155,7 +155,8 @@ simulateMonth(state, decisions, context, rng) -> MonthResult
                              leaves the cash (not a business cost)
 7. Events                  roll each event's probability; apply its effects
 8. State evolution         reputation moves toward (quality − price gap + service);
-                             equipment wears; staff morale reacts to workload
+                             equipment wears; staff morale reacts to workload;
+                             the spot's custom drifts (a lasting random walk)
 9. Competitors             each nearby competitor adjusts price/quality
 10. Return MonthResult      full breakdown for the UI
 ```
@@ -324,7 +325,7 @@ A separate product from the game: no game account needed.
 
 ### Milestones (stage two)
 
-10. **Multi-year engine and 5-year calibration**: games and simulations beyond 12 months; `market:balance` runs 5-year games; the 5-year survival target holds alongside the 1-year one.
+10. **Multi-year engine and 5-year calibration** (done): games and simulations beyond 12 months; `market:balance --years=5`; the 5-year survival target holds alongside the 1-year one. A café closes when its cash runs out or after a year that didn't pay its owner; each spot's custom drifts over the years (`demand.local_trend`). See `docs/balance-report.md`.
 11. **Daily simulation**: day-by-day trading with day-of-week patterns and weather; month-end costs; monthly totals still match the calibration.
 12. **Real-time clock**: the 23:00 Madrid nightly run for every active café (scheduler and queues); decisions from the next day; lead times; event deadlines and defaults; catch-up and idempotency; no fixed end.
 13. **PWA and push**: manifest, service worker, install prompt, web push with notification settings, a mobile-first daily results screen.

@@ -18,10 +18,16 @@ use App\Simulation\Valuation\BusinessValuation;
 
 /**
  * Plays whole games without the database, the way the app does: generate
- * the market from the seed, buy, pick rivals, play 12 months, value what's
- * left (net worth = cash + deposit + business value; cash below zero ends
- * the game with cash + deposit). Starting capital and the starting month
- * are drawn from the seed, across the range a player can choose.
+ * the market from the seed, buy, pick rivals, play for the given years,
+ * value what's left (net worth = cash + deposit + business value; cash
+ * below zero ends the game with cash + deposit). Starting capital and the
+ * starting month are drawn from the seed, across the range a player can
+ * choose.
+ *
+ * A café closes, as the closure statistics count it, when its cash runs
+ * out or at the end of the first year (from purchase) in which it didn't
+ * earn enough to pay its owner: a real owner would close or sell up then.
+ * A closed café is valued as it stands (sold on as a traspaso).
  */
 final readonly class BalanceRunner
 {
@@ -32,7 +38,7 @@ final readonly class BalanceRunner
         $this->sheet = new ParameterSheet($market->parameters);
     }
 
-    public function play(Strategy $strategy, int $seed): GameOutcome
+    public function play(Strategy $strategy, int $seed, int $years = 1): GameOutcome
     {
         $rng = new SeededRng($seed);
         $capitalRange = $this->sheet->array('game.starting_capital_cents');
@@ -54,7 +60,7 @@ final readonly class BalanceRunner
         ));
 
         if ($affordable === []) {
-            return new GameOutcome($strategy->key(), $seed, $capital, bought: false, netWorthCents: $capital);
+            return new GameOutcome($strategy->key(), $seed, $capital, bought: false, netWorthCents: $capital, years: $years);
         }
 
         $business = $strategy->choose($affordable, $this->sheet, $rng->fork("choose-{$strategy->key()}"));
@@ -68,9 +74,12 @@ final readonly class BalanceRunner
         $engine = new Engine;
         $profits = [];
         $ownerPaid = 0;
-        $months = $this->sheet->int('game.months');
+        $yearProfit = 0;
+        $yearPay = 0;
+        $months = $years * 12;
 
         for ($month = 1; $month <= $months; $month++) {
+            $decisions = $decisions->with(eventChoices: $strategy->eventChoices($state, $this->sheet));
             $result = $engine->simulateMonth(
                 $state,
                 $decisions,
@@ -80,11 +89,24 @@ final readonly class BalanceRunner
 
             $profits[] = $result->profitCents();
             $ownerPaid += $result->ownerPayCents;
+            $yearProfit += $result->profitCents();
+            $yearPay += $result->ownerPayCents;
             $state = $result->stateAfter;
             $competitors = $result->competitorsAfter;
+            $year = intdiv($month - 1, 12) + 1;
 
             if ($state->cashCents < 0) {
-                return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, $month, $profits, $state->cashCents + $deposit, $ownerPaid);
+                return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, $month, $year, $profits, $state->cashCents + $deposit, $ownerPaid, $years);
+            }
+
+            if ($month % 12 === 0) {
+                if ($yearProfit < $yearPay) {
+                    $value = (new BusinessValuation($this->sheet))->valueCents($state, $business->traspasoCents, $profits);
+
+                    return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, null, $year, $profits, $state->cashCents + $deposit + $value, $ownerPaid, $years);
+                }
+
+                [$yearProfit, $yearPay] = [0, 0];
             }
 
             $decisions = $strategy->adjust($decisions->with(eventChoices: []), $result, $business, $this->sheet);
@@ -92,7 +114,7 @@ final readonly class BalanceRunner
 
         $value = (new BusinessValuation($this->sheet))->valueCents($state, $business->traspasoCents, $profits);
 
-        return $this->outcome($strategy, $seed, $capital, $business, $rivals, $months, null, $profits, $state->cashCents + $deposit + $value, $ownerPaid);
+        return $this->outcome($strategy, $seed, $capital, $business, $rivals, $months, null, null, $profits, $state->cashCents + $deposit + $value, $ownerPaid, $years);
     }
 
     /**
@@ -147,7 +169,7 @@ final readonly class BalanceRunner
     }
 
     /** @param list<int> $profits */
-    private function outcome(Strategy $strategy, int $seed, int $capital, GeneratedBusiness $business, int $rivals, int $monthsPlayed, ?int $bankruptIn, array $profits, int $netWorth, int $ownerPaid): GameOutcome
+    private function outcome(Strategy $strategy, int $seed, int $capital, GeneratedBusiness $business, int $rivals, int $monthsPlayed, ?int $bankruptIn, ?int $closedInYear, array $profits, int $netWorth, int $ownerPaid, int $years): GameOutcome
     {
         return new GameOutcome(
             strategy: $strategy->key(),
@@ -164,6 +186,8 @@ final readonly class BalanceRunner
             totalProfitCents: array_sum($profits),
             netWorthCents: $netWorth,
             ownerPaidCents: $ownerPaid,
+            years: $years,
+            closedInYear: $closedInYear,
         );
     }
 }

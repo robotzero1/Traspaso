@@ -88,7 +88,7 @@ class Game extends Model
         return $this->status === GameStatus::Active;
     }
 
-    /** All twelve months played; waiting for the player to sell or keep. */
+    /** All the game's months (game.months) played; waiting for the player to sell or keep. */
     public function isAwaitingEnd(): bool
     {
         return $this->isActive() && $this->business_id !== null && $this->current_month > config("market.{$this->market}.game.months");

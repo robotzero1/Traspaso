@@ -229,6 +229,18 @@ it('plays a month and stores the results', function () {
         ->and($game->states()->where('month', 1)->sole()->decisions['staff_count'])->toBe(config('market.zaragoza_cafe.default_decisions.staff_count'));
 });
 
+it('plays on past the first year when the market says games last longer', function () {
+    config(['market.zaragoza_cafe.game.months' => 24]);
+    $game = boughtGame($this->user);
+    $game->update(['current_month' => 13, 'cash_cents' => 10_000_000]);
+
+    $this->actingAs($this->user)->post(route('games.months.store', $game))->assertSessionHasNoErrors();
+
+    expect($game->refresh()->current_month)->toBe(14)
+        ->and($game->monthResults()->sole()->month)->toBe(13)
+        ->and($game->states()->where('month', 13)->sole()->local_trend)->toBeGreaterThan(0.0);
+});
+
 it('shows the business, decisions and results while playing', function () {
     $game = boughtGame($this->user);
     $this->actingAs($this->user)->post(route('games.months.store', $game));

@@ -30,6 +30,14 @@ it('runs only the strategies asked for and writes every outcome as JSON', functi
         ->and($outcomes[0])->toHaveKeys(['seed', 'neighbourhood', 'footfall', 'netWorthCents', 'change']);
 });
 
+it('runs games for several years and reports who is still open', function () {
+    $this->artisan('market:balance', ['--games' => 2, '--years' => 5])
+        ->expectsOutputToContain('5 years each')
+        ->expectsOutputToContain('Still open at the end of each year')
+        ->expectsOutputToContain('Typical new owner: 45–50% still open after 5 years')
+        ->assertSuccessful();
+});
+
 it('refuses an unknown market', function () {
     $this->artisan('market:balance', ['--market' => 'atlantis'])->assertFailed();
 });

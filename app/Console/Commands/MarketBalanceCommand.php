@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\File;
  */
 #[Signature('market:balance
     {--games=200 : Games per strategy}
+    {--years=1 : Years each game runs (5 checks five-year survival)}
     {--seed=1 : First seed; game n uses seed + n}
     {--market=zaragoza_cafe}
     {--strategy=* : Only these strategies (default: all)}
@@ -59,14 +60,17 @@ class MarketBalanceCommand extends Command
         );
         $strategies = $this->strategies();
         $games = (int) $this->option('games');
+        $years = max(1, (int) $this->option('years'));
         $seed = (int) $this->option('seed');
         $runner = new BalanceRunner($market);
         $outcomes = [];
 
         $this->components->info(sprintf(
-            '%d games × %d strategies on %s (%s)',
+            '%d games × %d strategies, %d %s each, on %s (%s)',
             $games,
             count($strategies),
+            $years,
+            $years === 1 ? 'year' : 'years',
             $this->option('market'),
             $market->points === null ? 'placeholder locations' : count($market->rivalPlaces).' real cafés and bars, footfall surface',
         ));
@@ -75,7 +79,7 @@ class MarketBalanceCommand extends Command
 
         foreach ($strategies as $strategy) {
             for ($n = 0; $n < $games; $n++) {
-                $outcomes[] = $runner->play($strategy, $seed + $n);
+                $outcomes[] = $runner->play($strategy, $seed + $n, $years);
                 $bar->advance();
             }
         }
@@ -85,6 +89,11 @@ class MarketBalanceCommand extends Command
 
         $report = new BalanceReport($outcomes);
         $this->strategyTable($report, $strategies);
+
+        if ($years > 1) {
+            $this->survivalTable($report, $strategies, $years);
+        }
+
         $this->groupTable('Thoughtful player by district', $report->grouped('thoughtful', fn (GameOutcome $o) => $o->neighbourhood));
         $this->groupTable('Thoughtful player by footfall at the spot', $report->grouped('thoughtful', BalanceReport::footfallBand(...)));
 
@@ -120,13 +129,27 @@ class MarketBalanceCommand extends Command
         }
 
         $this->table(['Strategy', 'Bought', 'p10', 'p25', 'Median', 'p75', 'p90', 'Ahead', 'Bankrupt', 'Failed', 'Rivals'], $rows);
-        $this->line('  Failed: ran out of cash, or didn\'t earn enough over the year to pay the owner.');
+        $this->line('  Failed: closed in year 1 (ran out of cash, or didn\'t earn enough over the year to pay the owner). Net worth is at the end, or at closing.');
 
         foreach ($strategies as $strategy) {
             $this->line("  <comment>{$strategy->key()}</comment>: {$strategy->description()}");
         }
 
         $this->newLine();
+    }
+
+    /** @param list<Strategy> $strategies */
+    private function survivalTable(BalanceReport $report, array $strategies, int $years): void
+    {
+        $by = $report->byStrategy();
+        $this->line('<info>Still open at the end of each year</info>');
+        $this->table(
+            ['Strategy', ...array_map(fn (int $y) => "Year {$y}", range(1, $years))],
+            array_map(fn (Strategy $s) => [
+                $s->key(),
+                ...array_map(fn (float $open) => sprintf('%.0f%%', $open * 100), BalanceReport::summary($by[$s->key()] ?? [])['open']),
+            ], $strategies),
+        );
     }
 
     /** @param array<string, array<string, float|int>> $groups */

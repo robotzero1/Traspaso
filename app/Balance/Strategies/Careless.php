@@ -14,6 +14,8 @@ use App\Simulation\Rng\SeededRng;
 /** Overprices cheap stock, overstaffs, opens all hours and splashes out on ads. */
 final class Careless implements Strategy
 {
+    use TakesDefaults;
+
     public function key(): string
     {
         return 'careless';

@@ -47,6 +47,7 @@ php artisan tinker --execute="App\Models\User::factory()->create(['email' => 'me
 php artisan test                 # the whole test suite (Pest)
 php artisan market:placeholders  # which market parameters still need real research
 php artisan market:balance       # play 1,000 games per scripted strategy and report how they end
+php artisan market:balance --years=5   # the same over five years, with a survival curve
 ```
 
 `market:balance` plays on whatever geo data is seeded; see

@@ -33,7 +33,6 @@ it('rejects invalid months', function (array $overrides) {
     'calendar month 0' => [['calendarMonth' => 0]],
     'calendar month 13' => [['calendarMonth' => 13]],
     'game month 0' => [['gameMonth' => 0]],
-    'game month 13' => [['gameMonth' => 13]],
 ]);
 
 it('only accepts a list of competitors', function (array $competitors) {

@@ -19,13 +19,13 @@ final readonly class MarketContext
     public function __construct(
         /** Calendar month, 1 = January. Drives seasonality. */
         public int $calendarMonth,
-        /** Turn number within the game, 1–12. */
+        /** Months since the business was bought, from 1. Games may run for years. */
         public int $gameMonth,
         public array $competitors,
         public array $parameters,
     ) {
         Guard::between('calendarMonth', $calendarMonth, 1, 12);
-        Guard::between('gameMonth', $gameMonth, 1, 12);
+        Guard::positive('gameMonth', $gameMonth);
         Guard::listOf('competitors', $competitors, CompetitorState::class);
     }
 

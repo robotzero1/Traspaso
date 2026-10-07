@@ -90,3 +90,22 @@ it('records the game month from the context', function () {
 
     expect($result->gameMonth)->toBe(7);
 });
+
+it('keeps going past the first year', function () {
+    $result = (new Engine)->simulateMonth(
+        SimulationFixtures::state(),
+        SimulationFixtures::decisions(),
+        new MarketContext(3, 50, [], SimulationFixtures::parameters()),
+        (new SeededRng(1))->fork('month-50'),
+    );
+
+    expect($result->gameMonth)->toBe(50);
+});
+
+it('scales demand by how the street has drifted, and moves the drift on', function () {
+    $at = fn (float $trend) => simulate(['localTrend' => $trend]);
+    $potential = fn ($result) => array_sum(array_map(fn ($p) => $p->potentialCustomers, $result->dayParts));
+
+    expect($potential($at(0.5)))->toEqualWithDelta($potential($at(1.0)) / 2, 2)
+        ->and($at(1.0)->stateAfter->localTrend)->not->toBe(1.0);
+});

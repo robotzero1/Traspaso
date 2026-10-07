@@ -10,7 +10,9 @@ use App\Simulation\Data\Concerns\Immutable;
  * Scores run 0–100. Cash can go negative; the game decides what that means.
  *
  * $modifiers are lasting event effects still in force; $pendingEvents are
- * events from last month waiting for the player's choice.
+ * events from last month waiting for the player's choice. $localTrend is
+ * how the spot's custom has drifted since purchase (1.0 = as bought): over
+ * the years streets gain and lose offices, shops and residents.
  */
 final readonly class BusinessState
 {
@@ -31,6 +33,7 @@ final readonly class BusinessState
         public float $stockQuality,
         public array $modifiers = [],
         public array $pendingEvents = [],
+        public float $localTrend = 1.0,
     ) {
         Guard::between('reputation', $reputation, 0, 100);
         Guard::nonNegative('staffCount', $staffCount);
@@ -40,6 +43,7 @@ final readonly class BusinessState
         Guard::between('stockQuality', $stockQuality, 0, 100);
         Guard::listOf('modifiers', $modifiers, Modifier::class);
         Guard::listOf('pendingEvents', $pendingEvents, EventRecord::class);
+        Guard::positive('localTrend', $localTrend);
     }
 
     public function modifierSet(): ModifierSet

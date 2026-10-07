@@ -30,7 +30,7 @@ final readonly class MonthResult
         public int $eventRevenueCents = 0,
         public int $ownerPayCents = 0,
     ) {
-        Guard::between('gameMonth', $gameMonth, 1, 12);
+        Guard::positive('gameMonth', $gameMonth);
         Guard::nonNegative('customers', $customers);
         Guard::nonNegative('revenueCents', $revenueCents);
         Guard::listOf('competitorsAfter', $competitorsAfter, CompetitorState::class);

@@ -15,7 +15,64 @@ draws its starting capital (€20k–€100k, whole thousands) and its starting 
 from the seed. Net worth = cash + the landlord's deposit + the business's value;
 cash below zero ends the game with cash + deposit.
 
-## Calibrated to real closure rates and listing prices (current)
+## Five years (milestone 10, current)
+
+```bash
+php artisan market:balance --games=1000 --years=5    # about 100 s
+```
+
+Games now run for any number of years. A café **closes** when its cash runs
+out, or at the end of the first year (counted from purchase) in which it
+didn't earn enough to pay its owner. The target is the INE/DIRCE figure for
+food and drink businesses: 50–55% close within 5 years, so **45–50% of typical
+new owners must still be open after 5 years**, as well as 75–80% after one.
+
+What changed:
+
+1. **Typical owners repair broken equipment** when they can afford it
+   (keeping three months of their pay in hand), as do thoughtful and premium
+   players. Never answering the breakdown event let a café wear out over the
+   years; only 36% lasted 5 years. With repairs, 63% did: equipment matters
+   a lot over five years.
+2. **The street's fortunes drift** (`demand.local_trend`, new): a lasting
+   random walk in each spot's custom, so over the years some streets gain
+   offices, shops and residents and others lose them. Without it, a café that
+   survived year one almost never closed later, since its income barely
+   varied from year to year. Its spread, **24.5% a year**, is calibrated to the
+   5-year survival figure, so it also stands in for closures the model doesn't
+   simulate (the owner's health, family or burnout, rent rises at lease
+   renewal). It is stored with each game's state.
+3. **Rival turnover** was tested at higher rates (4–6% a month) and moved
+   survival by only a couple of points, so it was left as it was.
+
+### Still open at the end of each year (1,000 games per strategy)
+
+| Strategy | Year 1 | Year 2 | Year 3 | Year 4 | Year 5 |
+|---|---|---|---|---|---|
+| thoughtful | 89% | 80% | 74% | 66% | 60% |
+| **default (typical new owner)** | **77%** | 66% | 59% | 53% | **47%** |
+| premium | 97% | 91% | 84% | 79% | 72% |
+| cheapest | 12% | 5% | 3% | 2% | 1% |
+| careless | 0% | 0% | 0% | 0% | 0% |
+
+Typical owners close fastest in year one (23%), then at 10–14% a year, which is
+the shape of real survival curves.
+
+| Target | Actual | |
+|---|---|---|
+| Typical new owner (default settings): 20–25% fail in year 1 | 23% | pass |
+| Typical new owner: 45–50% still open after 5 years | 47% | pass |
+| Thoughtful player: more still open after 5 years than typical owners | 60% | pass |
+| Thoughtful player: 12% or fewer fail in year 1 | 11% | pass |
+| Thoughtful player: no district (10+ games) where over 30% fail | 20% | pass |
+| Careless player: 90% or more fail | 100% | pass |
+
+The 1-year targets still hold in 1-year runs (typical owners 23% fail,
+thoughtful 11%). Net worth after five years is large for survivors (typical
+owner median +86%), since a café that lasts keeps earning; the premium
+strategy remains too strong (see below).
+
+## Calibrated to real closure rates and listing prices
 
 The game aims to be a realistic simulation, so it is calibrated to real data
 rather than to invented targets:

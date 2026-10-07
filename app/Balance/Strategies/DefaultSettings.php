@@ -12,6 +12,8 @@ use App\Simulation\Rng\SeededRng;
 /** Buys any café it can afford and never touches the default settings. */
 final class DefaultSettings implements Strategy
 {
+    use RepairsWhenAffordable;
+
     public function key(): string
     {
         return 'default';

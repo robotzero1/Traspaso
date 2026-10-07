@@ -37,7 +37,7 @@ final class GamePresenter
             'phase' => $this->phase($game),
             'current_month' => $game->current_month,
             'months' => (int) config("market.{$game->market}.game.months"),
-            'calendar_month' => $game->current_month <= 12 ? $game->calendarMonth($game->current_month) : null,
+            'calendar_month' => $game->current_month <= (int) config("market.{$game->market}.game.months") ? $game->calendarMonth($game->current_month) : null,
             'start_date' => $game->start_date->toDateString(),
             'starting_capital_cents' => $game->starting_capital_cents,
             'cash_cents' => $game->cash_cents,

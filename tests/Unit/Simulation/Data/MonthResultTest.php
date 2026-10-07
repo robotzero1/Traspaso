@@ -55,7 +55,6 @@ it('rejects invalid results', function (array $overrides) {
 
     expect($make)->toThrow(InvalidArgumentException::class);
 })->with([
-    'game month 13' => [['gameMonth' => 13]],
     'negative customers' => [['customers' => -1]],
     'negative revenue' => [['revenueCents' => -1]],
     'events of the wrong type' => [['events' => ['heatwave']]],

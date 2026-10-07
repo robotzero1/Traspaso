@@ -11,6 +11,7 @@ use App\Balance\Strategies\Premium;
 use App\Balance\Strategies\Thoughtful;
 use App\Generation\Location;
 use App\Simulation\Data\DayPart;
+use App\Simulation\Data\EventRecord;
 use Tests\Support\SimulationFixtures;
 
 /** A small city: each fixture neighbourhood gets a grid of commercial points, with real cafés among them. */
@@ -144,11 +145,53 @@ it('groups footfall into bands of two', function () {
     expect($at(0.4))->toBe('0–2')->and($at(5.1))->toBe('4–6')->and($at(10.0))->toBe('8–10');
 });
 
-it('counts a café as failed when the cash runs out or it can not pay its owner', function () {
-    $outcome = fn (int $profit, ?int $bankruptIn = null) => new GameOutcome('x', 1, 100_000, true, 'A', 5.0, monthsPlayed: 12, bankruptInMonth: $bankruptIn, totalProfitCents: $profit, netWorthCents: 0, ownerPaidCents: 1_440_000);
+it('counts a café as failed in the year it closed', function () {
+    $closedIn = fn (?int $year) => new GameOutcome('x', 1, 100_000, true, 'A', 5.0, years: 5, closedInYear: $year);
 
-    expect($outcome(1_500_000)->failed())->toBeFalse()
-        ->and($outcome(1_000_000)->failed())->toBeTrue()
-        ->and($outcome(2_000_000, bankruptIn: 7)->failed())->toBeTrue()
+    expect($closedIn(null)->failed())->toBeFalse()
+        ->and($closedIn(1)->failed())->toBeTrue()
+        ->and($closedIn(3)->failed())->toBeFalse()
+        ->and($closedIn(3)->closedBy(2))->toBeFalse()
+        ->and($closedIn(3)->closedBy(3))->toBeTrue()
         ->and((new GameOutcome('x', 1, 100_000, bought: false))->failed())->toBeFalse();
+});
+
+it('closes a café at the end of a year that did not pay its owner, or when the cash runs out', function () {
+    $runner = new BalanceRunner(balanceMarket());
+    $pay = SimulationFixtures::parameters()['owner']['pay_month_cents'];
+
+    foreach (range(1, 15) as $seed) {
+        $outcome = $runner->play(new DefaultSettings, $seed, years: 3);
+
+        if ($outcome->closedInYear === null) {
+            expect($outcome->monthsPlayed)->toBe(36);
+        } elseif ($outcome->bankrupt()) {
+            expect($outcome->closedInYear)->toBe(intdiv($outcome->bankruptInMonth - 1, 12) + 1);
+        } else {
+            // Closed at a year end, short of the owner's pay that year.
+            expect($outcome->monthsPlayed)->toBe(12 * $outcome->closedInYear)
+                ->and($outcome->monthsPlayed % 12)->toBe(0);
+        }
+    }
+});
+
+it('reports how many are still open at the end of each year, never rising', function () {
+    $runner = new BalanceRunner(balanceMarket());
+    $open = BalanceReport::summary(array_map(fn (int $s) => $runner->play(new DefaultSettings, $s, years: 4), range(1, 20)))['open'];
+
+    expect(array_keys($open))->toBe([1, 2, 3, 4]);
+
+    for ($year = 2; $year <= 4; $year++) {
+        expect($open[$year])->toBeLessThanOrEqual($open[$year - 1]);
+    }
+});
+
+it('has careful players repair broken equipment when they can afford it', function () {
+    $broken = new EventRecord('equipment_failure', 3, choices: ['repair', 'limp_on']);
+    $state = fn (int $cash) => SimulationFixtures::state()->with(cashCents: $cash, pendingEvents: [$broken]);
+    $sheet = SimulationFixtures::sheet();
+
+    expect((new Thoughtful)->eventChoices($state(2_000_000), $sheet))->toBe([$broken->key() => 'repair'])
+        ->and((new Thoughtful)->eventChoices($state(100_000), $sheet))->toBe([])
+        ->and((new Careless)->eventChoices($state(2_000_000), $sheet))->toBe([]);
 });

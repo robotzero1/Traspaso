@@ -27,7 +27,7 @@ final readonly class EventRecord
         public ?string $choice = null,
     ) {
         Guard::notBlank('type', $type);
-        Guard::between('month', $month, 1, 12);
+        Guard::positive('month', $month);
 
         if (! array_is_list($choices) || count(array_unique($choices)) !== count($choices)) {
             throw new InvalidArgumentException('choices must be a list of unique strings.');

@@ -55,8 +55,10 @@ it('does better with good management than bad at the same location', function ()
 });
 
 it('rewards a better location under the same management', function () {
-    expect(Scenarios::greatLocation()->play(Scenarios::averageDecisions())->totalProfitCents())
-        ->toBeGreaterThan(Scenarios::mediocreLocation()->play(Scenarios::averageDecisions())->totalProfitCents());
+    // Averaged over seeds: a single year is partly luck (events, the street's drift).
+    $average = fn (callable $game) => array_sum(array_map(fn (int $seed) => $game($seed)->play(Scenarios::averageDecisions())->totalProfitCents(), range(1, 10))) / 10;
+
+    expect($average(Scenarios::greatLocation(...)))->toBeGreaterThan($average(Scenarios::mediocreLocation(...)));
 });
 
 /*

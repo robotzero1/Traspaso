@@ -18,13 +18,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property float $equipment_health
  * @property int $equipment_age_months
  * @property float $stock_quality
+ * @property float $local_trend
  * @property list<array<string, mixed>> $modifiers
  * @property list<array<string, mixed>> $pending_events
  * @property array<string, mixed>|null $decisions
  */
 #[Fillable([
     'game_id', 'month', 'reputation', 'staff_count', 'staff_morale', 'equipment_health', 'equipment_age_months',
-    'stock_quality', 'modifiers', 'pending_events', 'decisions',
+    'stock_quality', 'local_trend', 'modifiers', 'pending_events', 'decisions',
 ])]
 class GameBusinessState extends Model
 {
@@ -44,6 +45,7 @@ class GameBusinessState extends Model
             'equipment_health' => 'float',
             'equipment_age_months' => 'integer',
             'stock_quality' => 'float',
+            'local_trend' => 'float',
             'modifiers' => 'array',
             'pending_events' => 'array',
             'decisions' => 'array',

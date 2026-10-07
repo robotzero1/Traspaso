@@ -20,6 +20,9 @@ final readonly class GameOutcome
         public int $totalProfitCents = 0,
         public int $netWorthCents = 0,
         public int $ownerPaidCents = 0,
+        public int $years = 1,
+        /** The year (from purchase, 1 = first) the café closed in; null if still open. */
+        public ?int $closedInYear = null,
     ) {}
 
     /** Net worth change as a share of starting capital. */
@@ -40,7 +43,13 @@ final readonly class GameOutcome
      */
     public function failed(): bool
     {
-        return $this->bought && ($this->bankrupt() || $this->totalProfitCents < $this->ownerPaidCents);
+        return $this->closedBy(1);
+    }
+
+    /** Closed by the end of the given year from purchase. */
+    public function closedBy(int $year): bool
+    {
+        return $this->bought && $this->closedInYear !== null && $this->closedInYear <= $year;
     }
 
     /** @return array<string, mixed> */
