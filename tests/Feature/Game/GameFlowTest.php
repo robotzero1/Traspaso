@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Game\SimulateDays;
 use App\Actions\Game\StartGame;
 use App\Enums\BusinessStatus;
 use App\Enums\GameStatus;
@@ -8,11 +9,16 @@ use App\Models\Business;
 use App\Models\Game;
 use App\Models\User;
 use App\Simulation\Costs\MonthlyCosts;
+use App\Simulation\Data\CalendarDate;
 use App\Simulation\Data\ParameterSheet;
 use Database\Seeders\NeighbourhoodSeeder;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
+    // Bought on the last day of September, so the café trades from 1 October
+    // and its first month is a whole one.
+    $this->travelTo(Carbon::parse('2026-09-30 12:00', 'Europe/Madrid'));
     $this->seed(NeighbourhoodSeeder::class);
     $this->user = User::factory()->create();
 });
@@ -300,15 +306,119 @@ it('plays out the same for the same seed and decisions', function () {
     expect($play(11))->toBe($play(11));
 });
 
-it('lets the player answer an event before the next month', function () {
-    // Only equipment failures, and always.
+/** Only equipment failures, and always. */
+function forceEquipmentFailures(): void
+{
     $library = config('market.zaragoza_cafe.events.library');
     $forced = array_map(fn ($e) => [...$e, 'probability' => ['base' => 0.0]], $library);
     $forced['equipment_failure']['probability'] = ['base' => 1.0];
     config(['market.zaragoza_cafe.events.library' => $forced]);
+}
 
+/** The nightly run, on the given evening (Madrid time). */
+function nightlyRun(string $date): void
+{
+    test()->travelTo(Carbon::parse("{$date} 23:00", 'Europe/Madrid'));
+    test()->artisan('game:nightly', ['--sync' => true])->assertSuccessful();
+}
+
+// Real time ------------------------------------------------------------------
+
+it('trades from the day after the purchase, one day each night', function () {
     $game = boughtGame($this->user);
-    $this->actingAs($this->user)->post(route('games.months.store', $game));
+
+    expect($game->started_on->toDateString())->toBe('2026-10-01')
+        ->and($game->last_simulated_on->toDateString())->toBe('2026-09-30');
+
+    nightlyRun('2026-10-01');
+    nightlyRun('2026-10-01');
+
+    expect($game->refresh()->last_simulated_on->toDateString())->toBe('2026-10-01')
+        ->and($game->dayResults()->count())->toBe(1)
+        ->and($game->cash_cents)->toBe($game->dayResults()->sole()->cash_after_cents);
+});
+
+it('catches up on missed nights, and settles the month on its last day', function () {
+    $game = boughtGame($this->user);
+
+    nightlyRun('2026-11-02');
+
+    $game->refresh();
+    $october = $game->monthResults()->sole();
+
+    expect($game->dayResults()->count())->toBe(33)
+        ->and($october->month)->toBe(1)
+        ->and($october->calendar_month)->toBe(10)
+        ->and($october->revenue_cents)->toBe((int) $game->dayResults()->where('month', 1)->sum('revenue_cents'))
+        ->and($game->dayResults()->whereDate('date', '2026-10-31')->sole()->cash_after_cents)->toBe($october->cash_after_cents)
+        ->and($game->current_month)->toBe(2)
+        ->and($game->dayResults()->where('month', 2)->count())->toBe(2)
+        ->and($game->last_simulated_on->toDateString())->toBe('2026-11-02');
+});
+
+it('plays the same days whether caught up at once or night by night', function () {
+    $atOnce = boughtGame($this->user, 77);
+    $nightly = boughtGame(User::factory()->create(), 77);
+    $days = app(SimulateDays::class);
+
+    $days->handle($atOnce, CalendarDate::parse('2026-10-04'));
+
+    foreach (['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04'] as $date) {
+        $days->handle($nightly, CalendarDate::parse($date));
+    }
+
+    expect($nightly->dayResults()->pluck('revenue_cents')->all())->toBe($atOnce->dayResults()->pluck('revenue_cents')->all())
+        ->and($nightly->refresh()->cash_cents)->toBe($atOnce->refresh()->cash_cents);
+});
+
+it('pays the fixed bills pro rata in a month taken over part way through', function () {
+    $this->travelTo(Carbon::parse('2026-10-20 12:00', 'Europe/Madrid'));
+    $game = boughtGame($this->user);
+
+    nightlyRun('2026-10-31');
+
+    $month = $game->refresh()->monthResults()->sole();
+    $pay = config('market.zaragoza_cafe.owner.pay_month_cents');
+
+    expect($game->dayResults()->count())->toBe(11)
+        ->and($month->owner_pay_cents)->toBe((int) round($pay * 11 / 31))
+        ->and($month->rent_cents)->toBe((int) round(70_000 * 11 / 31));
+});
+
+it('applies decisions from the next day, and staff changes after their lead time', function () {
+    $game = boughtGame($this->user);
+    nightlyRun('2026-10-01');
+
+    $this->travelTo(Carbon::parse('2026-10-02 10:00', 'Europe/Madrid'));
+    $this->actingAs($this->user)
+        ->put(route('games.decisions', $game), decisionsPayload(['price_level' => 1.1, 'staff_count' => 3]))
+        ->assertSessionHasNoErrors();
+
+    $game->refresh();
+
+    expect($game->decisions['price_level'])->toBe(1)
+        ->and($game->scheduled_decisions)->toBe([
+            ['from' => '2026-10-03', 'changes' => ['price_level' => 1.1]],
+            ['from' => '2026-10-10', 'changes' => ['staff_count' => 3]],
+        ]);
+
+    $this->actingAs($this->user)->get(route('games.show', $game))->assertInertia(fn (Assert $page) => $page
+        ->where('decisions.staff_count', 3)
+        ->has('scheduled_decisions', 2));
+
+    nightlyRun('2026-10-03');
+    expect($game->refresh()->decisions['price_level'])->toBe(1.1)
+        ->and($game->decisions['staff_count'])->toBe(1);
+
+    nightlyRun('2026-10-10');
+    expect($game->refresh()->decisions['staff_count'])->toBe(3)
+        ->and($game->scheduled_decisions)->toBeNull();
+});
+
+it('lets the player answer an event before its deadline', function () {
+    forceEquipmentFailures();
+    $game = boughtGame($this->user);
+    nightlyRun('2026-10-01');
 
     $this->actingAs($this->user)->get(route('games.show', $game))->assertInertia(fn (Assert $page) => $page
         ->has('pending_events', 1)
@@ -318,20 +428,40 @@ it('lets the player answer an event before the next month', function () {
     $this->actingAs($this->user)
         ->put(route('games.decisions', $game), decisionsPayload(['event_choices' => ['1:equipment_failure' => 'repair']]))
         ->assertSessionHasNoErrors();
-    $this->actingAs($this->user)->post(route('games.months.store', $game));
+    nightlyRun('2026-10-02');
 
     $event = $game->events()->where('month', 1)->sole();
 
-    expect($event->type)->toBe('equipment_failure')
-        ->and($event->choice)->toBe('repair')
-        ->and($event->resolved_month)->toBe(2)
+    expect($event->choice)->toBe('repair')
+        ->and($event->resolved_month)->toBe(1)
         // The choice is used once, then cleared.
         ->and($game->refresh()->decisions['event_choices'])->toBe([]);
+});
+
+it('takes the default choice when the player doesn\'t answer in time', function () {
+    forceEquipmentFailures();
+    $game = boughtGame($this->user);
+
+    nightlyRun('2026-10-03');
+    expect($game->events()->sole()->choice)->toBeNull();
+
+    nightlyRun('2026-10-04');
+    expect($game->events()->sole()->choice)->toBe('limp_on');
+});
+
+it('fast-forwards only when switched on', function () {
+    $game = boughtGame($this->user);
+    config(['game.fast_forward' => false]);
+
+    $this->actingAs($this->user)->post(route('games.months.store', $game))->assertSessionHasErrors('game');
+
+    expect($game->dayResults()->count())->toBe(0);
 });
 
 // Ending -------------------------------------------------------------------
 
 it('plays a full year, then sells the business', function () {
+    config(['market.zaragoza_cafe.game.months' => 12]);
     $game = boughtGame($this->user);
 
     foreach (range(1, 12) as $month) {
@@ -367,6 +497,7 @@ it('plays a full year, then sells the business', function () {
 });
 
 it('can keep the business at the end instead', function () {
+    config(['market.zaragoza_cafe.game.months' => 12]);
     $game = boughtGame($this->user);
     $game->update(['current_month' => 13]);
 
@@ -379,6 +510,7 @@ it('can keep the business at the end instead', function () {
 });
 
 it("can't end the game before the year is out", function () {
+    config(['market.zaragoza_cafe.game.months' => 12]);
     $game = boughtGame($this->user);
 
     $this->actingAs($this->user)->post(route('games.end', $game), ['outcome' => 'sell'])->assertSessionHasErrors('game');

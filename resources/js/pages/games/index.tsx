@@ -82,11 +82,9 @@ export default function GamesIndex({ games, starting_capital }: Props) {
                                                 game.starting_capital_cents,
                                             )}{' '}
                                             · month{' '}
-                                            {Math.min(
-                                                game.current_month,
-                                                game.months,
-                                            )}{' '}
-                                            of {game.months}
+                                            {game.months === null
+                                                ? game.current_month
+                                                : `${Math.min(game.current_month, game.months)} of ${game.months}`}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">

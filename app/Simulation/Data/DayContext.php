@@ -30,6 +30,12 @@ final readonly class DayContext
          * day of each month, after the player has chosen.
          */
         public bool $settleChoices = false,
+        /**
+         * Otherwise settle events the player has answered, and those past
+         * their deadline with their default (the real-time game). Off, they
+         * wait for the next settling day (a month played at once).
+         */
+        public bool $deadlines = true,
     ) {
         Guard::positive('gameMonth', $gameMonth);
         Guard::listOf('competitors', $competitors, CompetitorState::class);

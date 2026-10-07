@@ -17,6 +17,9 @@ use Illuminate\Support\Carbon;
  * @property string $market
  * @property int $seed
  * @property Carbon $start_date
+ * @property Carbon|null $started_on
+ * @property Carbon|null $last_simulated_on
+ * @property list<array{from: string, changes: array<string, mixed>}>|null $scheduled_decisions
  * @property int $starting_capital_cents
  * @property int $cash_cents
  * @property int $current_month
@@ -31,7 +34,7 @@ use Illuminate\Support\Carbon;
  * @property-read GameBusinessState|null $latestState
  */
 #[Fillable([
-    'user_id', 'market', 'seed', 'start_date', 'starting_capital_cents', 'cash_cents', 'current_month',
+    'user_id', 'market', 'seed', 'start_date', 'started_on', 'last_simulated_on', 'scheduled_decisions', 'starting_capital_cents', 'cash_cents', 'current_month',
     'status', 'business_id', 'deposit_cents', 'decisions', 'sold_for_cents', 'final_net_worth_cents', 'ended_at',
 ])]
 class Game extends Model
@@ -98,7 +101,21 @@ class Game extends Model
     /** All the game's months (game.months) played; waiting for the player to sell or keep. */
     public function isAwaitingEnd(): bool
     {
-        return $this->isActive() && $this->business_id !== null && $this->current_month > config("market.{$this->market}.game.months");
+        $months = config("market.{$this->market}.game.months");
+
+        return $months !== null && $this->isActive() && $this->business_id !== null && $this->current_month > $months;
+    }
+
+    /** Today on the game's clock (Europe/Madrid). */
+    public static function today(): CalendarDate
+    {
+        return CalendarDate::parse(now(config('game.timezone'))->toDateString());
+    }
+
+    /** The next day to simulate. */
+    public function nextDay(): CalendarDate
+    {
+        return CalendarDate::parse($this->last_simulated_on->toDateString())->addDays(1);
     }
 
     /** Calendar month (1–12) of a game month, counting from the start date. */
@@ -118,6 +135,9 @@ class Game extends Model
         return [
             'seed' => 'integer',
             'start_date' => 'date',
+            'started_on' => 'date',
+            'last_simulated_on' => 'date',
+            'scheduled_decisions' => 'array',
             'starting_capital_cents' => 'integer',
             'cash_cents' => 'integer',
             'current_month' => 'integer',

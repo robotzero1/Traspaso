@@ -147,7 +147,16 @@ it('settles events waiting for a choice before trading', function () {
     expect($day->resolvedEvents[0]->choice)->toBe('repair')
         ->and($day->eventCostCents)->toBe(140_000)
         ->and($day->stateAfter->pendingEvents)->toBe([])
-        ->and(playDay('2027-04-01', ['pendingEvents' => [EventFixtures::pending('equipment_failure')]])->stateAfter->pendingEvents)->toHaveCount(1);
+        ->and(playDay('2027-04-01', ['pendingEvents' => [EventFixtures::pending('equipment_failure')]])->stateAfter->pendingEvents)->toBe([]);
+});
+
+it('waits for the player\'s answer until the event\'s deadline, then takes the default', function () {
+    $pending = EventFixtures::pending('equipment_failure')->with(payload: ['date' => '2027-04-10']);
+    $deadline = SimulationFixtures::parameters()['events']['deadline_days'];
+
+    expect(playDay('2027-04-12', ['pendingEvents' => [$pending]])->stateAfter->pendingEvents)->toHaveCount(1)
+        ->and(playDay('2027-04-12', ['pendingEvents' => [$pending]], ['eventChoices' => ['1:equipment_failure' => 'repair']])->resolvedEvents[0]->choice)->toBe('repair')
+        ->and(playDay(CalendarDate::parse('2027-04-10')->addDays($deadline)->toString(), ['pendingEvents' => [$pending]])->resolvedEvents[0]->choice)->toBe('limp_on');
 });
 
 it('plays a whole month and settles its bills at month end', function () {

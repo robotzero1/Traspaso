@@ -42,10 +42,11 @@ final readonly class MonthlyCosts
      * by day; the rest is worked out for the month as above.
      *
      * @param  int  $otherCostCents  events and monthly-cost modifiers over the month's days
+     * @param  float  $share  the share of the month traded: fixed costs are pro rata
      */
-    public function settleMonth(BusinessState $state, Decisions $decisions, SeasonalFactors $season, int $revenueCents, int $cogsCents, int $otherCostCents): CostBreakdown
+    public function settleMonth(BusinessState $state, Decisions $decisions, SeasonalFactors $season, int $revenueCents, int $cogsCents, int $otherCostCents, float $share = 1.0): CostBreakdown
     {
-        return $this->breakdown($state, $decisions, $season, $revenueCents, $cogsCents, $state->modifierSet()->rent(), $otherCostCents);
+        return $this->breakdown($state, $decisions, $season, $revenueCents, $cogsCents, $state->modifierSet()->rent(), $otherCostCents, $share);
     }
 
     /** COGS as a share of revenue: the quality tier's, plus any event modifiers. */
@@ -54,16 +55,20 @@ final readonly class MonthlyCosts
         return $this->sheet->float("cogs.share_of_revenue.{$decisions->qualityTier->value}") + $modifiers->cogsShare();
     }
 
-    private function breakdown(BusinessState $state, Decisions $decisions, SeasonalFactors $season, int $revenueCents, int $cogs, float $rentFactor, int $extraOtherCents): CostBreakdown
+    private function breakdown(BusinessState $state, Decisions $decisions, SeasonalFactors $season, int $revenueCents, int $cogs, float $rentFactor, int $extraOtherCents, float $share = 1.0): CostBreakdown
     {
-        $staff = $this->staff($decisions->staffCount) + $this->coverCents($decisions);
-        $rent = $this->round($state->profile->rentMonthCents * $rentFactor);
-        $utilities = $this->utilities($decisions, $season);
-        $marketing = $decisions->marketingSpendCents;
-        $fixedOther = $this->insurance() + $this->maintenance($state) + $this->terraceFee($state) + $extraOtherCents;
+        $staff = $this->round(($this->staff($decisions->staffCount) + $this->coverCents($decisions)) * $share);
+        $rent = $this->round($state->profile->rentMonthCents * $rentFactor * $share);
+        $utilities = $share < 1.0
+            ? $this->round($this->sheet->float('utilities.base_month_cents') * $share
+                + $this->sheet->float('utilities.per_open_hour_cents') * (new DayPartSchedule($this->sheet))->hoursPerDay($decisions) * $season->openDays)
+            : $this->utilities($decisions, $season);
+        $marketing = $this->round($decisions->marketingSpendCents * $share);
+        $fixedOther = $this->round(($this->insurance() + $this->maintenance($state) + $this->terraceFee($state)) * $share) + $extraOtherCents;
 
         $beforeCuota = $revenueCents - ($cogs + $staff + $rent + $utilities + $marketing + $fixedOther);
-        $cuota = $this->cuotaAutonomo($beforeCuota);
+        // The cuota's band is set by what a full month would earn.
+        $cuota = $this->round($this->cuotaAutonomo($this->round($beforeCuota / $share)) * $share);
         $taxes = $this->round(max(0, $beforeCuota - $cuota) * $this->sheet->float('income_tax.rate'));
 
         return new CostBreakdown(

@@ -36,7 +36,9 @@ return [
     'game' => [
         'source' => 'game design (SPEC §1–2)',
         'starting_capital_cents' => ['min' => 2_000_000, 'max' => 10_000_000],
-        'months' => 12,
+        // Months a game lasts; null = no fixed end (stage two, SPEC §11):
+        // the café trades until it goes bankrupt.
+        'months' => null,
     ],
 
     // On top of the traspaso, the landlord holds a deposit (fianza), paid
@@ -621,6 +623,9 @@ return [
     'events' => [
         'source' => 'PLACEHOLDER: game design, to tune in the balancing pass',
         'max_per_month' => 2,
+        // Days the player has to answer an event before its default choice
+        // is taken. An event can set its own deadline_days.
+        'deadline_days' => 3,
 
         'library' => [
             'equipment_failure' => [
@@ -883,6 +888,13 @@ return [
         // part-time cover at the same hourly cost, so a long opening day
         // costs wages (SPEC §6: a quiet day part shouldn't pay its way).
         'min_on_shift' => 1.0,
+        // Days before a staff change takes effect. Hiring: finding and
+        // signing someone up, about a week (a guess). Letting someone go:
+        // 15 days' notice (Estatuto de los Trabajadores art. 49.1.c and
+        // 53.1.c for temporary contracts over a year and objective
+        // dismissals).
+        'hire_lead_days' => 7,
+        'notice_days' => 15,
     ],
 
     // Monthly cuota by the owner's net monthly income (upper bound, cents).

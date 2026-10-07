@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { formatCents, humanize } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type {
+    ScheduledDecision,
     CostHints,
     DayPartResult,
     DayPartValue,
@@ -33,6 +34,9 @@ type Props = {
     pendingEvents: PendingEvent[];
     costHints: CostHints;
     lastMonth?: DayPartResult[];
+    /** Changes saved but not yet in effect (next day, or staff lead times). */
+    scheduled?: ScheduledDecision[];
+    fastForward?: boolean;
 };
 
 const tiers = [
@@ -61,6 +65,8 @@ export function DecisionsForm({
     pendingEvents,
     costHints,
     lastMonth = [],
+    scheduled = [],
+    fastForward = false,
 }: Props) {
     const [price, setPrice] = useState(decisions.price_level);
     const [tier, setTier] = useState(decisions.quality_tier);
@@ -479,19 +485,35 @@ export function DecisionsForm({
 
                         <InputError message={errors.decisions ?? errors.game} />
                         <div className="flex flex-col gap-2">
-                            <Button
-                                name="and_play"
-                                value="1"
-                                disabled={processing || parts.length === 0}
-                            >
-                                Play month {month}
+                            <Button disabled={processing || parts.length === 0}>
+                                Save
                             </Button>
-                            <Button
-                                variant="secondary"
-                                disabled={processing || parts.length === 0}
-                            >
-                                Save without playing
-                            </Button>
+                            <p className="text-xs text-muted-foreground">
+                                The café trades every day; tonight at 23:00 the
+                                day is played. Changes apply from the next day,
+                                staff after their notice or hiring time.
+                            </p>
+                            {scheduled.map((s) => (
+                                <p
+                                    key={s.from}
+                                    className="text-xs text-muted-foreground"
+                                >
+                                    From {s.from}:{' '}
+                                    {Object.keys(s.changes)
+                                        .map((k) => k.replaceAll('_', ' '))
+                                        .join(', ')}
+                                </p>
+                            ))}
+                            {fastForward && (
+                                <Button
+                                    name="and_play"
+                                    value="1"
+                                    variant="secondary"
+                                    disabled={processing || parts.length === 0}
+                                >
+                                    Fast-forward to the end of month {month}
+                                </Button>
+                            )}
                             {recentlySuccessful && (
                                 <span className="text-center text-sm text-muted-foreground">
                                     Saved.

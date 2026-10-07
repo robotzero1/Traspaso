@@ -46,8 +46,15 @@ final class PurchaseBusiness
         DB::transaction(function () use ($game, $business, $takeover, $profile, $deposit, $price) {
             $state = $takeover->initialState($profile, $business->base_reputation, $business->equipment_age_years, $game->cash_cents - $price);
 
+            // The keys are handed over today; the café trades from tomorrow.
+            $today = Game::today();
+            $firstDay = $today->addDays(1);
+
             $business->update(['status' => BusinessStatus::OwnedByPlayer]);
             $game->update([
+                'start_date' => $firstDay->firstOfMonth()->toString(),
+                'started_on' => $firstDay->toString(),
+                'last_simulated_on' => $today->toString(),
                 'business_id' => $business->id,
                 'cash_cents' => $state->cashCents,
                 'deposit_cents' => $deposit,

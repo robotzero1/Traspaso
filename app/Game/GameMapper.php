@@ -3,6 +3,7 @@
 namespace App\Game;
 
 use App\Models\Business;
+use App\Models\DayResult as DayResultRow;
 use App\Models\Game;
 use App\Models\GameBusinessState;
 use App\Models\GameCompetitor;
@@ -10,8 +11,12 @@ use App\Models\Neighbourhood;
 use App\Simulation\Data\BusinessCategory;
 use App\Simulation\Data\BusinessProfile;
 use App\Simulation\Data\BusinessState;
+use App\Simulation\Data\CalendarDate;
 use App\Simulation\Data\CompetitorState;
 use App\Simulation\Data\DayPart;
+use App\Simulation\Data\DayPartResult;
+use App\Simulation\Data\DayResult;
+use App\Simulation\Data\DayWeather;
 use App\Simulation\Data\Decisions;
 use App\Simulation\Data\EventRecord;
 use App\Simulation\Data\Kitchen;
@@ -21,6 +26,7 @@ use App\Simulation\Data\ModifierEffect;
 use App\Simulation\Data\NeighbourhoodProfile;
 use App\Simulation\Data\ParameterSheet;
 use App\Simulation\Data\QualityTier;
+use App\Simulation\Data\WeatherKind;
 
 /**
  * Maps between Eloquent models (and their JSON columns) and the
@@ -185,6 +191,33 @@ final class GameMapper
             'lat' => $location[0] ?? null,
             'lng' => $location[1] ?? null,
         ];
+    }
+
+    /**
+     * A stored day as the engine's DayResult, for closing the month. The
+     * state and rivals are today's; the day's events are already stored.
+     *
+     * @param  list<CompetitorState>  $competitors
+     */
+    public function dayResult(DayResultRow $row, BusinessState $state, array $competitors): DayResult
+    {
+        return new DayResult(
+            date: CalendarDate::parse($row->date->toDateString()),
+            gameMonth: $row->month,
+            open: $row->open,
+            weather: new DayWeather(WeatherKind::from($row->weather), $row->terrace_usable),
+            customers: $row->customers,
+            revenueCents: $row->revenue_cents,
+            cogsCents: $row->cogs_cents,
+            eventCostCents: $row->event_cost_cents,
+            modifierCostCents: 0,
+            stateAfter: $state,
+            competitorsAfter: $competitors,
+            dayParts: array_map(fn (array $p) => new DayPartResult(
+                DayPart::from($p['day_part']), $p['potential_customers'] ?? 0, $p['demand'], $p['capacity'], $p['covers'], $p['revenue_cents'],
+            ), $row->day_parts),
+            eventRevenueCents: $row->event_revenue_cents,
+        );
     }
 
     /** @return array<string, mixed> */

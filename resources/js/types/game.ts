@@ -5,9 +5,13 @@ export type GameSummary = {
     status: 'active' | 'bankrupt' | 'finished';
     phase: GamePhase;
     current_month: number;
-    months: number;
+    /** Null: no fixed end (real time). */
+    months: number | null;
     calendar_month: number | null;
     start_date: string;
+    started_on: string | null;
+    last_simulated_on: string | null;
+    fast_forward: boolean;
     starting_capital_cents: number;
     cash_cents: number;
     deposit_cents: number;
@@ -211,4 +215,9 @@ export type MapProps = {
     /** The demand model's footfall exponent and per-day-part street intensity. */
     footfall_exponent: number;
     day_part_intensity: Record<string, number>;
+};
+
+export type ScheduledDecision = {
+    from: string;
+    changes: Partial<Decisions>;
 };

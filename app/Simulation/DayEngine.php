@@ -79,10 +79,17 @@ final class DayEngine
         $eventRevenueCents = 0;
         $resolved = [];
 
-        // Choices on events waiting for one
-        if ($context->settleChoices) {
-            $resolved = (new ChoiceResolver($sheet))->resolve($state->pendingEvents, $decisions);
-            $state = $state->with(pendingEvents: []);
+        // Choices on events waiting for one: all of them when settling, else
+        // those the player has answered and those past their deadline.
+        $due = match (true) {
+            $context->settleChoices => $state->pendingEvents,
+            ! $context->deadlines => [],
+            default => array_values(array_filter($state->pendingEvents, fn (EventRecord $e) => $decisions->choiceFor($e) !== null || $this->overdue($e, $date, $sheet))),
+        };
+
+        if ($due !== []) {
+            $resolved = (new ChoiceResolver($sheet))->resolve($due, $decisions);
+            $state = $state->with(pendingEvents: array_values(array_filter($state->pendingEvents, fn (EventRecord $e) => ! in_array($e, $due, true))));
 
             foreach ($resolved as $occurrence) {
                 $state = $applier->applyToState($state, $occurrence->effects, $occurrence->record->type);
@@ -206,7 +213,7 @@ final class DayEngine
     }
 
     /**
-     * Month end: rent, wages, utilities, marketing, the cuota and the other
+     * Month end (or the end of a month's first traded days): rent, wages, utilities, marketing, the cuota and the other
      * monthly costs are settled, the owner takes their pay, and the month's
      * P&L is drawn up from its days. Then equipment ages, monthly modifiers
      * count down, the spot's custom drifts and rivals respond, as in the
@@ -228,7 +235,11 @@ final class DayEngine
         $cogsCents = $sum(fn (DayResult $d) => $d->cogsCents);
         $paidCents = $sum(fn (DayResult $d) => $d->cogsCents + $d->eventCostCents + $d->modifierCostCents);
         $openDays = count(array_filter($days, fn (DayResult $d) => $d->open));
-        $season = new SeasonalFactors(1.0, $days[0]->date->daysInMonth(), $openDays, 0.0);
+        $daysInMonth = $days[0]->date->daysInMonth();
+        $season = new SeasonalFactors(1.0, $daysInMonth, $openDays, 0.0);
+        // A month traded only in part (the first, from the day the café was
+        // taken over) pays its fixed bills and the owner's pay pro rata.
+        $share = min(1.0, count($days) / $daysInMonth);
 
         $breakdown = $costs->settleMonth(
             $state,
@@ -237,9 +248,10 @@ final class DayEngine
             $revenueCents,
             $cogsCents,
             $sum(fn (DayResult $d) => $d->eventCostCents + $d->modifierCostCents),
+            $share,
         );
 
-        $ownerPay = $sheet->int('owner.pay_month_cents');
+        $ownerPay = (int) round($sheet->int('owner.pay_month_cents') * $share);
         // The days already paid for their stock and one-off costs.
         $cashAfter = $state->cashCents - ($breakdown->totalCents() - $paidCents) - $ownerPay;
 
@@ -271,7 +283,7 @@ final class DayEngine
     /**
      * A whole calendar month, day by day, with the same decisions
      * throughout, closed at month end. Events waiting for a choice are
-     * settled on the first day.
+     * settled on the first day, as in the monthly engine (no deadlines).
      */
     public function simulateMonth(BusinessState $state, Decisions $decisions, MarketContext $context, CalendarDate $month, SeededRng $monthRng): DailyMonthResult
     {
@@ -287,7 +299,7 @@ final class DayEngine
             $day = $this->simulateDay(
                 $state,
                 $decisions,
-                new DayContext($date, $context->gameMonth, $competitors, $context->parameters, $eventsThisMonth, settleChoices: $days === []),
+                new DayContext($date, $context->gameMonth, $competitors, $context->parameters, $eventsThisMonth, settleChoices: $days === [], deadlines: false),
                 $monthRng,
             );
 
@@ -314,6 +326,24 @@ final class DayEngine
         }
 
         return $this->calendar;
+    }
+
+    /**
+     * Whether an event has waited past its deadline (events.deadline_days,
+     * or its own), so its default choice is taken. Events without a date
+     * (from the monthly engine) are settled at once.
+     */
+    private function overdue(EventRecord $event, CalendarDate $today, ParameterSheet $sheet): bool
+    {
+        $date = $event->payload['date'] ?? null;
+
+        if (! is_string($date)) {
+            return true;
+        }
+
+        $deadline = $sheet->array("events.library.{$event->type}")['deadline_days'] ?? $sheet->int('events.deadline_days');
+
+        return CalendarDate::parse($date)->daysUntil($today) >= $deadline;
     }
 
     private function dayNoise(ParameterSheet $sheet, SeededRng $rng): float

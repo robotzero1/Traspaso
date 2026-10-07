@@ -32,6 +32,7 @@ import type {
     MapProps,
     MonthResultRow,
     PendingEvent,
+    ScheduledDecision,
 } from '@/types/game';
 
 type Props = {
@@ -42,6 +43,7 @@ type Props = {
     state?: BusinessStateProps;
     business_value_cents?: number;
     decisions?: Decisions;
+    scheduled_decisions?: ScheduledDecision[];
     decision_limits?: DecisionLimits;
     allowed_day_parts?: DayPartValue[];
     day_parts?: { value: DayPartValue; start_hour: number; end_hour: number }[];
@@ -182,6 +184,8 @@ function Playing(
                         pendingEvents={pending}
                         costHints={props.cost_hints!}
                         lastMonth={results.at(-1)?.day_parts}
+                        scheduled={props.scheduled_decisions}
+                        fastForward={game.fast_forward}
                     />
                 )}
 

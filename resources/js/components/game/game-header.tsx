@@ -3,12 +3,16 @@ import type { GameSummary } from '@/types/game';
 
 export function GameHeader({ game }: { game: GameSummary }) {
     const change = game.net_worth_cents / game.starting_capital_cents - 1;
-    const month = Math.min(game.current_month, game.months);
+    const month =
+        game.months === null
+            ? game.current_month
+            : Math.min(game.current_month, game.months);
 
     return (
         <div className="grid gap-4 rounded-xl border p-4 sm:grid-cols-4">
             <Stat label="Month">
-                {month} of {game.months}
+                {month}
+                {game.months !== null && ` of ${game.months}`}
                 {game.calendar_month !== null && (
                     <span className="text-muted-foreground">
                         {' '}
