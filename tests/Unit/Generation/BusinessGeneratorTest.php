@@ -4,6 +4,7 @@ use App\Generation\BusinessGenerator;
 use App\Generation\Distributions\PercentileDistribution;
 use App\Generation\GeneratedBusiness;
 use App\Simulation\Data\BusinessCategory;
+use App\Simulation\Data\Kitchen;
 use App\Simulation\Data\Licence;
 use App\Simulation\Data\NeighbourhoodProfile;
 use App\Simulation\Rng\SeededRng;
@@ -262,7 +263,7 @@ it('asks more for a kitchen with a smoke outlet and for a terrace', function () 
 
         return $values[intdiv(count($values), 2)];
     };
-    $kitchen = fn (bool $full) => array_filter($market, fn ($b) => ($b->profile->kitchen === App\Simulation\Data\Kitchen::Full) === $full);
+    $kitchen = fn (bool $full) => array_filter($market, fn ($b) => ($b->profile->kitchen === Kitchen::Full) === $full);
     $terrace = fn (bool $has) => array_filter($market, fn ($b) => ($b->profile->terraceSeats > 0) === $has);
 
     expect($median($kitchen(true)))->toBeGreaterThan($median($kitchen(false)))
