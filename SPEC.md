@@ -4,6 +4,8 @@
 
 ## 1. Premise
 
+> Stage two (§11) makes the game real time (one game day per real day, no fixed end) and adds a standalone viability check. This section describes stage one.
+
 The player starts with a fixed amount of capital (€20k–€100k, chosen at setup) in **Zaragoza**, browses businesses available for *traspaso*, buys one, and runs it month by month for **12 months**. The goal is to finish with more net worth than they started with, measured as cash plus business value minus debts.
 
 The businesses are **fictional**. Their starting parameters are generated from **statistical distributions based on real market research**. They sit on a **real map** built from open data.
@@ -246,7 +248,7 @@ For each street point, four component scores are worked out, each normalised to 
 - All weights, radii and timing profiles live in `config/market/*.php` and in the script's committed settings, marked as placeholders until calibrated.
 - **Licence:** the surface is an OSM-derived database under the ODbL. Keep it in its own files and table, attribute OpenStreetMap wherever it appears, and expect to share it under the ODbL if distributed.
 
-## 9. Milestones
+## 9. Milestones (stage one, done)
 
 Each one is sized to be a single cloud session.
 
@@ -263,6 +265,69 @@ Each one is sized to be a single cloud session.
 ## 10. Open questions
 
 - Single-player only, or a shared market (players competing for the same listings) later?
-- Should the player be able to own more than one business in the MVP?
+- Should the player be able to own more than one business at once? (Stage two: one at a time; selling and buying again comes later.)
 - Is there a start-up loan option, and on what terms?
-- How long is a game in real time: one sitting, or a turn per day?
+- ~~How long is a game in real time?~~ Settled in §11: real time, one game day per real day, no fixed end.
+- Paid capital tiers: exact amounts and prices above the free €30k.
+- Later: Spain-wide viability for other cities and business types (the engine and geo pipeline allow it; each needs its own researched parameter sheet).
+
+## 11. Stage two: real time, the app and the viability check
+
+Stage one built a turn-based 12-month game. Stage two turns it into a café that runs in real time on the player's phone, and adds a standalone, paid viability check. The realism rules stay: every number in a parameter sheet, calibrated against real data (`docs/balance-report.md`), checked with `market:balance`.
+
+### Real time
+
+- **One game day per real day.** A game starts on today's date and the café trades every day it is open. The calendar is the real one, so seasonality, August and the Pilar arrive when they really do.
+- **No fixed end.** The café runs until the player goes bankrupt or (in a later stage) sells it. Net worth is shown at all times. Selling and buying another business comes later.
+- **The nightly run, 23:00 Europe/Madrid.** The server simulates the day for every active café, stores the result and sends one push notification with the day's numbers and anything notable (an event, a rival's move, a record day).
+- **Decisions apply from the next day.** Prices, opening hours and marketing change overnight. Some changes have lead times set in the parameter sheet: hiring and letting staff go (notice), a terrace permit (weeks).
+- **Month end.** Rent, wages, the owner's pay and the other monthly costs go out on the last day of the month, with a monthly P&L. Bankruptcy is checked then: cash below zero after the month's bills ends the game.
+- **Unanswered events** take their default choice after a deadline (a few days, per event). A player who doesn't open the app still has a café that trades on its current settings.
+- **Catch-up.** If a nightly run is missed, the next one plays the missing days in order. Runs are idempotent: a day is simulated once.
+
+### Daily simulation
+
+- The monthly engine is split into days. Each day uses the same steps with that day's share of the month, plus a **day-of-week pattern** (busier Fridays and Saturdays, quieter Mondays, by day part) and **day-to-day weather** (rain empties terraces, heat changes the afternoon), from the parameter sheet.
+- **Monthly totals stay calibrated:** over a month, the days add up to what the monthly engine produced, so stage one's calibration carries over. Tests check this with fixed seeds.
+- Events roll daily with their monthly odds spread over the days. State (reputation, morale, equipment) moves daily in smaller steps.
+
+### Capital and payment
+
+- A new game starts with **up to €30,000 free**: enough for most low-tier and some mid-tier traspasos.
+- **More is the player's savings, and it is paid for:** paid tiers raise the starting capital above €30k (amounts and prices to be decided), opening up bigger premises, kitchens, terraces and busier streets. In the game it is simply the owner's savings.
+- In a future shared market, paid tiers would need separate leagues.
+- Payments go through the web (Stripe Checkout), with IVA on digital services, receipts, and the 14-day withdrawal rules for digital content.
+
+### The app
+
+- A **PWA**: installable, works on phones first, opens on the latest day's results.
+- **Web push** for the nightly summary and for events that need an answer. Players choose what they're notified about. On iPhone, push needs the app added to the home screen; the app explains this.
+
+### The viability check (standalone, paid)
+
+A separate product from the game: no game account needed.
+
+- **Input:** the location picked on the map (no address search: geocoding would fetch geo data at runtime, which §8 rules out), plus the listing's traspaso, rent, floor area, seats, kitchen and terrace, and how the owner would run it.
+- **Simulation:** about 1,000 five-year futures of that café on the calibrated engine, with real rivals and footfall at that spot.
+- **Report:** the chance it is still open after 1, 3 and 5 years; the owner's income each year (median and range); when the traspaso is earned back; the main risks; how it compares with the district. Assumptions shown; clearly labelled a simulation, not financial advice.
+- **Free preview** (the 1-year survival chance); the full 5-year report is paid.
+- **Calibration:** a typical new owner must survive 5 years 45–50% of the time (INE/DIRCE; Hostelería de España: 50–55% of new food and drink businesses close within 5 years), as well as 1 year 75–80% of the time.
+
+### Data model additions
+
+- `games`: `started_on`, `last_simulated_on` (date), no fixed `months`.
+- `day_results`: `game_id, date, customers, revenue_cents, day_parts (json), weather, events (json)`.
+- `month_results` stays, written at month end.
+- `push_subscriptions`: per user and device.
+- `purchases` / `entitlements`: what each account has paid for (capital tier, reports).
+- `viability_reports`: inputs, status, results, and whether it's paid.
+
+### Milestones (stage two)
+
+10. **Multi-year engine and 5-year calibration**: games and simulations beyond 12 months; `market:balance` runs 5-year games; the 5-year survival target holds alongside the 1-year one.
+11. **Daily simulation**: day-by-day trading with day-of-week patterns and weather; month-end costs; monthly totals still match the calibration.
+12. **Real-time clock**: the 23:00 Madrid nightly run for every active café (scheduler and queues); decisions from the next day; lead times; event deadlines and defaults; catch-up and idempotency; no fixed end.
+13. **PWA and push**: manifest, service worker, install prompt, web push with notification settings, a mobile-first daily results screen.
+14. **Viability check**: map pin and listing form, the 1,000 × 5-year run on a queue, the report page with a free preview.
+15. **Payments and accounts**: Stripe Checkout for capital tiers and reports, entitlements, receipts with IVA, terms, privacy and disclaimer pages.
+16. **Going live**: production hosting, queue workers and the scheduler, monitoring, backups, GDPR basics.
