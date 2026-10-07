@@ -578,3 +578,38 @@ it('gives the screens the opening cash and cost hints', function () {
         ->where('cost_hints.min_on_shift', fn ($v) => (float) $v === (float) config('market.zaragoza_cafe.staff.min_on_shift'))
         ->has('results.0.day_parts', 3));
 });
+
+// Going live (milestone 16) --------------------------------------------------
+
+it('reports a missed nightly run as a health problem', function () {
+    boughtGame($this->user);
+
+    // Before the night's run the café is a day behind: fine.
+    $this->travelTo(Carbon::parse('2026-10-01 22:00', 'Europe/Madrid'));
+    $this->artisan('app:health')->assertSuccessful();
+
+    // Next evening it's two days behind: a night was missed.
+    $this->travelTo(Carbon::parse('2026-10-02 22:00', 'Europe/Madrid'));
+    $this->artisan('app:health')->expectsOutputToContain('missed a nightly run')->assertFailed();
+
+    nightlyRun('2026-10-02');
+    $this->artisan('app:health')->assertSuccessful();
+});
+
+it('exports the user\'s games, and deleting the account removes them', function () {
+    $game = boughtGame($this->user);
+    nightlyRun('2026-10-01');
+
+    $export = $this->actingAs($this->user)->get(route('profile.export'))
+        ->assertOk()
+        ->assertHeader('Content-Disposition', 'attachment; filename="traspaso-my-data.json"')
+        ->json();
+
+    expect($export['account']['email'])->toBe($this->user->email)
+        ->and($export['games'][0]['id'])->toBe($game->id)
+        ->and($export['games'][0]['day_results'])->toHaveCount(1);
+
+    $this->actingAs($this->user)->delete(route('profile.destroy'), ['password' => 'password'])->assertRedirect('/');
+
+    expect(Game::query()->count())->toBe(0);
+});

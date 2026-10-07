@@ -16,6 +16,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('push/subscriptions', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
     Route::delete('push/subscriptions', [PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('settings/profile/export', [ProfileController::class, 'export'])->middleware('throttle:5,1')->name('profile.export');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

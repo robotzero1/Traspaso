@@ -20,7 +20,8 @@ export default function Privacy() {
                 <li>
                     Viability checks: the location and figures you enter, and
                     the results. Anyone with a report's link can open it, so
-                    keep the link private.
+                    keep the link private. Reports not paid for are deleted
+                    after 90 days.
                 </li>
                 <li>
                     Push notification subscriptions for the devices you turn
@@ -47,11 +48,18 @@ export default function Privacy() {
                 Only the ones needed to keep you signed in and remember your
                 light or dark setting. No advertising or tracking cookies.
             </p>
+            <h2>How long, and where</h2>
+            <p>
+                Your account and games until you delete your account; purchase
+                records for as long as tax law requires (six years). Backups are
+                kept for 14 days. The service is hosted in [EU country].
+            </p>
             <h2>Your rights</h2>
             <p>
                 You can ask to see, correct, export or delete your data, or
-                object to its use, at [contact email]. Deleting your account in
-                Settings removes it. You can complain to the Agencia Española de
+                object to its use, at [contact email]. Settings → Profile has a
+                download of all your data, and deleting your account there
+                removes it. You can complain to the Agencia Española de
                 Protección de Datos (aepd.es).
             </p>
         </LegalPage>

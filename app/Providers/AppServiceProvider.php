@@ -3,15 +3,21 @@
 namespace App\Providers;
 
 use App\Generation\BusinessGenerator;
+use App\Ops\HealthCheck;
 use App\Payments\PaymentGateway;
 use App\Payments\StripeGateway;
 use App\Push\PushSender;
 use App\Push\WebPushSender;
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Events\DiagnosingHealth;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use RuntimeException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,6 +38,13 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // /up reports what HealthCheck finds (for an uptime monitor).
+        Event::listen(DiagnosingHealth::class, function () {
+            if ($problems = app(HealthCheck::class)->problems()) {
+                throw new RuntimeException(implode(' ', $problems));
+            }
+        });
     }
 
     /**
@@ -40,6 +53,13 @@ class AppServiceProvider extends ServiceProvider
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
+
+        // Behind the host's HTTPS proxy, links must still be https.
+        URL::forceHttps(app()->isProduction());
+
+        if ($proxies = config('ops.trusted_proxies')) {
+            TrustProxies::at($proxies === '*' ? '*' : explode(',', $proxies));
+        }
 
         DB::prohibitDestructiveCommands(
             app()->isProduction(),

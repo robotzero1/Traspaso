@@ -60,6 +60,12 @@ figures, and it runs 1,000 simulated five-year futures on the queue (about half
 a minute; keep `php artisan queue:work` running). The full report is meant to
 be paid for; for local testing put `VIABILITY_UNLOCK_ALL=true` in `.env`.
 
+## Going live
+
+`docs/deploy.md` covers running it on a server: the configs in `deploy/`,
+the production `.env`, monitoring (`/up`, `php artisan app:health`), nightly
+backups (`php artisan app:backup`) and the GDPR basics.
+
 ## Payments
 
 The full viability report and the bigger capital tiers are paid for with

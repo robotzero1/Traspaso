@@ -1,0 +1,3 @@
+# crontab -u www-data deploy/crontab — runs the scheduler (nightly run at 23:00
+# Madrid, backups, pruning). The server's own time zone doesn't matter.
+* * * * * cd /var/www/traspaso && php artisan schedule:run >> /dev/null 2>&1

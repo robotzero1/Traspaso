@@ -7,7 +7,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { edit } from '@/routes/profile';
+import { edit, exportMethod } from '@/routes/profile';
 import type { Auth } from '@/types';
 import { send } from '@/routes/verification';
 
@@ -121,6 +121,19 @@ export default function Profile({
                         </>
                     )}
                 </Form>
+            </div>
+
+            <div className="space-y-4">
+                <Heading
+                    variant="small"
+                    title="Your data"
+                    description="Download everything we keep about you: your account, games, viability checks and purchases"
+                />
+                <Button variant="outline" asChild>
+                    <a href={exportMethod.url()} download>
+                        Download my data
+                    </a>
+                </Button>
             </div>
 
             <DeleteUser />

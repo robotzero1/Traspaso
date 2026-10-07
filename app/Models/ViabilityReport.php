@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Support\Carbon;
 
 /**
@@ -22,7 +24,15 @@ use Illuminate\Support\Carbon;
 #[Fillable(['uuid', 'user_id', 'status', 'inputs', 'results', 'paid_at'])]
 class ViabilityReport extends Model
 {
-    use HasUuids;
+    use HasUuids, Prunable;
+
+    /** Unpaid reports go after ops.keep_unpaid_reports_days (`model:prune`, daily). */
+    public function prunable(): Builder
+    {
+        return static::query()
+            ->whereNull('paid_at')
+            ->where('created_at', '<', now()->subDays(config('ops.keep_unpaid_reports_days')));
+    }
 
     /** @return list<string> */
     public function uniqueIds(): array
