@@ -206,3 +206,25 @@ it('has careful players repair broken equipment when they can afford it', functi
         ->and((new Thoughtful)->eventChoices($state(100_000), $sheet))->toBe([])
         ->and((new Careless)->eventChoices($state(2_000_000), $sheet))->toBe([]);
 });
+
+it('values the café at the end of every year it reaches, and the last value counts in net worth', function () {
+    $runner = new BalanceRunner(balanceMarket());
+
+    foreach (range(1, 12) as $seed) {
+        $outcome = $runner->play(new DefaultSettings, $seed, years: 3);
+        // A café that goes bankrupt in a year's last month doesn't reach its end.
+        $reached = $outcome->bankrupt() ? intdiv($outcome->bankruptInMonth - 1, 12) : intdiv($outcome->monthsPlayed, 12);
+
+        expect(array_keys($outcome->valueByYear))->toBe($reached >= 1 ? range(1, $reached) : [])
+            ->and($outcome->resaleRatio(1))->toBe(isset($outcome->valueByYear[1]) ? $outcome->valueByYear[1] / $outcome->traspasoCents : null);
+    }
+});
+
+it('summarises resale value as a share of the traspaso, over the cafés that reached that year', function () {
+    $outcome = fn (array $values) => new GameOutcome('x', 1, 100_000, true, traspasoCents: 20_000, years: 3, valueByYear: $values);
+    $outcomes = [$outcome([1 => 10_000, 2 => 12_000]), $outcome([1 => 20_000]), $outcome([1 => 30_000, 2 => 40_000]), $outcome([])];
+
+    expect(BalanceReport::resale($outcomes, 1))->toEqualWithDelta(['n' => 3, 'p10' => 0.6, 'median' => 1.0, 'p90' => 1.4], 1e-9)
+        ->and(BalanceReport::resale($outcomes, 2)['median'])->toEqualWithDelta(1.3, 1e-9)
+        ->and(BalanceReport::resale($outcomes, 3)['n'])->toBe(0);
+});

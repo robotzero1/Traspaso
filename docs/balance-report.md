@@ -1,4 +1,4 @@
-# Balancing pass (milestones 9–11)
+# Balancing pass (milestones 9–11, 17)
 
 How the game plays out on the real Zaragoza data, and what was changed to get
 there. Reproduce with:
@@ -14,6 +14,51 @@ from real cafés and bars), play 12 months, then value what's left. Each game
 draws its starting capital (€20k–€100k, whole thousands) and its starting month
 from the seed. Net worth = cash + the landlord's deposit + the business's value;
 cash below zero ends the game with cash + deposit.
+
+## Resale value (milestone 17)
+
+Stage three lets owners sell, so what a café would sell for
+(`BusinessValuation`) has to be realistic. A buyer pays for the premises
+(location and licence, plus the fit-out worn down with the equipment) and for
+goodwill (the last 12 months' profit after the owner's pay, weighted by
+reputation). The listed traspasos the market is calibrated to are typical
+owners' asking prices, so the check is: **a café run as a typical owner runs it
+should, a year on, sell for a little under its traspaso** (buyers agree below
+asking; 0–15% is a guess until there's data on agreed prices).
+
+`market:balance` now values every café at the end of each year it reaches and
+prints the value ÷ the traspaso paid. With the old placeholders (location share
+0.5, goodwill 0.5 years of profit) a typical owner's café was worth 1.08× its
+traspaso after a year: more than they paid, for running it as the seller did.
+Fitted values: **location share 0.4, goodwill 0.4 years** (fixtures share 0.3
+unchanged).
+
+| 1,000 games, monthly, 5 years | Year 1 | Year 3 | Year 5 |
+|---|---|---|---|
+| Typical owner (default) | 0.93 (0.64–1.53) | 1.00 (0.66–1.70) | 1.01 (0.65–1.76) |
+| Thoughtful | 1.24 (0.68–2.16) | 1.22 (0.67–2.18) | 1.20 (0.66–2.19) |
+
+Median (p10–p90) of the cafés that reached that year end, closing or not.
+Day by day the typical owner's year-1 figure is 0.89. A café that doesn't pay
+its owner sells for the premises alone, about 0.55–0.7 of its traspaso (a
+guess). Thoughtful players buy cafés priced at under a year's profit, so theirs
+are worth more than they paid.
+
+| Target | Monthly | Daily | |
+|---|---|---|---|
+| Typical owner: after a year the café sells for 85–100% of its traspaso (median) | 93% | 89% | pass |
+| Typical owner: 20–25% fail in year 1 | 23% | 23% | pass |
+| Typical owner: 45–50% still open after 5 years | 49% | | pass |
+| Thoughtful: 12% or fewer fail in year 1 | 9% | 11% | pass |
+
+The closure targets don't depend on the valuation (they count cash and the
+owner's pay), but net worth medians fall a few points. Note: runs of the
+default 200 games can land a point outside the closure bands (26% failing, or
+thoughtful 15% day by day); the targets are checked at 1,000 games.
+
+Still guesses: the asking-to-agreed discount, the premises-only value, and
+the reputation weight. Agreed prices (from agencies or gestorías), even as
+tiers, would replace them.
 
 ## Day by day (milestone 11, current)
 

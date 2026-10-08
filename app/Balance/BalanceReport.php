@@ -54,6 +54,21 @@ final readonly class BalanceReport
         ];
     }
 
+    /**
+     * What the cafés would sell for at the end of the given year, as a share
+     * of the traspaso paid: those that reached it (closing then or not).
+     *
+     * @param  list<GameOutcome>  $outcomes
+     * @return array{n: int, p10: float, median: float, p90: float}
+     */
+    public static function resale(array $outcomes, int $year): array
+    {
+        $ratios = array_values(array_filter(array_map(fn (GameOutcome $o) => $o->resaleRatio($year), $outcomes), fn (?float $r) => $r !== null));
+        sort($ratios);
+
+        return ['n' => count($ratios), 'p10' => self::percentile($ratios, 10), 'median' => self::percentile($ratios, 50), 'p90' => self::percentile($ratios, 90)];
+    }
+
     /** @return array<string, array<string, float|int>> group → summary, for one strategy */
     public function grouped(string $strategy, callable $groupOf): array
     {
@@ -119,6 +134,14 @@ final readonly class BalanceReport
         if (isset($s['thoughtful'], $s['default'])) {
             $gap = $s['thoughtful']['median'] - $s['default']['median'];
             $checks[] = ['target' => 'Thoughtful beats default settings by 5+ points (median net worth)', 'pass' => $gap >= 0.05, 'actual' => sprintf('%+.0f points', $gap * 100)];
+        }
+
+        // Listed traspasos are typical owners' asking prices, so a typical
+        // owner's café a year on should fetch about that, a little below
+        // asking as buyers negotiate (the 0–15% is a guess).
+        if (isset($this->byStrategy()['default'])) {
+            $r = self::resale($this->byStrategy()['default'], 1);
+            $checks[] = ['target' => 'Typical new owner: after a year the café sells for 85–100% of its traspaso (median)', 'pass' => $r['n'] > 0 && $r['median'] >= 0.85 && $r['median'] <= 1.0, 'actual' => sprintf('%.0f%%', $r['median'] * 100)];
         }
 
         if (isset($s['careless'])) {

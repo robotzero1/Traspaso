@@ -96,6 +96,7 @@ class MarketBalanceCommand extends Command
             $this->survivalTable($report, $strategies, $years);
         }
 
+        $this->resaleTable($report, $strategies, $years);
         $this->groupTable('Thoughtful player by district', $report->grouped('thoughtful', fn (GameOutcome $o) => $o->neighbourhood));
         $this->groupTable('Thoughtful player by footfall at the spot', $report->grouped('thoughtful', BalanceReport::footfallBand(...)));
 
@@ -150,6 +151,25 @@ class MarketBalanceCommand extends Command
             array_map(fn (Strategy $s) => [
                 $s->key(),
                 ...array_map(fn (float $open) => sprintf('%.0f%%', $open * 100), BalanceReport::summary($by[$s->key()] ?? [])['open']),
+            ], $strategies),
+        );
+    }
+
+    /** @param list<Strategy> $strategies */
+    private function resaleTable(BalanceReport $report, array $strategies, int $years): void
+    {
+        $by = $report->byStrategy();
+        $shown = array_values(array_unique([1, min(3, $years), $years]));
+        $this->line('<info>What the café would sell for, ÷ the traspaso paid: median (p10–p90), cafés that reached the year end</info>');
+        $this->table(
+            ['Strategy', ...array_map(fn (int $y) => "Year {$y}", $shown)],
+            array_map(fn (Strategy $s) => [
+                $s->key(),
+                ...array_map(function (int $y) use ($by, $s) {
+                    $r = BalanceReport::resale($by[$s->key()] ?? [], $y);
+
+                    return $r['n'] === 0 ? '—' : sprintf('%.2f (%.2f–%.2f)', $r['median'], $r['p10'], $r['p90']);
+                }, $shown),
             ], $strategies),
         );
     }

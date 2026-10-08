@@ -378,7 +378,7 @@ Stage two's café runs until it goes bankrupt. Stage three lets the owner get ou
 
 ### Milestones (stage three)
 
-17. **Valuation calibration**: fit `BusinessValuation` to the aggregated listing data. `market:balance` checks that a fresh listing's value is close to its traspaso, and reports what typical cafés would sell for after 1, 3 and 5 years.
+17. **Valuation calibration** (done): `market:balance` values every café at each year end and prints the value ÷ the traspaso paid, with a target: a typical owner's café sells after a year for 85–100% of its traspaso (listings are asking prices; buyers agree a little below). Fitted: location share 0.4, goodwill 0.4 years of profit after the owner's pay. Typical owner 0.93 at year 1, 1.0 at years 3 and 5; the closure targets still hold (`docs/balance-report.md`).
 18. **Selling**: the buyer market in `app/Simulation/Sale/` (pure PHP, seeded; parameters in `config/market`). Listings, offers, counters, handover, the costs and tax of the sale, the deposit back, and push notifications for offers.
 19. **Closing down and quick sale**: closure costs (notice, scrap value) and the buyer of last resort.
 20. **Buying again**: the career model (results per café, `business_id` on results), a living market with listings that appear and sell, and the career page.

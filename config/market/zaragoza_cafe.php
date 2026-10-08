@@ -104,14 +104,23 @@ return [
     //           the last profit_months × 12) × (reputation_base
     //           + reputation_per_point × reputation)
     'valuation' => [
-        'source' => 'PLACEHOLDER: traspaso listings, to check against asking prices vs profits',
-        'location_share' => 0.5,
+        // Milestone 17: fitted so a café run as a typical owner runs it
+        // (market:balance default strategy) sells after a year for 85–100%
+        // of its traspaso, the listings being typical owners' asking prices
+        // and buyers agreeing a little below asking (guess: 0–15%). A café
+        // that doesn't pay its owner sells for the premises alone (location,
+        // licence, fit-out): ~0.55–0.7 of the traspaso, a guess. A typical
+        // traspaso is about 1.2 years of profit after the owner's pay (the
+        // Spanish rule of thumb is 1–2 years), so goodwill of 0.4 years makes
+        // about a third of it. To check against agreed prices if found.
+        'source' => 'Fitted to the Zaragoza listing tiers (Oct 2026) via market:balance; shares and discount are guesses',
+        'location_share' => 0.4,
         'fixtures_share' => 0.3,
         'equipment_base' => 0.5,
         'profit_months' => 12,
-        // Balancing pass: 0.75 added most of a year's profit again on top of
-        // the cash it brought in, widening every gap between players.
-        'profit_multiple_years' => 0.5,
+        // 0.75 → 0.5 (balancing pass) → 0.4 (milestone 17), with
+        // location_share 0.5 → 0.4.
+        'profit_multiple_years' => 0.4,
         'reputation_base' => 0.8,
         'reputation_per_point' => 0.004,
         'rounding_cents' => 50_000,

@@ -27,7 +27,15 @@ final readonly class GameOutcome
         public array $profitsByMonth = [],
         /** @var list<int> revenue of each month played */
         public array $revenueByMonth = [],
+        /** @var array<int, int> what the café would sell for (BusinessValuation) at the end of each year it reached, by year */
+        public array $valueByYear = [],
     ) {}
+
+    /** Value at the end of the given year as a share of the traspaso paid; null if the café didn't reach it. */
+    public function resaleRatio(int $year): ?float
+    {
+        return isset($this->valueByYear[$year]) && $this->traspasoCents > 0 ? $this->valueByYear[$year] / $this->traspasoCents : null;
+    }
 
     /** Net worth change as a share of starting capital. */
     public function change(): float
