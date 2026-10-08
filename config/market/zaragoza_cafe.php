@@ -41,11 +41,39 @@ return [
         'months' => null,
     ],
 
-    // On top of the traspaso, the landlord holds a deposit (fianza), paid
-    // back when the business is sold. It counts towards net worth.
+    // What buying a café costs on top of the traspaso (SPEC §13, milestone
+    // 23). The landlord holds a deposit and an extra guarantee, paid back
+    // when the business is sold or closed (they count towards net worth);
+    // the fees are spent. Fees are net of IVA: the buyer is a business and
+    // deducts it. No tax on the deal itself: the transfer of a whole going
+    // business isn't subject to IVA (LIVA 7.1), and ITP on the lease
+    // assignment is left out until a gestor confirms it (SPEC §13).
     'purchase' => [
-        'source' => 'PLACEHOLDER: typical Zaragoza commercial leases',
+        'source' => 'LAU art. 36.1 (deposit); Zaragoza Ordenanza Fiscal 13 and its trámite 13502 (licence fee); legal fees, technical report and the extra guarantee are GUESSES; see docs/balance-report.md',
+        // The fianza for a lease "de uso distinto del de vivienda" is two
+        // months' rent by law (LAU art. 36.1), lodged with the Gobierno de
+        // Aragón.
         'deposit_months_of_rent' => 2,
+        // An extra guarantee (garantía adicional, LAU art. 36.5), in cash
+        // rather than a bank aval. Commercial leases have no legal cap;
+        // two months is a GUESS at a common ask.
+        'guarantee_months_of_rent' => 2,
+        // The buyer's lawyer or gestoría: the traspaso contract and the
+        // lease assignment. GUESS: a base fee plus a share of the price.
+        'legal_fees' => ['base_cents' => 80_000, 'share_of_traspaso' => 0.01],
+        // The licence's change of holder (cambio de titularidad, a
+        // comunicación previa, trámite 13502).
+        'licence_change' => [
+            // The tasa de apertura (OF 13) at 50%: €102.70 as a service
+            // quotes it, about half the minimum tasa. Unverified against
+            // the ordinance text.
+            'fee_cents' => 10_270,
+            // A técnico's certificate that the premises still match the
+            // licence (cafés and bars are actividades clasificadas). GUESS.
+            'technical_report_cents' => 40_000,
+            // A gestoría files it: about €100 (Certicalia's Zaragoza average).
+            'paperwork_cents' => 10_000,
+        ],
     ],
 
     // The business as the player finds it on the first day.
@@ -186,14 +214,12 @@ return [
     ],
 
     // What changing café costs beyond the sale itself, for market:balance's
-    // flipper (milestone 21). Months between cafés: finding the next one
-    // and taking it over, with the owner living off savings. Buying costs:
-    // the buyer's gestoría and the licence's change of holder (cambio de
-    // titularidad). GUESSES.
+    // flipper (milestone 21): months between cafés, finding the next one
+    // and taking it over, with the owner living off savings. GUESS. The
+    // next café's buying costs are `purchase`'s, as for any purchase.
     'changing_cafe' => [
-        'source' => 'PLACEHOLDER: guesses',
+        'source' => 'PLACEHOLDER: guess',
         'months_between' => 2,
-        'buying_costs_cents' => 180_000,
     ],
 
     // A buyer of last resort: takes the café as it is, fast, for a fraction
@@ -623,8 +649,9 @@ return [
         // Hostelería de España report for new cafés and bars. 0.091 →
         // 0.095 in milestone 22 after the sourced wages and Social
         // Security raised costs, then 0.093 once the October payment and
-        // the new owner's flat-rate cuota were in.
-        'base_rate' => 0.093,
+        // the new owner's flat-rate cuota were in, then 0.094 once buying
+        // costs (milestone 23) thinned the cash cushion.
+        'base_rate' => 0.094,
         'price_elasticity' => 0.7,
         'reputation' => ['base' => 0.3, 'per_point' => 0.014],
         'quality' => ['base' => 0.75, 'per_point' => 0.005],

@@ -392,7 +392,7 @@ function ExitOptions({
             <Heading
                 variant="small"
                 title="Getting out fast"
-                description={`Both take effect on ${formatDay(sale.exit_on)}, after that month's bills, and any listing is withdrawn. The landlord returns your ${formatCents(depositCents)} deposit either way.`}
+                description={`Both take effect on ${formatDay(sale.exit_on)}, after that month's bills, and any listing is withdrawn. The landlord returns your ${formatCents(depositCents)} deposit and guarantee either way.`}
             />
             <div className="grid gap-6 sm:grid-cols-2">
                 {sale.quick_sale && (
@@ -462,7 +462,7 @@ function ClosureTable({
         ["Lease notice (two months' rent)", -closure.notice_cents],
         ['Staff severance (20 days a year)', -closure.severance_cents],
         ['Equipment sold for scrap', closure.scrap_cents],
-        ['Deposit back', depositCents],
+        ['Deposit and guarantee back', depositCents],
     ];
 
     return (

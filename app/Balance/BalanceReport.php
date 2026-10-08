@@ -144,14 +144,15 @@ final readonly class BalanceReport
             $checks[] = ['target' => 'Typical new owner: after a year the café sells for 85–100% of its traspaso (median)', 'pass' => $r['n'] > 0 && $r['median'] >= 0.85 && $r['median'] <= 1.0, 'actual' => sprintf('%.0f%%', $r['median'] * 100)];
         }
 
-        // Selling a café that hasn't improved loses roughly the costs of the
-        // sale: it's worth a little under what was asked for it (buyers
-        // agree below asking), less the gestoría and any tax.
+        // Buying a café and selling it a year later, unimproved, loses
+        // roughly the costs of both deals: the buying fees, and the sale's
+        // (it's worth a little under what was asked for it, as buyers agree
+        // below asking, less the gestoría and any tax).
         if (isset($this->byStrategy()['default'])) {
             $trips = array_values(array_filter(array_map(fn (GameOutcome $o) => $o->roundTrip(1), $this->byStrategy()['default']), fn (?float $r) => $r !== null));
             sort($trips);
             $loss = -self::percentile($trips, 50);
-            $checks[] = ['target' => 'Typical new owner: selling after a year loses 5–25% of the traspaso after costs and tax (median)', 'pass' => $trips !== [] && $loss >= 0.05 && $loss <= 0.25, 'actual' => sprintf('%.0f%%', $loss * 100)];
+            $checks[] = ['target' => 'Typical new owner: buying and selling after a year loses 5–25% of the traspaso and buying fees, after costs and tax (median)', 'pass' => $trips !== [] && $loss >= 0.05 && $loss <= 0.25, 'actual' => sprintf('%.0f%%', $loss * 100)];
         }
 
         // No money machine: buying, running for a year and selling, over

@@ -86,7 +86,7 @@ final class NightlyNotifier
         array_push($lines, ...$sale);
 
         if ($game->closure !== null) {
-            $lines[] = sprintf('Closed for good. After notice, severance and selling the equipment: %s; the deposit came back.', self::euros($game->closure['net_cents']));
+            $lines[] = sprintf('Closed for good. After notice, severance and selling the equipment: %s; the deposit and guarantee came back.', self::euros($game->closure['net_cents']));
         }
 
         if ($waiting !== []) {

@@ -1,4 +1,4 @@
-# Balancing pass (milestones 9–11, 17–22)
+# Balancing pass (milestones 9–11, 17–23)
 
 How the game plays out on the real Zaragoza data, and what was changed to get
 there. Reproduce with:
@@ -12,8 +12,9 @@ The command plays whole games without the database, the way the app does:
 generate the market from a seed, buy, pick rivals (nearest listings, topped up
 from real cafés and bars), play 12 months, then value what's left. Each game
 draws its starting capital (€20k–€100k, whole thousands) and its starting month
-from the seed. Net worth = cash + the landlord's deposit + the business's value;
-cash below zero ends the game with cash + deposit.
+from the seed. Net worth = cash + the landlord's deposit and guarantee + the
+business's value; cash below zero ends the game with cash + deposit and
+guarantee. Buying costs (milestone 23) come out of the starting capital.
 
 ## Public sources (milestone 22)
 
@@ -78,6 +79,69 @@ With these, typical owners failed 20% (the bottom of the band), so
 | Thoughtful, failed in year 1 (≤ 12%) | 8% | 11% | 8% |
 
 Resale 95%, round trip −8%, flipping +58% vs +73% holding: all pass.
+
+## Buying costs (milestone 23)
+
+A traspaso costs more than its price (SPEC §13). `purchase` in the sheet,
+charged by `BuyingCosts` in the game, the viability check and
+`market:balance`:
+
+| Cost | Figure | Kept? | Source |
+|---|---|---|---|
+| Deposit (fianza) | 2 months' rent | paid back on leaving | **LAU art. 36.1**: two months for a lease "de uso distinto del de vivienda", lodged with the Gobierno de Aragón |
+| Extra guarantee | 2 months' rent, in cash | paid back on leaving | LAU art. 36.5 allows it, with no cap for commercial leases; two months is a **guess** (one legal blog's example has four months in all) |
+| Buyer's lawyer or gestoría (traspaso contract, lease assignment) | €800 + 1% of the traspaso | spent | **guess**: no published tariff found; general legal fees run €250–900 a matter, some charge a share of the price |
+| Licence's change of holder: municipal fee | €102.70 | spent | Zaragoza trámite 13502 asks for the OF 13 *tasa de apertura* at 50%; €102.70 is a licensing service's figure for a change of holder (unverified against the ordinance text) |
+| Licence: technical report | €400 | spent | **guess**: a técnico's certificate that the premises still match the licence (cafés and bars are actividades clasificadas) |
+| Licence: gestoría filing | €100 | spent | Certicalia's average for Zaragoza (search summary) |
+
+Fees are net of IVA: the buyer is a business and deducts it. No tax on the
+deal itself: the transfer of a whole going business isn't subject to IVA
+(LIVA 7.1), and ITP on the lease assignment waits for a gestor (SPEC §13
+open decisions). Not modelled: the landlord's right to raise the rent 20% on
+an assignment (LAU art. 32.2, often waived in the lease), moving the utility
+contracts, and a bank aval instead of a cash guarantee.
+
+For the median listing (traspaso €40,000, rent €900) the cash needed rises
+from €41,800 to **€45,400**: €3,600 held by the landlord (counted in net
+worth) and €1,800 of fees (gone). At the quartiles: €24,000 (was €21,200)
+and €78,100 (was €73,000).
+
+**What it changed:**
+
+- The business card shows the breakdown and "cash needed"; the list has a
+  "Cash needed" column, and the affordable filter and the Buy button use it.
+- The viability form asks for enough money to cover everything, and the
+  report lists the buying costs before "cash left after buying".
+- The flipper pays each next café's buying costs like any purchase, instead
+  of the flat €1,800 guess (`changing_cafe.buying_costs_cents`, removed).
+- The round-trip target now compares the sale, after its costs and tax, with
+  what buying cost (the traspaso **and the buying fees**). Without the fees
+  it had drifted to 5%, the edge of its 5–25% band; with them it reads 9%
+  (12% day by day).
+- Thinner cash cushions pushed daily failures to the top of both bands
+  (typical owner 24%, thoughtful 12%). `capture.base_rate` **0.093 → 0.094**
+  recentres them:
+
+| 1,000 games | Monthly | Daily | 5 years |
+|---|---|---|---|
+| Typical owner, failed in year 1 (20–25%) | 21% | 23% | 21% |
+| Typical owner, open after 5 years (45–50%) | | | 49% |
+| Thoughtful, failed in year 1 (≤ 12%) | 8% | 11% | 8% |
+| Resale after a year (85–100% of traspaso) | 98% | 96% | 98% |
+| Round trip, traspaso + fees (5–25% loss) | 9% | 12% | 9% |
+| Flipping vs holding, typical owner, 5 years | | | +65% vs +81% |
+
+Every target passes. The closure targets themselves stay as they were: they
+come from INE/DIRCE closure rates, which buying costs don't change; only the
+engine was retuned to meet them.
+
+Still open: the extra guarantee, the lawyer's fee and the technical report
+are guesses for the user's market figures (milestone 24: lease terms and
+fees), and ITP. The paid capital tiers (€60k, €100k) aren't changed: the
+free €30k still buys a café between the 25th percentile and the median
+(traspaso up to about €25,000), but each café now leaves about €3,000 less to
+trade with.
 
 ## Selling, flipping and failed cafés (milestone 21)
 

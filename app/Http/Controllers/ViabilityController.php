@@ -6,6 +6,8 @@ use App\Jobs\RunViabilityCheck;
 use App\Models\ViabilityReport;
 use App\Payments\PaymentGateway;
 use App\Simulation\Data\DayPart;
+use App\Simulation\Data\ParameterSheet;
+use App\Simulation\Sale\BuyingCosts;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -33,7 +35,12 @@ class ViabilityController extends Controller
                 'end_hour' => $market['day_parts'][$p->value]['end_hour'],
             ], DayPart::cases()),
             'licence_day_parts' => $market['licence_day_parts'],
-            'deposit_months' => $market['purchase']['deposit_months_of_rent'],
+            'purchase' => [
+                'held_months' => $market['purchase']['deposit_months_of_rent'] + $market['purchase']['guarantee_months_of_rent'],
+                'legal_base_cents' => $market['purchase']['legal_fees']['base_cents'],
+                'legal_share' => $market['purchase']['legal_fees']['share_of_traspaso'],
+                'licence_cents' => array_sum(array_filter($market['purchase']['licence_change'], 'is_int')),
+            ],
             'staff_max' => $market['decision_limits']['staff_count']['max'],
             'runs' => (int) config('viability.runs'),
             'years' => (int) config('viability.years'),
@@ -61,10 +68,10 @@ class ViabilityController extends Controller
             'quality_tier' => ['required', Rule::in(['budget', 'standard', 'premium'])],
         ]);
 
-        $deposit = $data['rent_euros'] * $market['purchase']['deposit_months_of_rent'];
+        $needed = (new BuyingCosts(new ParameterSheet($market)))->cashNeededCents($data['traspaso_euros'] * 100, $data['rent_euros'] * 100);
 
-        if ($data['capital_euros'] < $data['traspaso_euros'] + $deposit) {
-            throw ValidationException::withMessages(['capital_euros' => 'Your money must cover the traspaso and the landlord\'s deposit ('.$market['purchase']['deposit_months_of_rent'].' months\' rent).']);
+        if ($needed > $data['capital_euros'] * 100) {
+            throw ValidationException::withMessages(['capital_euros' => 'Your money must cover the traspaso, the landlord\'s deposit and guarantee, and the buying fees: '.number_format(intdiv($needed + 99, 100), 0, ',', '.').' € here.']);
         }
 
         $notAllowed = array_diff($data['open_day_parts'], $market['licence_day_parts'][$data['licence']]);

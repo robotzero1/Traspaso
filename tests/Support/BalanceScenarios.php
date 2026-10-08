@@ -11,7 +11,9 @@ use App\Simulation\Data\Decisions;
 use App\Simulation\Data\Kitchen;
 use App\Simulation\Data\Licence;
 use App\Simulation\Data\NeighbourhoodProfile;
+use App\Simulation\Data\ParameterSheet;
 use App\Simulation\Data\QualityTier;
+use App\Simulation\Sale\BuyingCosts;
 
 /**
  * The businesses, decisions and markets the SPEC §6 balance tests use.
@@ -58,7 +60,7 @@ final class BalanceScenarios
                 footfall: $footfall,
                 condition: $condition,
             ),
-            cashCents: self::STARTING_CAPITAL_CENTS - self::traspaso($rentPercentile) - self::deposit($rentPercentile),
+            cashCents: self::STARTING_CAPITAL_CENTS - self::buyingCosts()->cashNeededCents(self::traspaso($rentPercentile), self::parameters()['rent']['percentiles_cents'][$rentPercentile]),
             reputation: 50.0,
             staffCount: self::parameters()['takeover']['staff_count'],
             staffMorale: 70.0,
@@ -74,10 +76,15 @@ final class BalanceScenarios
         return self::parameters()['traspaso']['percentiles_cents'][$percentile];
     }
 
-    /** The landlord's deposit for the rent at this percentile. */
+    /** The landlord's deposit and guarantee for the rent at this percentile. */
     public static function deposit(int $percentile): int
     {
-        return self::parameters()['rent']['percentiles_cents'][$percentile] * self::parameters()['purchase']['deposit_months_of_rent'];
+        return self::buyingCosts()->heldCents(self::parameters()['rent']['percentiles_cents'][$percentile]);
+    }
+
+    private static function buyingCosts(): BuyingCosts
+    {
+        return new BuyingCosts(new ParameterSheet(self::parameters()));
     }
 
     /**

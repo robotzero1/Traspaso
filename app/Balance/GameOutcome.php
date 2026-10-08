@@ -13,6 +13,8 @@ final readonly class GameOutcome
         public ?string $neighbourhood = null,
         public ?float $footfall = null,
         public int $traspasoCents = 0,
+        /** The buying fees paid on top (lawyer, licence change): spent, unlike the deposits. */
+        public int $buyingFeesCents = 0,
         public int $rentMonthCents = 0,
         public int $rivals = 0,
         public int $monthsPlayed = 0,
@@ -33,10 +35,15 @@ final readonly class GameOutcome
         public array $saleNetByYear = [],
     ) {}
 
-    /** Selling at the end of the given year, after costs and tax, against the traspaso paid: −0.1 is a 10% loss. */
+    /**
+     * Selling at the end of the given year, after costs and tax, against
+     * what buying cost (the traspaso and the buying fees): −0.1 is a 10% loss.
+     */
     public function roundTrip(int $year): ?float
     {
-        return isset($this->saleNetByYear[$year]) && $this->traspasoCents > 0 ? $this->saleNetByYear[$year] / $this->traspasoCents - 1 : null;
+        $paid = $this->traspasoCents + $this->buyingFeesCents;
+
+        return isset($this->saleNetByYear[$year]) && $paid > 0 ? $this->saleNetByYear[$year] / $paid - 1 : null;
     }
 
     /** Value at the end of the given year as a share of the traspaso paid; null if the café didn't reach it. */

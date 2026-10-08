@@ -54,7 +54,7 @@ const sorters: Record<
         b.indoor_seats + b.terrace_seats - (a.indoor_seats + a.terrace_seats),
 };
 
-const totalPrice = (b: BusinessForSale) => b.traspaso_cents + b.deposit_cents;
+const totalPrice = (b: BusinessForSale) => b.cash_needed_cents;
 
 export function BusinessBrowser({
     game,
@@ -259,6 +259,7 @@ export function BusinessBrowser({
                                 <th className="p-2 text-right">Condition</th>
                                 <th className="p-2 text-right">Rent / month</th>
                                 <th className="p-2 text-right">Traspaso</th>
+                                <th className="p-2 text-right">Cash needed</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -306,6 +307,9 @@ export function BusinessBrowser({
                                     </td>
                                     <td className="p-2 text-right whitespace-nowrap">
                                         {formatCents(b.traspaso_cents)}
+                                    </td>
+                                    <td className="p-2 text-right whitespace-nowrap">
+                                        {formatCents(b.cash_needed_cents)}
                                     </td>
                                 </tr>
                             ))}
@@ -386,11 +390,21 @@ function BusinessDetails({
                     <span>{formatCents(b.traspaso_cents)}</span>
                 </div>
                 <div className="flex justify-between">
-                    <span>Deposit (refunded on sale)</span>
-                    <span>{formatCents(b.deposit_cents)}</span>
+                    <span>
+                        Deposit and guarantee (paid back when you leave)
+                    </span>
+                    <span>{formatCents(b.buying_costs.held_cents)}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span>Lawyer: contract and lease assignment</span>
+                    <span>{formatCents(b.buying_costs.legal_cents)}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span>Licence in your name</span>
+                    <span>{formatCents(b.buying_costs.licence_cents)}</span>
                 </div>
                 <div className="flex justify-between border-t pt-1 font-medium">
-                    <span>You pay</span>
+                    <span>Cash needed</span>
                     <span>{formatCents(price)}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">

@@ -46,7 +46,8 @@ it('plays the futures and sums them up, the same way for the same seed', functio
         ->and($results['runs'])->toBe(20)
         ->and(array_keys($results['open']))->toBe([1, 2, 3])
         ->and($results['profit_by_year'])->toHaveCount(3)
-        ->and($results['cash_after_purchase_cents'])->toBe(5_000_000 - 3_000_000 - 2 * 90_000);
+        ->and($results['buying_costs']['cash_needed_cents'])->toBe(3_000_000 + 4 * 90_000 + 80_000 + 30_000 + 60_270)
+        ->and($results['cash_after_purchase_cents'])->toBe(5_000_000 - $results['buying_costs']['cash_needed_cents']);
 
     expect($results['open'][2])->toBeLessThanOrEqual($results['open'][1])
         ->and($results['open'][3])->toBeLessThanOrEqual($results['open'][2]);

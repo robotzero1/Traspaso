@@ -20,6 +20,7 @@ use App\Simulation\Data\DayPart;
 use App\Simulation\Data\EventRecord;
 use App\Simulation\Data\Modifier;
 use App\Simulation\Data\ParameterSheet;
+use App\Simulation\Sale\BuyingCosts;
 use App\Simulation\Sale\SaleCosts;
 
 /**
@@ -338,6 +339,9 @@ final class GamePresenter
     /** @return array<string, mixed> */
     private function business(Business $business, Game $game): array
     {
+        // What buying it takes (SPEC §13): "cash needed" on the card.
+        $costs = (new BuyingCosts($this->mapper->sheet($game)))->breakdown($business->traspaso_cents, $business->rent_month_cents);
+
         return [
             ...$business->only([
                 'id', 'fictional_name', 'lat', 'lng', 'street_type', 'category', 'floor_area_m2', 'indoor_seats', 'terrace_seats',
@@ -345,7 +349,9 @@ final class GamePresenter
                 'footfall', 'footfall_by_day_part', 'base_reputation',
             ]),
             'neighbourhood' => $business->neighbourhood->name,
-            'deposit_cents' => $business->rent_month_cents * (int) config("market.{$game->market}.purchase.deposit_months_of_rent"),
+            'buying_costs' => $costs,
+            'deposit_cents' => $costs['held_cents'],
+            'cash_needed_cents' => $costs['cash_needed_cents'],
         ];
     }
 }

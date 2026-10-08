@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Buys a business: pays the traspaso and the deposit, sets up its first
+ * Buys a business: pays the traspaso, the landlord's deposit and
+ * guarantee, and the buying fees (SPEC §13), sets up its first
  * state and default decisions, and picks the nearby rivals.
  */
 final class PurchaseBusiness
@@ -37,10 +38,10 @@ final class PurchaseBusiness
         $takeover = new Takeover($this->mapper->sheet($game));
         $profile = $this->mapper->profile($business);
         $deposit = $takeover->depositCents($profile);
-        $price = $business->traspaso_cents + $deposit;
+        $price = $takeover->cashNeededCents($profile, $business->traspaso_cents);
 
         if ($price > $game->cash_cents) {
-            throw ValidationException::withMessages(['business_id' => 'You can\'t afford the traspaso and the deposit.']);
+            throw ValidationException::withMessages(['business_id' => 'You can\'t afford the traspaso, the deposit and the buying costs.']);
         }
 
         DB::transaction(function () use ($game, $business, $takeover, $profile, $deposit, $price) {

@@ -29,6 +29,16 @@ export type GameSummary = {
     business_name: string | null;
 };
 
+export type BuyingCosts = {
+    deposit_cents: number;
+    guarantee_cents: number;
+    held_cents: number;
+    legal_cents: number;
+    licence_cents: number;
+    fees_cents: number;
+    cash_needed_cents: number;
+};
+
 export type BusinessForSale = {
     id: number;
     fictional_name: string;
@@ -42,7 +52,11 @@ export type BusinessForSale = {
     terrace_seats: number;
     rent_month_cents: number;
     traspaso_cents: number;
+    /** The landlord's deposit and extra guarantee, paid back on leaving. */
     deposit_cents: number;
+    buying_costs: BuyingCosts;
+    /** Traspaso + deposit and guarantee + fees: what buying it takes. */
+    cash_needed_cents: number;
     licence: string;
     kitchen: string;
     condition: number;

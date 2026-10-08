@@ -51,6 +51,8 @@ it('queues a check and sends the user to its report', function () {
 it('refuses a pin off the shopping streets, too little money, and night hours on a café licence', function () {
     $this->post(route('viability.store'), checkPayload($this->point, ['lat' => 41.0, 'lng' => -1.5]))->assertSessionHasErrors('lat');
     $this->post(route('viability.store'), checkPayload($this->point, ['capital_euros' => 30000]))->assertSessionHasErrors('capital_euros');
+    // Enough for the traspaso, the deposit and the guarantee (€33,600), not the fees.
+    $this->post(route('viability.store'), checkPayload($this->point, ['capital_euros' => 34000]))->assertSessionHasErrors('capital_euros');
     $this->post(route('viability.store'), checkPayload($this->point, ['licence' => 'cafe', 'open_day_parts' => ['evening', 'night']]))->assertSessionHasErrors('open_day_parts');
 
     expect(ViabilityReport::query()->count())->toBe(0);

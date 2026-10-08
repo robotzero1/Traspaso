@@ -42,8 +42,17 @@ it('starts with the configured decisions', function () {
         ->and($decisions->eventChoices)->toBe([]);
 });
 
-it('asks a deposit of a number of months of rent', function () {
-    $months = SimulationFixtures::parameters()['purchase']['deposit_months_of_rent'];
+it('holds the deposit and the extra guarantee, months of rent each', function () {
+    $purchase = SimulationFixtures::parameters()['purchase'];
+    $months = $purchase['deposit_months_of_rent'] + $purchase['guarantee_months_of_rent'];
 
     expect(takeover()->depositCents(SimulationFixtures::profile()))->toBe(SimulationFixtures::profile()->rentMonthCents * $months);
+});
+
+it('needs the traspaso, the deposits and the fees in cash', function () {
+    $profile = SimulationFixtures::profile();
+
+    expect(takeover()->cashNeededCents($profile, 4_000_000))
+        ->toBe(4_000_000 + takeover()->depositCents($profile) + takeover()->feesCents(4_000_000))
+        ->and(takeover()->feesCents(4_000_000))->toBeGreaterThan(0);
 });

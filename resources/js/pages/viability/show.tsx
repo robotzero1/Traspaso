@@ -38,6 +38,13 @@ type Full = {
         total_return_cents: Spread | null;
         ahead: number;
     };
+    // Reports made before milestone 23 don't have it.
+    buying_costs?: {
+        held_cents: number;
+        legal_cents: number;
+        licence_cents: number;
+        cash_needed_cents: number;
+    };
     cash_after_purchase_cents: number;
     owner_pay_month_cents: number;
     risks: { type: string; value: number }[];
@@ -329,6 +336,20 @@ function FullReport({ full }: { full: Full }) {
                     </ul>
                 )}
                 <p className="pt-1 text-muted-foreground">
+                    {full.buying_costs && (
+                        <>
+                            Buying it takes{' '}
+                            {formatCents(full.buying_costs.cash_needed_cents)}:
+                            the traspaso,{' '}
+                            {formatCents(full.buying_costs.held_cents)} the
+                            landlord holds (deposit and guarantee, paid back
+                            when you leave),{' '}
+                            {formatCents(full.buying_costs.legal_cents)} for the
+                            lawyer and{' '}
+                            {formatCents(full.buying_costs.licence_cents)} to
+                            put the licence in your name.{' '}
+                        </>
+                    )}
                     Cash left after buying:{' '}
                     {formatCents(full.cash_after_purchase_cents)}.
                 </p>

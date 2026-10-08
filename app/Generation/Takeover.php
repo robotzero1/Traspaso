@@ -8,6 +8,7 @@ use App\Simulation\Data\DayPart;
 use App\Simulation\Data\Decisions;
 use App\Simulation\Data\ParameterSheet;
 use App\Simulation\Data\QualityTier;
+use App\Simulation\Sale\BuyingCosts;
 
 /**
  * The business as the player finds it on the day they take it over, and
@@ -46,9 +47,24 @@ final readonly class Takeover
         );
     }
 
-    /** The landlord's deposit, paid on top of the traspaso. */
+    /**
+     * What the landlord holds, paid on top of the traspaso and back when
+     * the business is sold or closed: the deposit and the extra guarantee.
+     */
     public function depositCents(BusinessProfile $profile): int
     {
-        return $profile->rentMonthCents * $this->sheet->int('purchase.deposit_months_of_rent');
+        return (new BuyingCosts($this->sheet))->heldCents($profile->rentMonthCents);
+    }
+
+    /** The buying fees, spent for good (SPEC §13). */
+    public function feesCents(int $traspasoCents): int
+    {
+        return (new BuyingCosts($this->sheet))->feesCents($traspasoCents);
+    }
+
+    /** Everything paid on the day: the traspaso, the deposits and the fees. */
+    public function cashNeededCents(BusinessProfile $profile, int $traspasoCents): int
+    {
+        return (new BuyingCosts($this->sheet))->cashNeededCents($traspasoCents, $profile->rentMonthCents);
     }
 }

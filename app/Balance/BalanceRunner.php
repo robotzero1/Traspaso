@@ -68,7 +68,7 @@ final readonly class BalanceRunner
         $budget = $capital * (1 - $strategy->reserveShare());
         $affordable = array_values(array_filter(
             $market,
-            fn (GeneratedBusiness $b) => $b->traspasoCents + $takeover->depositCents($b->profile) <= $budget,
+            fn (GeneratedBusiness $b) => $takeover->cashNeededCents($b->profile, $b->traspasoCents) <= $budget,
         ));
 
         if ($affordable === []) {
@@ -85,11 +85,11 @@ final readonly class BalanceRunner
      * A flipper's career (SPEC §12): run a café for a year, sell it (at
      * its value, less the usual negotiation: buyers open sale.opening_
      * discount below their limit and a counter wins half of it back),
-     * live off savings for changing_cafe.months_between, pay the buying
-     * costs, and buy another in a fresh market with everything; and so on
-     * for $years. Stops at a closure or bankruptcy. The café keeps trading
-     * while it's for sale, so selling costs no trading time. Net worth is
-     * against the first starting capital.
+     * live off savings for changing_cafe.months_between, and buy another
+     * in a fresh market with everything, paying its buying costs like any
+     * purchase; and so on for $years. Stops at a closure or bankruptcy.
+     * The café keeps trading while it's for sale, so selling costs no
+     * trading time. Net worth is against the first starting capital.
      */
     public function playFlipping(Strategy $strategy, int $seed, int $years): GameOutcome
     {
@@ -101,8 +101,7 @@ final readonly class BalanceRunner
             $last = $outcome->valueByYear[1] ?? 0;
             $haggle = (int) round($last * $this->sheet->float('sale.opening_discount') / 2);
             $capital = $outcome->netWorthCents - $haggle
-                - $this->sheet->int('changing_cafe.months_between') * $this->sheet->int('owner.pay_month_cents')
-                - $this->sheet->int('changing_cafe.buying_costs_cents');
+                - $this->sheet->int('changing_cafe.months_between') * $this->sheet->int('owner.pay_month_cents');
 
             if ($capital <= 0) {
                 break;
@@ -136,7 +135,7 @@ final readonly class BalanceRunner
     {
         $takeover = new Takeover($this->sheet);
         $deposit = $takeover->depositCents($business->profile);
-        $state = $takeover->initialState($business->profile, $business->baseReputation, $business->equipmentAgeYears, $capital - $business->traspasoCents - $deposit);
+        $state = $takeover->initialState($business->profile, $business->baseReputation, $business->equipmentAgeYears, $capital - $takeover->cashNeededCents($business->profile, $business->traspasoCents));
         $decisions = $strategy->openingDecisions($business, $takeover->defaultDecisions(), $this->sheet);
         $rivals = count($competitors);
         $revenues = [];
@@ -265,6 +264,7 @@ final readonly class BalanceRunner
             neighbourhood: $business->profile->neighbourhood->name,
             footfall: $business->profile->footfall,
             traspasoCents: $business->traspasoCents,
+            buyingFeesCents: (new Takeover($this->sheet))->feesCents($business->traspasoCents),
             rentMonthCents: $business->profile->rentMonthCents,
             rivals: $rivals,
             monthsPlayed: $monthsPlayed,

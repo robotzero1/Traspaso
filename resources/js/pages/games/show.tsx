@@ -499,7 +499,7 @@ function EndOfYear({ game, value }: { game: GameSummary; value: number }) {
         <section className="space-y-4 rounded-xl border p-4">
             <Heading
                 title="The year is over"
-                description={`Your business would sell for about ${formatCents(value)}, and the landlord returns your ${formatCents(game.deposit_cents)} deposit. Sell, or keep it and count its value in your net worth.`}
+                description={`Your business would sell for about ${formatCents(value)}, and the landlord returns your ${formatCents(game.deposit_cents)} deposit and guarantee. Sell, or keep it and count its value in your net worth.`}
             />
             <Form
                 {...EndController.store.form(game.id)}

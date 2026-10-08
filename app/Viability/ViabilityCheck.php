@@ -9,7 +9,6 @@ use App\Generation\CompetitorPicker;
 use App\Generation\GeneratedBusiness;
 use App\Generation\Geo\Geo;
 use App\Generation\Location;
-use App\Generation\Takeover;
 use App\Generation\UnlistedRivals;
 use App\Simulation\Data\BusinessCategory;
 use App\Simulation\Data\BusinessProfile;
@@ -18,6 +17,7 @@ use App\Simulation\Data\Licence;
 use App\Simulation\Data\NeighbourhoodProfile;
 use App\Simulation\Data\ParameterSheet;
 use App\Simulation\Rng\SeededRng;
+use App\Simulation\Sale\BuyingCosts;
 
 /**
  * The viability check (SPEC §11): plays many futures of one café the user
@@ -54,7 +54,7 @@ final readonly class ViabilityCheck
         }
 
         $open = array_map(fn (int $y) => $this->share($outcomes, fn (GameOutcome $o) => ! $o->closedBy($y)), array_combine(range(1, $years), range(1, $years)));
-        $deposit = (new Takeover($this->sheet))->depositCents($business->profile);
+        $buying = (new BuyingCosts($this->sheet))->breakdown($input->traspasoCents, $input->rentMonthCents);
         $salesYear1 = $this->median(array_map(fn (GameOutcome $o) => array_sum(array_slice($o->revenueByMonth, 0, 12)) * 12 / max(1, min(12, count($o->revenueByMonth))), $outcomes));
 
         return [
@@ -74,9 +74,10 @@ final readonly class ViabilityCheck
             'sales_year_1_cents' => (int) round($salesYear1),
             'payback' => $this->payback($outcomes, $input->traspasoCents),
             'resale' => $this->resale($outcomes, $years, $input->capitalCents),
-            'cash_after_purchase_cents' => $input->capitalCents - $input->traspasoCents - $deposit,
+            'buying_costs' => $buying,
+            'cash_after_purchase_cents' => $input->capitalCents - $buying['cash_needed_cents'],
             'owner_pay_month_cents' => $this->sheet->int('owner.pay_month_cents'),
-            'risks' => $this->risks($input, $point, $open, $salesYear1, $deposit),
+            'risks' => $this->risks($input, $point, $open, $salesYear1, $input->capitalCents - $buying['cash_needed_cents']),
         ];
     }
 
@@ -253,7 +254,7 @@ final readonly class ViabilityCheck
      * @param  array<int, float>  $open
      * @return list<array{type: string, value: float|int}>
      */
-    private function risks(ViabilityInput $input, Location $point, array $open, float $salesYear1, int $deposit): array
+    private function risks(ViabilityInput $input, Location $point, array $open, float $salesYear1, int $cushion): array
     {
         $risks = [];
 
@@ -273,7 +274,6 @@ final readonly class ViabilityCheck
             $risks[] = ['type' => 'first_year', 'value' => $open[1]];
         }
 
-        $cushion = $input->capitalCents - $input->traspasoCents - $deposit;
         $fixed = $input->rentMonthCents + $this->sheet->int('owner.pay_month_cents');
 
         if ($cushion < 3 * $fixed) {

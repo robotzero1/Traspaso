@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PinMap } from '@/components/viability/pin-map';
 import type { Pin } from '@/components/viability/pin-map';
-import { humanize } from '@/lib/format';
+import { formatCents, humanize } from '@/lib/format';
 import { LegalLinks } from '@/pages/viability/show';
 
 type Props = {
@@ -19,7 +19,12 @@ type Props = {
     };
     day_parts: { value: string; start_hour: number; end_hour: number }[];
     licence_day_parts: Record<string, string[]>;
-    deposit_months: number;
+    purchase: {
+        held_months: number;
+        legal_base_cents: number;
+        legal_share: number;
+        licence_cents: number;
+    };
     staff_max: number;
     runs: number;
     years: number;
@@ -160,7 +165,7 @@ export default function ViabilityCreate(props: Props) {
                                 <Field
                                     name="capital_euros"
                                     label="Money you have to start (€)"
-                                    hint={`It must cover the traspaso and the landlord's deposit (${props.deposit_months} months' rent); what's left is your cushion.`}
+                                    hint={`It must cover the traspaso, the landlord's deposit and guarantee (${props.purchase.held_months} months' rent), and the buying fees (the lawyer, ${formatCents(props.purchase.legal_base_cents)} plus ${Math.round(props.purchase.legal_share * 100)}% of the traspaso; the licence's change of holder, ${formatCents(props.purchase.licence_cents)}). What's left is your cushion.`}
                                     errors={errors}
                                     defaultValue={50000}
                                 />

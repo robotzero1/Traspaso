@@ -10,8 +10,11 @@ use App\Balance\Strategies\DefaultSettings;
 use App\Balance\Strategies\Premium;
 use App\Balance\Strategies\Thoughtful;
 use App\Generation\Location;
+use App\Generation\Takeover;
 use App\Simulation\Data\DayPart;
 use App\Simulation\Data\EventRecord;
+use App\Simulation\Data\ParameterSheet;
+use App\Simulation\Sale\BuyingCosts;
 use Tests\Support\SimulationFixtures;
 
 /** A small city: each fixture neighbourhood gets a grid of commercial points, with real cafés among them. */
@@ -248,11 +251,24 @@ it('flips: sells every year and buys again with what is left, counted against th
     }
 });
 
-it('records what a private sale would leave each year, and the round trip against the traspaso', function () {
+it('records what a private sale would leave each year, and the round trip against the traspaso and fees', function () {
     $outcome = (new BalanceRunner(balanceMarket()))->play(new Thoughtful, 3, years: 2);
+    $paid = $outcome->traspasoCents + $outcome->buyingFeesCents;
+
+    expect($outcome->buyingFeesCents)->toBe((new Takeover(new ParameterSheet(balanceMarket()->parameters)))->feesCents($outcome->traspasoCents));
 
     foreach ($outcome->saleNetByYear as $year => $net) {
         expect($net)->toBeLessThanOrEqual($outcome->valueByYear[$year])
-            ->and($outcome->roundTrip($year))->toEqualWithDelta($net / $outcome->traspasoCents - 1, 1e-9);
+            ->and($outcome->roundTrip($year))->toEqualWithDelta($net / $paid - 1, 1e-9);
     }
+});
+
+it('pays the buying costs out of the starting capital', function () {
+    $outcome = (new BalanceRunner(balanceMarket()))->play(new Thoughtful, 3);
+    $sheet = new ParameterSheet(balanceMarket()->parameters);
+    $costs = (new BuyingCosts($sheet))->breakdown($outcome->traspasoCents, $outcome->rentMonthCents);
+
+    // Everything paid on the day was affordable with the strategy's reserve kept back.
+    expect($costs['cash_needed_cents'])->toBeLessThanOrEqual((int) ($outcome->startingCapitalCents * (1 - (new Thoughtful)->reserveShare())))
+        ->and($costs['fees_cents'])->toBeGreaterThan(0);
 });

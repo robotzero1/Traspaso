@@ -124,10 +124,13 @@ it('keeps other players out of your game', function () {
     $this->actingAs($other)->post(route('games.months.store', $game))->assertForbidden();
 });
 
-it('buys a business: pays traspaso and deposit, sets it up and picks rivals', function () {
+it('buys a business: pays traspaso, deposits and fees, sets it up and picks rivals', function () {
     $game = startedGame($this->user);
     $business = solidBusiness($game);
-    $deposit = 70_000 * 2;
+    // Deposit and guarantee, two months' rent each; the lawyer (€800 + 1%
+    // of the traspaso) and the licence's change of holder.
+    $deposit = 70_000 * 4;
+    $fees = 80_000 + 18_000 + 60_270;
 
     $this->actingAs($this->user)->post(route('games.purchase', $game), ['business_id' => $business->id])
         ->assertRedirect(route('games.show', $game));
@@ -142,7 +145,7 @@ it('buys a business: pays traspaso and deposit, sets it up and picks rivals', fu
         ->take($config['nearby_count']);
 
     expect($game->business_id)->toBe($business->id)
-        ->and($game->cash_cents)->toBe(5_000_000 - 1_800_000 - $deposit)
+        ->and($game->cash_cents)->toBe(5_000_000 - 1_800_000 - $deposit - $fees)
         ->and($game->deposit_cents)->toBe($deposit)
         ->and($game->decisions['open_day_parts'])->toBe(['morning', 'lunch', 'afternoon'])
         ->and($game->states()->where('month', 0)->exists())->toBeTrue()
