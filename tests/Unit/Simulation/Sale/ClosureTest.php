@@ -8,8 +8,9 @@ it('costs two months\' rent and the staff\'s severance, and the equipment sells 
     $closure = new Closure(SimulationFixtures::sheet());
     $out = $closure->breakdown($state, 4_000_000, monthsOwned: 12);
 
-    // 20 days a year on 14 payments of €1,300, for 1 year owned + 2 inherited.
-    $severance = (int) round($state->staffCount * 130_000 * 14 / 365 * 20 * 3);
+    // 20 days a year on the agreement's 14 payments, for 1 year owned + 2 inherited.
+    $staff = SimulationFixtures::parameters()['staff'];
+    $severance = (int) round($state->staffCount * $staff['gross_per_payment_cents'] * $staff['payments_per_year'] / 365 * 20 * 3);
 
     expect($out['notice_cents'])->toBe($state->profile->rentMonthCents * 2)
         ->and($out['severance_cents'])->toBe($severance)

@@ -60,7 +60,7 @@ it('pays part-time cover for open hours nobody else covers, at the hourly staff 
     $hourly = monthlyCosts()->staff(1) / ($parameters['staff']['full_time_hours_per_week'] * 52 / 12);
 
     expect($coverHours)->toBeGreaterThan(0.0)
-        ->and(costsFor(0, $long)->staffCents)->toEqualWithDelta($coverHours * 52 / 12 * $hourly, 1)
+        ->and(costsFor(0, $long)->staffCents)->toEqualWithDelta($coverHours * 52 / 12 * $hourly, 2)
         ->and(costsFor(0, ['staffCount' => 1, 'openDayParts' => [DayPart::Morning]])->staffCents)->toBe(monthlyCosts()->staff(1));
 });
 

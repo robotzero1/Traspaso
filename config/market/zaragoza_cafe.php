@@ -425,7 +425,7 @@ return [
         ],
         'night' => [
             'intensity' => 0.6, 'turnover_per_seat_hour' => 0.6, 'stop_factor' => 1.0,
-            'start_hour' => 24, 'end_hour' => 27,
+            'start_hour' => 24, 'end_hour' => 26,
             'demand_mix' => ['tourist' => 0.50, 'student' => 0.50],
         ],
     ],
@@ -444,8 +444,11 @@ return [
         ],
     ],
 
+    // Zaragoza's ordinance: cafés and bars open from 06:00 and close at
+    // 01:30, an hour later on Fridays, Saturdays and the eve of holidays
+    // (via search summaries). So the night day part runs to 02:00.
     'licence_day_parts' => [
-        'source' => 'PLACEHOLDER: Zaragoza licensing ordinance (opening-hours rules)',
+        'source' => 'Zaragoza municipal ordinance on opening hours (06:00–01:30, +1 h Fri/Sat/eves), via search summaries',
         'cafe' => ['morning', 'lunch', 'afternoon', 'evening'],
         'cafe_bar' => ['morning', 'lunch', 'afternoon', 'evening', 'night'],
         'bar_musical' => ['morning', 'lunch', 'afternoon', 'evening', 'night'],
@@ -617,8 +620,10 @@ return [
         'source' => 'PLACEHOLDER: game design, to tune in the balancing pass',
         // Calibrated (market:balance) so that, once the owner takes their
         // pay, 20–25% of typical new cafés fail in year 1, as INE/DIRCE and
-        // Hostelería de España report for new cafés and bars.
-        'base_rate' => 0.091,
+        // Hostelería de España report for new cafés and bars. 0.091 →
+        // 0.095 in milestone 22, after the sourced wages and Social
+        // Security raised costs.
+        'base_rate' => 0.095,
         'price_elasticity' => 0.7,
         'reputation' => ['base' => 0.3, 'per_point' => 0.014],
         'quality' => ['base' => 0.75, 'per_point' => 0.005],
@@ -976,19 +981,27 @@ return [
     ],
 
     'iva' => [
-        'source' => 'PLACEHOLDER: AEAT, hostelería rate',
+        // Hostelería services take the reduced rate.
+        'source' => 'LIVA art. 91.Uno.2.2º (10% for hostelería services)',
         'rate' => 0.10,
     ],
 
     'staff' => [
-        'source' => 'PLACEHOLDER: SMI / hostelería collective agreement for Zaragoza',
-        // Full-time gross per payment (between SMI, €1,184, and ~€1,500);
-        // there are 14 payments a year, so the monthly cost is
-        // gross × payments_per_year / 12, plus employer social security.
-        'gross_per_payment_cents' => 130_000,
+        'source' => 'Convenio de hostelería de la provincia de Zaragoza 2023–2025 (BOPZ 84, 13/04/2024; in force by ultraactividad), 2025 tables via search summaries; Orden PJC/297/2026 cotización rates; AT/EP tarifa de primas, CNAE 56',
+        // Camarero and cocinero (Grupo II), 2025 table: €1,375 gross a
+        // month, 14 payments (two sources; a third adds a fixed October
+        // payment of €1,359: to check in the BOPZ text). Table range
+        // €1,180–1,563. Was €1,300, a guess.
+        'gross_per_payment_cents' => 137_500,
         'payments_per_year' => 14,
-        'employer_social_security_rate' => 0.315,
-        'full_time_hours_per_week' => 40,
+        // Employer, permanent contract, 2026: contingencias comunes 23.60%,
+        // desempleo 5.50%, FOGASA 0.20%, formación 0.60%, MEI 0.75%, plus
+        // AT/EP for CNAE 56 1.50% (0.80 IT + 0.70 IMS). Was 31.5%.
+        'employer_social_security_rate' => 0.3215,
+        // The agreement's 1,776 hours a year over 52 weeks: holidays and
+        // leave included, so a full-timer covers ~34 hours of opening a
+        // week, not 40. Was 40.
+        'full_time_hours_per_week' => 34.15,
         // People needed on the floor every open hour. Hours the owner
         // (service.owner_hours_per_week) and staff don't cover are paid as
         // part-time cover at the same hourly cost, so a long opening day
@@ -1004,15 +1017,26 @@ return [
     ],
 
     // Monthly cuota by the owner's net monthly income (upper bound, cents).
+    // The 15 RETA bands (RDL 13/2022 schedule; 2025 cuotas, unchanged for
+    // 2026 apart from MEI per search summaries), at the minimum base of each.
     'cuota_autonomo' => [
-        'source' => 'PLACEHOLDER: Seguridad Social tables',
+        'source' => 'RDL 13/2022 RETA bands, 2025–2026 cuotas at each band\'s minimum base (via search summaries; check the TGSS table)',
         'bands' => [
             ['max_income_cents' => 67_000, 'cuota_cents' => 20_000],
-            ['max_income_cents' => 130_000, 'cuota_cents' => 29_400],
-            ['max_income_cents' => 170_000, 'cuota_cents' => 31_000],
-            ['max_income_cents' => 270_000, 'cuota_cents' => 35_000],
-            ['max_income_cents' => 400_000, 'cuota_cents' => 43_000],
-            ['max_income_cents' => null, 'cuota_cents' => 53_000],
+            ['max_income_cents' => 90_000, 'cuota_cents' => 22_000],
+            ['max_income_cents' => 116_670, 'cuota_cents' => 26_000],
+            ['max_income_cents' => 130_000, 'cuota_cents' => 29_100],
+            ['max_income_cents' => 150_000, 'cuota_cents' => 29_400],
+            ['max_income_cents' => 170_000, 'cuota_cents' => 29_400],
+            ['max_income_cents' => 185_000, 'cuota_cents' => 35_000],
+            ['max_income_cents' => 203_000, 'cuota_cents' => 37_000],
+            ['max_income_cents' => 233_000, 'cuota_cents' => 39_000],
+            ['max_income_cents' => 276_000, 'cuota_cents' => 41_500],
+            ['max_income_cents' => 319_000, 'cuota_cents' => 44_000],
+            ['max_income_cents' => 362_000, 'cuota_cents' => 46_500],
+            ['max_income_cents' => 405_000, 'cuota_cents' => 49_000],
+            ['max_income_cents' => 600_000, 'cuota_cents' => 53_000],
+            ['max_income_cents' => null, 'cuota_cents' => 59_000],
         ],
     ],
 
@@ -1036,8 +1060,10 @@ return [
     ],
 
     // Pago fraccionado (modelo 130): a share of positive monthly profit.
+    // Simplified: the real tax is the year's progressive IRPF, of which
+    // this is the prepayment.
     'income_tax' => [
-        'source' => 'PLACEHOLDER: AEAT modelo 130',
+        'source' => 'RIRPF art. 110 (modelo 130: 20% of net yield, estimación directa)',
         'rate' => 0.20,
     ],
 

@@ -1,4 +1,4 @@
-# Balancing pass (milestones 9–11, 17–21)
+# Balancing pass (milestones 9–11, 17–22)
 
 How the game plays out on the real Zaragoza data, and what was changed to get
 there. Reproduce with:
@@ -14,6 +14,44 @@ from real cafés and bars), play 12 months, then value what's left. Each game
 draws its starting capital (€20k–€100k, whole thousands) and its starting month
 from the seed. Net worth = cash + the landlord's deposit + the business's value;
 cash below zero ends the game with cash + deposit.
+
+## Public sources (milestone 22)
+
+Placeholders that public sources settle, cited next to each number in
+`config/market/zaragoza_cafe.php`. Outside sites can't be opened from the
+build environment, so these come from search summaries, cross-checked
+between at least two sources; each says so and should be checked against the
+official text once.
+
+| Section | Was | Now | Source |
+|---|---|---|---|
+| `staff.gross_per_payment_cents` | €1,300 (guess) | **€1,375** | Zaragoza hostelería agreement 2023–2025 (BOPZ 84, 13/04/2024, in force by ultraactividad), Grupo II (camarero, cocinero), 2025 table |
+| `staff.employer_social_security_rate` | 31.5% | **32.15%** | Orden PJC/297/2026: 23.60 + 5.50 + 0.20 + 0.60 + MEI 0.75, plus AT/EP for CNAE 56, 1.50 |
+| `staff.full_time_hours_per_week` | 40 | **34.15** | the agreement's 1,776 hours a year ÷ 52: holidays and leave included, so a full-timer covers fewer opening hours, and part-time cover costs more an hour |
+| `cuota_autonomo` | 6 rough bands | **the 15 RETA bands** (€200–590) | RDL 13/2022 schedule, 2025 cuotas (unchanged in 2026 apart from MEI) |
+| `iva` | 10% | 10% (sourced) | LIVA art. 91.Uno.2.2º |
+| `income_tax` | 20% | 20% (sourced) | RIRPF art. 110, modelo 130 |
+| `licence_day_parts` / night | to 03:00 | **to 02:00** | Zaragoza ordinance: 06:00–01:30, an hour later on Fridays, Saturdays and holiday eves |
+
+Still open from this pass: one source adds a fixed October payment (€1,359)
+to the 14 payments, which would raise wage costs ~7%; the BOPZ text
+settles it. The terrace fee (Ordenanza Fiscal 25: a basic tariff × a street
+category factor, 40% off through the cafés' association) has no euro figure
+in any summary. Cost of goods, utilities and insurance have no public
+benchmark that could be found.
+
+Costs rose (wages +6%, cover hours +17% dearer), so typical owners failed
+more: day by day 26% in year 1 and thoughtful players 13%, just outside the
+bands. `capture.base_rate` **0.091 → 0.095** brings them back:
+
+| 1,000 games | Monthly | Daily | 5 years |
+|---|---|---|---|
+| Typical owner, failed in year 1 (20–25%) | 22% | 22% | 22% |
+| Typical owner, open after 5 years (45–50%) | | | 50% |
+| Thoughtful, failed in year 1 (≤ 12%) | 8% | 11% | 8% |
+
+Every other target passes too (resale 93%, round trip −10%, flipping +52% vs
++89% holding).
 
 ## Selling, flipping and failed cafés (milestone 21)
 
