@@ -76,3 +76,15 @@ it('says when the traspaso is earned back', function () {
     expect($cheap['share'])->toBeGreaterThan(0.0)
         ->and($cheap['median_months'] === null || $cheap['median_months'] >= 1)->toBeTrue();
 });
+
+it('reports what the café would sell for at the end, and the owner\'s total return', function () {
+    $resale = runCheck(footfall: 8.0)['resale'];
+
+    expect($resale['year'])->toBe(3)
+        ->and($resale['value_cents']['p10'])->toBeLessThanOrEqual($resale['value_cents']['median'])
+        ->and($resale['value_cents']['median'])->toBeLessThanOrEqual($resale['value_cents']['p90'])
+        // After the gestoría and tax, never more than the price.
+        ->and($resale['net_cents']['median'])->toBeLessThan($resale['value_cents']['median'])
+        ->and($resale['total_return_cents']['p10'])->toBeLessThanOrEqual($resale['total_return_cents']['p90'])
+        ->and($resale['ahead'])->toBeGreaterThanOrEqual(0.0)->toBeLessThanOrEqual(1.0);
+});

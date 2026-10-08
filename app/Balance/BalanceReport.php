@@ -144,6 +144,24 @@ final readonly class BalanceReport
             $checks[] = ['target' => 'Typical new owner: after a year the café sells for 85–100% of its traspaso (median)', 'pass' => $r['n'] > 0 && $r['median'] >= 0.85 && $r['median'] <= 1.0, 'actual' => sprintf('%.0f%%', $r['median'] * 100)];
         }
 
+        // Selling a café that hasn't improved loses roughly the costs of the
+        // sale: it's worth a little under what was asked for it (buyers
+        // agree below asking), less the gestoría and any tax.
+        if (isset($this->byStrategy()['default'])) {
+            $trips = array_values(array_filter(array_map(fn (GameOutcome $o) => $o->roundTrip(1), $this->byStrategy()['default']), fn (?float $r) => $r !== null));
+            sort($trips);
+            $loss = -self::percentile($trips, 50);
+            $checks[] = ['target' => 'Typical new owner: selling after a year loses 5–25% of the traspaso after costs and tax (median)', 'pass' => $trips !== [] && $loss >= 0.05 && $loss <= 0.25, 'actual' => sprintf('%.0f%%', $loss * 100)];
+        }
+
+        // No money machine: buying, running for a year and selling, over
+        // and over, doesn't beat keeping one café. (A thoughtful player who
+        // finds underpriced cafés can gain by it: that's skill, not a
+        // loophole, and is reported, not targeted.)
+        if (isset($s['default-flipping'], $s['default'])) {
+            $checks[] = ['target' => "Typical new owner: flipping every year doesn't beat holding one café (median net worth)", 'pass' => $s['default-flipping']['median'] <= $s['default']['median'], 'actual' => sprintf('%+.0f%% vs %+.0f%%', $s['default-flipping']['median'] * 100, $s['default']['median'] * 100)];
+        }
+
         if (isset($s['careless'])) {
             $checks[] = ['target' => 'Careless player: 90% or more fail', 'pass' => $s['careless']['failed'] >= 0.90, 'actual' => $pct($s['careless']['failed'])];
         }

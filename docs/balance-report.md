@@ -1,4 +1,4 @@
-# Balancing pass (milestones 9–11, 17–19)
+# Balancing pass (milestones 9–11, 17–21)
 
 How the game plays out on the real Zaragoza data, and what was changed to get
 there. Reproduce with:
@@ -14,6 +14,45 @@ from real cafés and bars), play 12 months, then value what's left. Each game
 draws its starting capital (€20k–€100k, whole thousands) and its starting month
 from the seed. Net worth = cash + the landlord's deposit + the business's value;
 cash below zero ends the game with cash + deposit.
+
+## Selling, flipping and failed cafés (milestone 21)
+
+Three changes to `market:balance`, all at 1,000 games:
+
+1. **A café closed for not paying its owner now gets out the way a real
+   owner would:** the better of a quick sale (half its value, after costs and
+   tax) and closing down (notice, severance, scrap). Before, it was valued as
+   a private sale at its full value, which a failing café wouldn't fetch
+   quickly. Typical owners' worst outcomes fall: p10 −36% → **−47%** after a
+   year; the median doesn't move (+26%).
+2. **Round trip:** a typical owner who sells after a year, without having
+   improved the café, gets back **11%** less than the traspaso after the
+   gestoría and tax (13% day by day). Target: a 5–25% loss. ✓
+3. **Flipping:** a flipper runs a café for a year, sells it, and buys another
+   with everything, for 5 years. At first, with selling and buying free and
+   instant, flipping beat holding (typical owner +86% vs +67%, 300 games): it
+   was a money machine, from trading up with the profits at no cost. Real
+   frictions, all **guesses** (`changing_cafe` in the sheet), fix that: the
+   sale is haggled (buyers open 10% below their limit; a counter wins half of
+   it back), the owner lives off savings for **2 months** between cafés, and
+   buying costs **€1,800** (the buyer's gestoría and the licence's change of
+   holder).
+
+| 5 years, median net worth | Holding one café | Flipping every year |
+|---|---|---|
+| Typical owner | +85% | **+46%** ✓ |
+| Thoughtful | +173% | +192% |
+
+The thoughtful player still gains a little by flipping: they pick cafés
+priced at under a year's profit, and selling each year cashes in that bargain.
+That's an information edge a skilled buyer has, not a loophole, so it's
+reported, not targeted.
+
+**The viability report** now ends with what the café would sell for after 5
+years (median and 8-in-10 range, before and after costs and tax, for the
+futures where it's still open), and the owner's total return over every
+future: net worth at the end or at closing, against the money put in, after
+paying themselves.
 
 ## Closing down and quick sale (milestone 19)
 
@@ -31,9 +70,8 @@ Two ways out without waiting for a buyer, both on the month's last day:
 
 For a typical small café closing after a few months, closing costs more
 than the scrap brings in; a quick sale usually leaves more, which is the
-point of it. `market:balance` doesn't use either yet: a café closed for not
-paying its owner is still valued as a private sale at its value. Milestone 21
-should have the balance owner take the better of a quick sale and closing.
+point of it. Since milestone 21, `market:balance` takes the better of the two for a café
+closed for not paying its owner.
 
 ## Selling (milestone 18)
 

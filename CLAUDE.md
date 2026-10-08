@@ -25,7 +25,7 @@ Summarise what was built, what's tested, any placeholder values you added to con
 
 ## Working notes
 
-- Develop on the branch `claude/beautiful-hopper-1pigih`. Stage one (milestones 1–9) is done; stage two (`SPEC.md` §11, milestones 10–16) is done; stage three (selling and buying) is planned in §12 (milestones 17–20 done). Check balance targets at `--games=1000`; 200-game runs can land a point outside the closure bands.
+- Develop on the branch `claude/beautiful-hopper-1pigih`. Stage one (milestones 1–9) is done; stage two (`SPEC.md` §11, milestones 10–16) is done; stage three (selling and buying, §12, milestones 17–21) is done. Check balance targets at `--games=1000`; 200-game runs can land a point outside the closure bands.
 - Realism comes before fun: this is a simulation. Calibrate to real data, record the source next to each number, and say plainly when a value is a guess. `docs/balance-report.md` explains every calibration so far; rerun `php artisan market:balance` (and `--years=5`, and `--daily` for the day-by-day engine the game uses) after changing the economy, and keep its targets passing.
 - Data the user pastes from Google or property portals goes in only as aggregated distributions (percentiles, tiers), never as individual listings, streets or prices.
 - Real time: the nightly run needs the scheduler and a queue worker (`php artisan schedule:work` and `php artisan queue:work`), or run it by hand with `php artisan game:nightly --sync`.

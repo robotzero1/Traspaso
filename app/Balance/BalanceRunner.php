@@ -16,6 +16,7 @@ use App\Simulation\Data\ParameterSheet;
 use App\Simulation\DayEngine;
 use App\Simulation\Engine;
 use App\Simulation\Rng\SeededRng;
+use App\Simulation\Sale\Closure;
 use App\Simulation\Sale\SaleCosts;
 use App\Simulation\Valuation\BusinessValuation;
 
@@ -48,12 +49,13 @@ final readonly class BalanceRunner
         $this->sheet = new ParameterSheet($market->parameters);
     }
 
-    public function play(Strategy $strategy, int $seed, int $years = 1): GameOutcome
+    /** With $capital, starts with that instead of drawing it (a career's next café). */
+    public function play(Strategy $strategy, int $seed, int $years = 1, ?int $capital = null): GameOutcome
     {
         $rng = new SeededRng($seed);
         $capitalRange = $this->sheet->array('game.starting_capital_cents');
         // Whole thousands of euros, as a player would choose.
-        $capital = $rng->fork('capital')->int(intdiv($capitalRange['min'], 100_000), intdiv($capitalRange['max'], 100_000)) * 100_000;
+        $capital ??= $rng->fork('capital')->int(intdiv($capitalRange['min'], 100_000), intdiv($capitalRange['max'], 100_000)) * 100_000;
         $startMonth = $rng->fork('calendar')->int(1, 12);
 
         $market = (new BusinessGenerator($this->market->parameters))->generate(
@@ -80,6 +82,50 @@ final readonly class BalanceRunner
     }
 
     /**
+     * A flipper's career (SPEC §12): run a café for a year, sell it (at
+     * its value, less the usual negotiation: buyers open sale.opening_
+     * discount below their limit and a counter wins half of it back),
+     * live off savings for changing_cafe.months_between, pay the buying
+     * costs, and buy another in a fresh market with everything; and so on
+     * for $years. Stops at a closure or bankruptcy. The café keeps trading
+     * while it's for sale, so selling costs no trading time. Net worth is
+     * against the first starting capital.
+     */
+    public function playFlipping(Strategy $strategy, int $seed, int $years): GameOutcome
+    {
+        $first = $this->play($strategy, $seed, 1);
+        $outcome = $first;
+        $profits = $first->profitsByMonth;
+
+        for ($year = 2; $year <= $years && $outcome->bought && $outcome->closedInYear === null; $year++) {
+            $last = $outcome->valueByYear[1] ?? 0;
+            $haggle = (int) round($last * $this->sheet->float('sale.opening_discount') / 2);
+            $capital = $outcome->netWorthCents - $haggle
+                - $this->sheet->int('changing_cafe.months_between') * $this->sheet->int('owner.pay_month_cents')
+                - $this->sheet->int('changing_cafe.buying_costs_cents');
+
+            if ($capital <= 0) {
+                break;
+            }
+
+            $outcome = $this->play($strategy, $seed * 100 + $year, 1, capital: $capital);
+            $profits = [...$profits, ...$outcome->profitsByMonth];
+        }
+
+        return new GameOutcome(
+            strategy: $strategy->key().'-flipping',
+            seed: $seed,
+            startingCapitalCents: $first->startingCapitalCents,
+            bought: $first->bought,
+            netWorthCents: $outcome->netWorthCents,
+            years: $years,
+            closedInYear: $outcome->closedInYear,
+            bankruptInMonth: $outcome->bankruptInMonth,
+            profitsByMonth: $profits,
+        );
+    }
+
+    /**
      * Plays one given café from purchase for up to $years: the loop behind
      * play(), and what the viability check runs for a café the user
      * describes (SPEC §11).
@@ -103,6 +149,8 @@ final readonly class BalanceRunner
         // Net worth counts the café at what a private sale would leave the
         // owner, after its costs and the tax on the gain (SPEC §12).
         $costs = new SaleCosts($this->sheet);
+        $closure = new Closure($this->sheet);
+        $sales = [];
         $ownerPaid = 0;
         $yearProfit = 0;
         $yearPay = 0;
@@ -125,14 +173,20 @@ final readonly class BalanceRunner
             $year = intdiv($month - 1, 12) + 1;
 
             if ($state->cashCents < 0) {
-                return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, $month, $year, $profits, $state->cashCents + $deposit, $ownerPaid, $years, $revenues, $values);
+                return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, $month, $year, $profits, $state->cashCents + $deposit, $ownerPaid, $years, $revenues, $values, $sales);
             }
 
             if ($month % 12 === 0) {
                 $values[$year] = $valuation->valueCents($state, $business->traspasoCents, $profits);
+                $sales[$year] = $costs->netCents($values[$year], $business->traspasoCents, agency: false);
 
+                // A café that didn't pay its owner closes: the owner takes
+                // the better of a quick sale and closing down (milestone 19).
                 if ($yearProfit < $yearPay) {
-                    return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, null, $year, $profits, $state->cashCents + $deposit + $costs->netCents($values[$year], $business->traspasoCents, agency: false), $ownerPaid, $years, $revenues, $values);
+                    $quick = $costs->netCents($closure->quickSalePriceCents($state, $business->traspasoCents, $values[$year]), $business->traspasoCents, agency: false);
+                    $exit = max($quick, $closure->breakdown($state, $business->traspasoCents, $month)['net_cents']);
+
+                    return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, null, $year, $profits, $state->cashCents + $deposit + $exit, $ownerPaid, $years, $revenues, $values, $sales);
                 }
 
                 [$yearProfit, $yearPay] = [0, 0];
@@ -141,7 +195,7 @@ final readonly class BalanceRunner
             $decisions = $strategy->adjust($decisions->with(eventChoices: []), $result, $business, $this->sheet);
         }
 
-        return $this->outcome($strategy, $seed, $capital, $business, $rivals, $months, null, null, $profits, $state->cashCents + $deposit + $costs->netCents($values[$years], $business->traspasoCents, agency: false), $ownerPaid, $years, $revenues, $values);
+        return $this->outcome($strategy, $seed, $capital, $business, $rivals, $months, null, null, $profits, $state->cashCents + $deposit + $sales[$years], $ownerPaid, $years, $revenues, $values, $sales);
     }
 
     /**
@@ -199,8 +253,9 @@ final readonly class BalanceRunner
      * @param  list<int>  $profits
      * @param  list<int>  $revenues
      * @param  array<int, int>  $values
+     * @param  array<int, int>  $sales
      */
-    private function outcome(Strategy $strategy, int $seed, int $capital, GeneratedBusiness $business, int $rivals, int $monthsPlayed, ?int $bankruptIn, ?int $closedInYear, array $profits, int $netWorth, int $ownerPaid, int $years, array $revenues, array $values): GameOutcome
+    private function outcome(Strategy $strategy, int $seed, int $capital, GeneratedBusiness $business, int $rivals, int $monthsPlayed, ?int $bankruptIn, ?int $closedInYear, array $profits, int $netWorth, int $ownerPaid, int $years, array $revenues, array $values, array $sales): GameOutcome
     {
         return new GameOutcome(
             strategy: $strategy->key(),
@@ -222,6 +277,7 @@ final readonly class BalanceRunner
             profitsByMonth: $profits,
             revenueByMonth: $revenues,
             valueByYear: $values,
+            saleNetByYear: $sales,
         );
     }
 }

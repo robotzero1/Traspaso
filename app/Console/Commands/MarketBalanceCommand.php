@@ -86,6 +86,17 @@ class MarketBalanceCommand extends Command
             }
         }
 
+        // Flippers (SPEC §12): the same seeds, selling every year.
+        if ($years > 1) {
+            foreach ($strategies as $strategy) {
+                if (in_array($strategy->key(), ['default', 'thoughtful'], true)) {
+                    for ($n = 0; $n < $games; $n++) {
+                        $outcomes[] = $runner->playFlipping($strategy, $seed + $n, $years);
+                    }
+                }
+            }
+        }
+
         $bar->finish();
         $this->newLine(2);
 
@@ -97,6 +108,7 @@ class MarketBalanceCommand extends Command
         }
 
         $this->resaleTable($report, $strategies, $years);
+        $this->flippingTable($report, $years);
         $this->groupTable('Thoughtful player by district', $report->grouped('thoughtful', fn (GameOutcome $o) => $o->neighbourhood));
         $this->groupTable('Thoughtful player by footfall at the spot', $report->grouped('thoughtful', BalanceReport::footfallBand(...)));
 
@@ -172,6 +184,26 @@ class MarketBalanceCommand extends Command
                 }, $shown),
             ], $strategies),
         );
+    }
+
+    private function flippingTable(BalanceReport $report, int $years): void
+    {
+        $by = $report->byStrategy();
+        $rows = [];
+
+        foreach (['default', 'thoughtful'] as $key) {
+            if (isset($by["{$key}-flipping"], $by[$key])) {
+                foreach ([$key, "{$key}-flipping"] as $k) {
+                    $s = BalanceReport::summary($by[$k]);
+                    $rows[] = [$k, ...array_slice($this->spread($s), 0, 6)];
+                }
+            }
+        }
+
+        if ($rows !== []) {
+            $this->line("<info>Holding one café vs selling every year and buying again ({$years} years, selling and buying take no time)</info>");
+            $this->table(['', 'p10', 'p25', 'Median', 'p75', 'p90', 'Ahead'], $rows);
+        }
     }
 
     /** @param array<string, array<string, float|int>> $groups */

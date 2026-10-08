@@ -73,6 +73,7 @@ final readonly class ViabilityCheck
             'profit_by_year' => $this->profitByYear($outcomes, $years),
             'sales_year_1_cents' => (int) round($salesYear1),
             'payback' => $this->payback($outcomes, $input->traspasoCents),
+            'resale' => $this->resale($outcomes, $years, $input->capitalCents),
             'cash_after_purchase_cents' => $input->capitalCents - $input->traspasoCents - $deposit,
             'owner_pay_month_cents' => $this->sheet->int('owner.pay_month_cents'),
             'risks' => $this->risks($input, $point, $open, $salesYear1, $deposit),
@@ -174,6 +175,42 @@ final readonly class ViabilityCheck
         }
 
         return $rows;
+    }
+
+    /**
+     * What the café would sell for at the end (SPEC §12), for the futures
+     * where it's still open then, before and after the costs of a private
+     * sale and the tax; and the owner's total return over all futures:
+     * net worth at the end (or at closing) against the money they put in.
+     *
+     * @param  list<GameOutcome>  $outcomes
+     * @return array<string, mixed>
+     */
+    private function resale(array $outcomes, int $years, int $capitalCents): array
+    {
+        $open = array_values(array_filter($outcomes, fn (GameOutcome $o) => ! $o->closedBy($years) && isset($o->valueByYear[$years])));
+        $spread = function (array $values): ?array {
+            if ($values === []) {
+                return null;
+            }
+
+            sort($values);
+
+            return [
+                'median' => (int) round($this->median($values)),
+                'p10' => $values[(int) floor(0.1 * (count($values) - 1))],
+                'p90' => $values[(int) ceil(0.9 * (count($values) - 1))],
+            ];
+        };
+        $returns = array_map(fn (GameOutcome $o) => $o->netWorthCents - $capitalCents, $outcomes);
+
+        return [
+            'year' => $years,
+            'value_cents' => $spread(array_map(fn (GameOutcome $o) => $o->valueByYear[$years], $open)),
+            'net_cents' => $spread(array_map(fn (GameOutcome $o) => $o->saleNetByYear[$years], $open)),
+            'total_return_cents' => $spread($returns),
+            'ahead' => $this->share($outcomes, fn (GameOutcome $o) => $o->netWorthCents > $capitalCents),
+        ];
     }
 
     /**

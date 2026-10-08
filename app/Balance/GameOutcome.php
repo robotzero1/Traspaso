@@ -29,7 +29,15 @@ final readonly class GameOutcome
         public array $revenueByMonth = [],
         /** @var array<int, int> what the café would sell for (BusinessValuation) at the end of each year it reached, by year */
         public array $valueByYear = [],
+        /** @var array<int, int> what a private sale at that value would leave after costs and tax, by year */
+        public array $saleNetByYear = [],
     ) {}
+
+    /** Selling at the end of the given year, after costs and tax, against the traspaso paid: −0.1 is a 10% loss. */
+    public function roundTrip(int $year): ?float
+    {
+        return isset($this->saleNetByYear[$year]) && $this->traspasoCents > 0 ? $this->saleNetByYear[$year] / $this->traspasoCents - 1 : null;
+    }
 
     /** Value at the end of the given year as a share of the traspaso paid; null if the café didn't reach it. */
     public function resaleRatio(int $year): ?float

@@ -30,10 +30,20 @@ type Full = {
     }[];
     sales_year_1_cents: number;
     payback: { median_months: number | null; share: number };
+    // Reports made before milestone 21 don't have it.
+    resale?: {
+        year: number;
+        value_cents: Spread | null;
+        net_cents: Spread | null;
+        total_return_cents: Spread | null;
+        ahead: number;
+    };
     cash_after_purchase_cents: number;
     owner_pay_month_cents: number;
     risks: { type: string; value: number }[];
 };
+
+type Spread = { median: number; p10: number; p90: number };
 
 type Props = {
     report: {
@@ -305,6 +315,8 @@ function FullReport({ full }: { full: Full }) {
                 </p>
             </div>
 
+            {full.resale && <Resale resale={full.resale} />}
+
             <div className="text-sm">
                 <h3 className="font-medium">What to watch</h3>
                 {full.risks.length === 0 ? (
@@ -322,6 +334,46 @@ function FullReport({ full }: { full: Full }) {
                 </p>
             </div>
         </section>
+    );
+}
+
+function Resale({ resale }: { resale: NonNullable<Full['resale']> }) {
+    const range = (s: Spread) =>
+        `${formatCents(s.p10)} to ${formatCents(s.p90)}`;
+
+    return (
+        <div className="space-y-1 text-sm">
+            <h3 className="font-medium">
+                Selling after {resale.year} years, and what you'd end up with
+            </h3>
+            {resale.value_cents && resale.net_cents ? (
+                <p>
+                    If it's still open, the café would typically sell for{' '}
+                    {formatCents(resale.value_cents.median)} (8 in 10:{' '}
+                    {range(resale.value_cents)}), leaving you{' '}
+                    {formatCents(resale.net_cents.median)} after the gestoría
+                    and income tax on any gain.
+                </p>
+            ) : (
+                <p>In most futures it isn't open after {resale.year} years.</p>
+            )}
+            {resale.total_return_cents && (
+                <p>
+                    All told, over every future, closures included: you'd
+                    typically end up{' '}
+                    {resale.total_return_cents.median >= 0
+                        ? `${formatCents(resale.total_return_cents.median)} ahead`
+                        : `${formatCents(-resale.total_return_cents.median)} down`}{' '}
+                    on the money you put in, after paying yourself (8 in 10:{' '}
+                    {range(resale.total_return_cents)}). {pct(resale.ahead)} of
+                    futures end ahead.
+                </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+                A buyer pays for the premises and fit-out, and for goodwill from
+                the last year's profit after the owner's pay.
+            </p>
+        </div>
     );
 }
 

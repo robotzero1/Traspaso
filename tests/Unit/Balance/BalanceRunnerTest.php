@@ -228,3 +228,31 @@ it('summarises resale value as a share of the traspaso, over the cafés that rea
         ->and(BalanceReport::resale($outcomes, 2)['median'])->toEqualWithDelta(1.3, 1e-9)
         ->and(BalanceReport::resale($outcomes, 3)['n'])->toBe(0);
 });
+
+it('flips: sells every year and buys again with what is left, counted against the first capital', function () {
+    $runner = new BalanceRunner(balanceMarket());
+
+    foreach (range(1, 8) as $seed) {
+        $flip = $runner->playFlipping(new DefaultSettings, $seed, 3);
+        $first = $runner->play(new DefaultSettings, $seed, 1);
+
+        expect($flip)->toEqual($runner->playFlipping(new DefaultSettings, $seed, 3))
+            ->and($flip->strategy)->toBe('default-flipping')
+            ->and($flip->startingCapitalCents)->toBe($first->startingCapitalCents)
+            ->and(count($flip->profitsByMonth))->toBeLessThanOrEqual(36);
+
+        // A first café that closed or went bankrupt ends the flipping there.
+        if ($first->closedInYear !== null) {
+            expect($flip->netWorthCents)->toBe($first->netWorthCents);
+        }
+    }
+});
+
+it('records what a private sale would leave each year, and the round trip against the traspaso', function () {
+    $outcome = (new BalanceRunner(balanceMarket()))->play(new Thoughtful, 3, years: 2);
+
+    foreach ($outcome->saleNetByYear as $year => $net) {
+        expect($net)->toBeLessThanOrEqual($outcome->valueByYear[$year])
+            ->and($outcome->roundTrip($year))->toEqualWithDelta($net / $outcome->traspasoCents - 1, 1e-9);
+    }
+});

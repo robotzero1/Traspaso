@@ -185,6 +185,17 @@ return [
         'scrap_share_of_fixtures' => 0.2,
     ],
 
+    // What changing café costs beyond the sale itself, for market:balance's
+    // flipper (milestone 21). Months between cafés: finding the next one
+    // and taking it over, with the owner living off savings. Buying costs:
+    // the buyer's gestoría and the licence's change of holder (cambio de
+    // titularidad). GUESSES.
+    'changing_cafe' => [
+        'source' => 'PLACEHOLDER: guesses',
+        'months_between' => 2,
+        'buying_costs_cents' => 180_000,
+    ],
+
     // A buyer of last resort: takes the café as it is, fast, for a fraction
     // of its value (at least the scrap value). GUESS.
     'quick_sale' => [
