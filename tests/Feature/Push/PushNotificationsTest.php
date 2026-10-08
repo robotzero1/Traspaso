@@ -206,6 +206,19 @@ it('tells the owner about buyers\' offers, even with daily results off, and abou
         ->and(end($this->push->sent)['message']['body'])->toContain('Sold for 36.000 €; 35.200 € is yours after costs and tax.');
 });
 
+it('always says when the café closed for good', function () {
+    $game = pushGame($this->user);
+    $this->user->update(['notify_daily_results' => false, 'notify_events' => false]);
+    device($this->user);
+    app(Sales::class)->close($game);
+
+    playNight('2026-10-31');
+
+    expect($this->push->sent)->toHaveCount(1)
+        ->and($this->push->sent[0]['message']['title'])->toEndWith(': closed')
+        ->and($this->push->sent[0]['message']['body'])->toContain('Closed for good.');
+});
+
 // The app --------------------------------------------------------------------------
 
 it('opens on the latest day\'s results', function () {

@@ -168,6 +168,30 @@ return [
         ],
     ],
 
+    // Getting out without a buyer (SPEC §12, milestone 19). Both take
+    // effect on the month's last day, after that month's bills.
+    'closure' => [
+        'source' => 'ET art. 53.1.b and 44; notice and scrap value are guesses',
+        // Commercial leases set their own notice or break penalty (LAU
+        // art. 4); two months' rent is a GUESS at a typical one.
+        'notice_months_of_rent' => 2,
+        // Closing the business is an objective dismissal: 20 days' pay per
+        // year worked (ET art. 53.1.b), on gross pay of 14 payments a year.
+        'severance_days_per_year' => 20,
+        // Staff taken over with the traspaso keep their seniority (ET art.
+        // 44); how long they'd already worked there is a GUESS.
+        'inherited_tenure_years' => 2,
+        // Used equipment sells for a fraction of the fixtures' value. GUESS.
+        'scrap_share_of_fixtures' => 0.2,
+    ],
+
+    // A buyer of last resort: takes the café as it is, fast, for a fraction
+    // of its value (at least the scrap value). GUESS.
+    'quick_sale' => [
+        'source' => 'PLACEHOLDER: guess',
+        'share_of_value' => 0.5,
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Generation: how many businesses, and what kind

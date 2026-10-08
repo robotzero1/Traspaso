@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 
-/** Listing the café, withdrawing it, and answering buyers (SPEC §12). Amounts come in whole euros. */
+/** Listing the café, withdrawing it, answering buyers, and getting out fast (SPEC §12). Amounts come in whole euros. */
 class SaleController extends Controller
 {
     public function store(Request $request, Game $game, Sales $sales): RedirectResponse
@@ -32,6 +32,33 @@ class SaleController extends Controller
         Gate::authorize('update', $game);
 
         $sales->withdraw($game);
+
+        return to_route('games.show', $game);
+    }
+
+    public function quick(Game $game, Sales $sales): RedirectResponse
+    {
+        Gate::authorize('update', $game);
+
+        $sales->quickSale($game);
+
+        return to_route('games.show', $game);
+    }
+
+    public function close(Game $game, Sales $sales): RedirectResponse
+    {
+        Gate::authorize('update', $game);
+
+        $sales->close($game);
+
+        return to_route('games.show', $game);
+    }
+
+    public function cancelClose(Game $game, Sales $sales): RedirectResponse
+    {
+        Gate::authorize('update', $game);
+
+        $sales->cancelClose($game);
 
         return to_route('games.show', $game);
     }

@@ -30,6 +30,7 @@ final class GamePresenter
     public function __construct(
         private readonly GameMapper $mapper,
         private readonly GameValuation $valuation,
+        private readonly Sales $sales,
     ) {}
 
     /** @return array<string, mixed> */
@@ -52,6 +53,7 @@ final class GamePresenter
             'net_worth_cents' => $this->valuation->netWorthCents($game),
             'sold_for_cents' => $game->sold_for_cents,
             'final_net_worth_cents' => $game->final_net_worth_cents,
+            'closure' => $game->closure,
             'business_name' => $game->business?->fictional_name,
         ];
     }
@@ -190,6 +192,14 @@ final class GamePresenter
             'value_cents' => $value,
             'private' => $costs->breakdown($value, $game->business->traspaso_cents, agency: false),
             'agency' => $costs->breakdown($value, $game->business->traspaso_cents, agency: true),
+            // Getting out fast (milestone 19).
+            'closes_on' => $game->closes_on?->toDateString(),
+            'exit_on' => $game->nextDay()->lastOfMonth()->toString(),
+            'quick_sale' => ($quick = $this->sales->quickSalePriceCents($game)) > 0 ? [
+                'price_cents' => $quick,
+                ...$costs->breakdown($quick, $game->business->traspaso_cents, agency: false),
+            ] : null,
+            'closure' => $this->sales->closureCosts($game),
             'offer_days' => $sheet->int('sale.offer_days'),
             'handover_days' => $sheet->int('sale.handover_days'),
         ];

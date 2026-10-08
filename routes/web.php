@@ -44,6 +44,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('games/{game}/sale', [SaleController::class, 'store'])->name('games.sale.store');
     Route::delete('games/{game}/sale', [SaleController::class, 'destroy'])->name('games.sale.destroy');
     Route::post('games/{game}/sale/offers/{offer}', [SaleController::class, 'answer'])->name('games.sale.answer');
+    Route::post('games/{game}/quick-sale', [SaleController::class, 'quick'])->name('games.sale.quick');
+    Route::post('games/{game}/close', [SaleController::class, 'close'])->name('games.close');
+    Route::delete('games/{game}/close', [SaleController::class, 'cancelClose'])->name('games.close.cancel');
 
     Route::get('map/footfall', FootfallController::class)->name('map.footfall');
 });

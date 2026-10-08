@@ -9,6 +9,7 @@ use App\Simulation\Data\CalendarDate;
 use App\Simulation\Rng\SeededRng;
 use App\Simulation\Sale\BuyerMarket;
 use App\Simulation\Sale\BuyerOffer;
+use App\Simulation\Sale\Closure;
 use App\Simulation\Sale\SaleCosts;
 use Illuminate\Validation\ValidationException;
 
@@ -17,6 +18,9 @@ use Illuminate\Validation\ValidationException;
  * day by day in the nightly run, the player accepts, rejects or counters,
  * and an accepted sale completes at the end of the month after the
  * handover period. The café trades all the while.
+ *
+ * Or getting out fast (milestone 19): a quick sale to a buyer of last
+ * resort, or closing down, both at the end of the current month.
  */
 final class Sales
 {
@@ -34,8 +38,8 @@ final class Sales
             throw ValidationException::withMessages(['asking' => 'Only a café you run can be listed.']);
         }
 
-        if ($game->liveListing() !== null) {
-            throw ValidationException::withMessages(['asking' => 'The café is already listed.']);
+        if ($game->liveListing() !== null || $game->closes_on !== null) {
+            throw ValidationException::withMessages(['asking' => 'The café is already listed, or closing.']);
         }
 
         return $game->saleListings()->create([
@@ -56,6 +60,73 @@ final class Sales
 
         $listing->update(['withdrawn_on' => $game->nextDay()->toString()]);
         $listing->offers()->whereIn('status', ['open', 'countered'])->update(['status' => 'lapsed']);
+    }
+
+    /**
+     * Sell now to a buyer of last resort: agreed at once, completing at the
+     * end of the current month. Any live listing is withdrawn.
+     */
+    public function quickSale(Game $game): SaleListing
+    {
+        $this->guardExit($game);
+
+        if ($game->liveListing() !== null) {
+            $this->withdraw($game);
+        }
+
+        $on = $game->nextDay();
+        $price = $this->quickSalePriceCents($game);
+        $listing = $game->saleListings()->create([
+            'business_id' => $game->business_id,
+            'asking_cents' => $price,
+            'agency' => false,
+            'quick' => true,
+            'listed_on' => $on->toString(),
+        ]);
+        $offer = $listing->offers()->create([
+            'buyer' => 'A buyer of last resort',
+            'amount_cents' => $price,
+            'limit_cents' => $price,
+            'made_on' => $on->toString(),
+            'expires_on' => $on->toString(),
+        ]);
+        $this->accept($game, $listing, $offer, $price, $on, $on->lastOfMonth());
+
+        return $listing;
+    }
+
+    /** Close down at the end of the current month; until then the café trades. */
+    public function close(Game $game): void
+    {
+        $this->guardExit($game);
+
+        if ($game->liveListing() !== null) {
+            $this->withdraw($game);
+        }
+
+        $game->update(['closes_on' => $game->nextDay()->lastOfMonth()->toString()]);
+    }
+
+    public function cancelClose(Game $game): void
+    {
+        if (! $game->isActive() || $game->closes_on === null) {
+            throw ValidationException::withMessages(['close' => 'The café isn\'t closing.']);
+        }
+
+        $game->update(['closes_on' => null]);
+    }
+
+    public function quickSalePriceCents(Game $game): int
+    {
+        return (new Closure($this->mapper->sheet($game)))
+            ->quickSalePriceCents($this->mapper->state($game), $game->business->traspaso_cents, $this->valuation->businessValueCents($game));
+    }
+
+    /** @return array{notice_cents: int, severance_cents: int, scrap_cents: int, net_cents: int} */
+    public function closureCosts(Game $game, ?int $monthsOwned = null): array
+    {
+        return (new Closure($this->mapper->sheet($game)))
+            ->breakdown($this->mapper->state($game), $game->business->traspaso_cents, $monthsOwned ?? $game->current_month);
     }
 
     /** accept, reject, or counter with a price between the offer and the asking price. */
@@ -132,14 +203,21 @@ final class Sales
         $offer->update(['status' => 'countered', 'counter_cents' => $counterCents]);
     }
 
-    private function accept(Game $game, SaleListing $listing, SaleOffer $offer, int $priceCents, CalendarDate $on): void
+    private function guardExit(Game $game): void
+    {
+        if (! $game->isActive() || $game->business_id === null || $game->closes_on !== null || $game->liveListing()?->accepted_on !== null) {
+            throw ValidationException::withMessages(['close' => 'The café is already sold or closing.']);
+        }
+    }
+
+    private function accept(Game $game, SaleListing $listing, SaleOffer $offer, int $priceCents, CalendarDate $on, ?CalendarDate $completes = null): void
     {
         $sheet = $this->mapper->sheet($game);
         $offer->update(['status' => 'accepted']);
         $listing->offers()->whereKeyNot($offer->id)->whereIn('status', ['open', 'countered'])->update(['status' => 'rejected']);
         $listing->update([
             'accepted_on' => $on->toString(),
-            'completes_on' => $on->addDays($sheet->int('sale.handover_days'))->lastOfMonth()->toString(),
+            'completes_on' => ($completes ?? $on->addDays($sheet->int('sale.handover_days'))->lastOfMonth())->toString(),
             'price_cents' => $priceCents,
             'costs' => (new SaleCosts($sheet))->breakdown($priceCents, $game->business->traspaso_cents, $listing->agency),
         ]);

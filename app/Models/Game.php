@@ -30,12 +30,14 @@ use Illuminate\Support\Carbon;
  * @property int|null $sold_for_cents
  * @property int|null $final_net_worth_cents
  * @property Carbon|null $ended_at
+ * @property Carbon|null $closes_on
+ * @property array<string, int>|null $closure
  * @property-read Business|null $business
  * @property-read GameBusinessState|null $latestState
  */
 #[Fillable([
     'user_id', 'market', 'seed', 'start_date', 'started_on', 'last_simulated_on', 'scheduled_decisions', 'starting_capital_cents', 'cash_cents', 'current_month',
-    'status', 'business_id', 'deposit_cents', 'decisions', 'sold_for_cents', 'final_net_worth_cents', 'ended_at',
+    'status', 'business_id', 'deposit_cents', 'decisions', 'sold_for_cents', 'final_net_worth_cents', 'ended_at', 'closes_on', 'closure',
 ])]
 class Game extends Model
 {
@@ -159,6 +161,8 @@ class Game extends Model
             'sold_for_cents' => 'integer',
             'final_net_worth_cents' => 'integer',
             'ended_at' => 'datetime',
+            'closes_on' => 'date',
+            'closure' => 'array',
         ];
     }
 }

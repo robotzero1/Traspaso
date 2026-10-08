@@ -48,8 +48,19 @@ export type SaleProps = {
     value_cents: number;
     private: Costs;
     agency: Costs;
+    closes_on: string | null;
+    exit_on: string;
+    quick_sale: (Costs & { price_cents: number }) | null;
+    closure: Closure;
     offer_days: number;
     handover_days: number;
+};
+
+type Closure = {
+    notice_cents: number;
+    severance_cents: number;
+    scrap_cents: number;
+    net_cents: number;
 };
 
 const statusText: Record<SaleOffer['status'], string> = {
@@ -68,14 +79,65 @@ function formatDay(date: string): string {
     });
 }
 
-/** Selling the café (SPEC §12): list it, then answer the buyers. */
+/**
+ * Selling the café (SPEC §12): list it and answer the buyers, or get out
+ * fast with a quick sale or by closing down.
+ */
 export function SalePanel({
     gameId,
     sale,
+    depositCents,
 }: {
     gameId: number;
     sale: SaleProps;
+    depositCents: number;
 }) {
+    if (sale.closes_on) {
+        return (
+            <section className="space-y-3">
+                <Heading
+                    title="Closing down"
+                    description={`The café closes for good on ${formatDay(sale.closes_on)}, after that month's bills. It trades until then.`}
+                />
+                <ClosureTable
+                    closure={sale.closure}
+                    depositCents={depositCents}
+                />
+                <Form {...SaleController.cancelClose.form(gameId)}>
+                    {({ processing, errors }) => (
+                        <>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                disabled={processing}
+                            >
+                                Keep it open after all
+                            </Button>
+                            <InputError message={errors.close} />
+                        </>
+                    )}
+                </Form>
+            </section>
+        );
+    }
+
+    const agreed = !!sale.listing?.accepted_on;
+
+    return (
+        <div className="space-y-8">
+            <SaleMain gameId={gameId} sale={sale} />
+            {!agreed && (
+                <ExitOptions
+                    gameId={gameId}
+                    sale={sale}
+                    depositCents={depositCents}
+                />
+            )}
+        </div>
+    );
+}
+
+function SaleMain({ gameId, sale }: { gameId: number; sale: SaleProps }) {
     const listing = sale.listing;
 
     if (listing === null) {
@@ -308,6 +370,118 @@ function CostsTable({ price, costs }: { price: number; costs: Costs }) {
                     <td className="py-1">You keep</td>
                     <td className="py-1 text-right tabular-nums">
                         {formatCents(costs.net_cents)}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    );
+}
+
+/** A café in trouble can sell to a buyer of last resort, or close. */
+function ExitOptions({
+    gameId,
+    sale,
+    depositCents,
+}: {
+    gameId: number;
+    sale: SaleProps;
+    depositCents: number;
+}) {
+    return (
+        <section className="space-y-4 border-t pt-6">
+            <Heading
+                variant="small"
+                title="Getting out fast"
+                description={`Both take effect on ${formatDay(sale.exit_on)}, after that month's bills, and any listing is withdrawn. The landlord returns your ${formatCents(depositCents)} deposit either way.`}
+            />
+            <div className="grid gap-6 sm:grid-cols-2">
+                {sale.quick_sale && (
+                    <div className="space-y-2">
+                        <p className="text-sm font-medium">
+                            Quick sale to a buyer of last resort
+                        </p>
+                        <CostsTable
+                            price={sale.quick_sale.price_cents}
+                            costs={sale.quick_sale}
+                        />
+                        <ConfirmButton
+                            action={SaleController.quick.form(gameId)}
+                            label={`Sell for ${formatCents(sale.quick_sale.price_cents)}`}
+                            confirm="Sell the café now to a buyer of last resort? This can't be undone."
+                        />
+                    </div>
+                )}
+                <div className="space-y-2">
+                    <p className="text-sm font-medium">Close down</p>
+                    <ClosureTable
+                        closure={sale.closure}
+                        depositCents={depositCents}
+                    />
+                    <ConfirmButton
+                        action={SaleController.close.form(gameId)}
+                        label="Close at the month end"
+                        confirm="Close the café for good at the end of the month? You can change your mind until then."
+                    />
+                </div>
+            </div>
+        </section>
+    );
+}
+
+function ConfirmButton({
+    action,
+    label,
+    confirm,
+}: {
+    action: { action: string; method: 'post' };
+    label: string;
+    confirm: string;
+}) {
+    return (
+        <Form {...action} onBefore={() => window.confirm(confirm)}>
+            {({ processing, errors }) => (
+                <>
+                    <Button variant="outline" size="sm" disabled={processing}>
+                        {label}
+                    </Button>
+                    <InputError message={errors.close} />
+                </>
+            )}
+        </Form>
+    );
+}
+
+function ClosureTable({
+    closure,
+    depositCents,
+}: {
+    closure: Closure;
+    depositCents: number;
+}) {
+    const rows: [string, number][] = [
+        ["Lease notice (two months' rent)", -closure.notice_cents],
+        ['Staff severance (20 days a year)', -closure.severance_cents],
+        ['Equipment sold for scrap', closure.scrap_cents],
+        ['Deposit back', depositCents],
+    ];
+
+    return (
+        <table className="w-full max-w-sm text-sm">
+            <tbody>
+                {rows.map(([label, cents]) => (
+                    <tr key={label}>
+                        <td className="py-0.5 text-muted-foreground">
+                            {label}
+                        </td>
+                        <td className="py-0.5 text-right tabular-nums">
+                            {formatCents(cents === 0 ? 0 : cents)}
+                        </td>
+                    </tr>
+                ))}
+                <tr className="border-t font-medium">
+                    <td className="py-1">Cash in (out)</td>
+                    <td className="py-1 text-right tabular-nums">
+                        {formatCents(closure.net_cents + depositCents)}
                     </td>
                 </tr>
             </tbody>

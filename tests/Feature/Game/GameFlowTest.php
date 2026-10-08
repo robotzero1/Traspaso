@@ -715,3 +715,60 @@ it('withdraws a listing, lapsing its offers, and keeps others out', function () 
         ->and($game->liveListing())->toBeNull();
     $this->actingAs($this->user)->post(route('games.sale.answer', [$game, $offer]), ['answer' => 'accept'])->assertSessionHasErrors('offer');
 });
+
+// Closing down and quick sale (milestone 19) -----------------------------------
+
+it('sells to a buyer of last resort at the month end, withdrawing the listing', function () {
+    $game = boughtGame($this->user);
+    nightlyRun('2026-10-10');
+    $listing = app(Sales::class)->list($game->refresh(), 9_000_000, agency: false);
+    $price = app(Sales::class)->quickSalePriceCents($game);
+
+    $this->actingAs($this->user)->post(route('games.sale.quick', $game))->assertRedirect();
+
+    $quick = $game->liveListing();
+    expect($listing->refresh()->withdrawn_on)->not->toBeNull()
+        ->and($quick->quick)->toBeTrue()
+        ->and($quick->price_cents)->toBe($price)
+        ->and($price)->toBeGreaterThan(0)
+        ->and($quick->completes_on->toDateString())->toBe('2026-10-31');
+
+    // Agreed: no closing, listing or second quick sale now.
+    $this->actingAs($this->user)->post(route('games.close', $game))->assertSessionHasErrors('close');
+    $this->actingAs($this->user)->post(route('games.sale.store', $game), ['asking' => 50_000])->assertSessionHasErrors('asking');
+
+    nightlyRun('2026-10-31');
+    expect($game->refresh()->status)->toBe(GameStatus::Finished)
+        ->and($game->sold_for_cents)->toBe($price);
+});
+
+it('closes down at the month end: notice and severance out, scrap and the deposit in', function () {
+    $game = boughtGame($this->user);
+    nightlyRun('2026-10-10');
+
+    $this->actingAs($this->user)->post(route('games.close', $game))->assertRedirect();
+    expect($game->refresh()->closes_on->toDateString())->toBe('2026-10-31');
+    $this->actingAs($this->user)->post(route('games.sale.store', $game), ['asking' => 50_000])->assertSessionHasErrors('asking');
+
+    // Changed their mind, then closed after all.
+    $this->actingAs($this->user)->delete(route('games.close.cancel', $game))->assertRedirect();
+    expect($game->refresh()->closes_on)->toBeNull();
+    $this->actingAs($this->user)->post(route('games.close', $game));
+
+    $deposit = $game->deposit_cents;
+    nightlyRun('2026-10-31');
+    $game->refresh();
+    $month = $game->monthResults()->sole();
+    $closure = $game->closure;
+
+    expect($game->status)->toBe(GameStatus::Finished)
+        ->and($game->sold_for_cents)->toBeNull()
+        ->and($closure['net_cents'])->toBe($closure['scrap_cents'] - $closure['notice_cents'] - $closure['severance_cents'])
+        ->and($closure['notice_cents'])->toBe(2 * $game->business->rent_month_cents)
+        ->and($game->cash_cents)->toBe($month->cash_after_cents + $closure['net_cents'] + $deposit)
+        ->and($game->final_net_worth_cents)->toBe($game->cash_cents);
+
+    $this->actingAs($this->user)->get(route('games.show', $game))->assertInertia(fn (Assert $page) => $page
+        ->where('game.phase', 'over')
+        ->where('game.closure.net_cents', $closure['net_cents']));
+});

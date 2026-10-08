@@ -158,24 +158,29 @@ final class SimulateDays
 
         // An agreed sale completes after the month's bills: the price, less
         // its costs and tax, and the deposit come in, and the game ends.
+        // Closing down, likewise: notice and severance out, scrap value
+        // and the deposit in.
         $sale = $this->sales->completing($game, $lastDay);
-        $cash = $result->cashAfterCents() + ($sale === null ? 0 : $sale->costs['net_cents'] + $game->deposit_cents);
+        $closure = $sale === null && $game->closes_on?->toDateString() === $lastDay->toString() ? $this->sales->closureCosts($game, $month) : null;
+        $exitCents = $sale?->costs['net_cents'] ?? $closure['net_cents'] ?? null;
+        $cash = $result->cashAfterCents() + ($exitCents === null ? 0 : $exitCents + $game->deposit_cents);
         $bankrupt = $cash < 0;
         $sale?->update(['completed_on' => $lastDay->toString()]);
 
         $game->update([
             'cash_cents' => $cash,
             'current_month' => $month + 1,
-            ...($sale !== null && ! $bankrupt ? [
+            ...($exitCents !== null && ! $bankrupt ? [
                 'status' => GameStatus::Finished,
-                'sold_for_cents' => $sale->price_cents,
+                'sold_for_cents' => $sale?->price_cents,
+                'closure' => $closure,
                 'deposit_cents' => 0,
                 'final_net_worth_cents' => $cash,
                 'ended_at' => now(),
             ] : []),
             ...($bankrupt ? [
                 'status' => GameStatus::Bankrupt,
-                'final_net_worth_cents' => $cash + ($sale === null ? $game->deposit_cents : 0),
+                'final_net_worth_cents' => $cash + ($exitCents === null ? $game->deposit_cents : 0),
                 'ended_at' => now(),
             ] : []),
         ]);

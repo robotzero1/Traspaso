@@ -23,8 +23,9 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $completed_on
  * @property int|null $price_cents
  * @property array<string, int>|null $costs
+ * @property bool $quick a buyer of last resort
  */
-#[Fillable(['game_id', 'business_id', 'asking_cents', 'agency', 'listed_on', 'withdrawn_on', 'accepted_on', 'completes_on', 'completed_on', 'price_cents', 'costs'])]
+#[Fillable(['game_id', 'business_id', 'asking_cents', 'agency', 'listed_on', 'withdrawn_on', 'accepted_on', 'completes_on', 'completed_on', 'price_cents', 'costs', 'quick'])]
 class SaleListing extends Model
 {
     /** @return BelongsTo<Game, $this> */
@@ -49,6 +50,7 @@ class SaleListing extends Model
     {
         return [
             'agency' => 'boolean',
+            'quick' => 'boolean',
             'listed_on' => 'date',
             'withdrawn_on' => 'date',
             'accepted_on' => 'date',

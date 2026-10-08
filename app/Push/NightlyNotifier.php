@@ -31,7 +31,7 @@ final class NightlyNotifier
         $waiting = $game->events()->whereNull('choice')->whereNull('resolved_month')->get()
             ->filter(fn (GameEvent $e) => $e->choices !== [])->values();
         $bankrupt = $game->status === GameStatus::Bankrupt;
-        $sold = $game->sold_for_cents !== null;
+        $sold = $game->sold_for_cents !== null || $game->closure !== null;
         $sale = $this->saleNews($game, $day->date->toDateString());
 
         // Bankruptcy and a completed sale always get through; otherwise the
@@ -85,6 +85,10 @@ final class NightlyNotifier
 
         array_push($lines, ...$sale);
 
+        if ($game->closure !== null) {
+            $lines[] = sprintf('Closed for good. After notice, severance and selling the equipment: %s; the deposit came back.', self::euros($game->closure['net_cents']));
+        }
+
         if ($waiting !== []) {
             $lines[] = count($waiting) === 1
                 ? Str::headline($waiting[0]->type).' needs your decision.'
@@ -95,6 +99,7 @@ final class NightlyNotifier
             'title' => match (true) {
                 $bankrupt => "{$name}: bankrupt",
                 $game->sold_for_cents !== null => "{$name}: sold",
+                $game->closure !== null => "{$name}: closed",
                 default => $name.' · '.$day->date->format('D j M'),
             },
             'body' => $bankrupt ? 'The cash ran out at the month end. '.implode(' ', $lines) : implode(' ', $lines),

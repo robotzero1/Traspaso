@@ -240,7 +240,11 @@ function Playing(
                 )}
                 {tab === 'events' && <EventLog events={props.events ?? []} />}
                 {tab === 'sale' && props.sale && (
-                    <SalePanel gameId={game.id} sale={props.sale} />
+                    <SalePanel
+                        gameId={game.id}
+                        sale={props.sale}
+                        depositCents={game.deposit_cents}
+                    />
                 )}
             </div>
         </div>
@@ -542,7 +546,9 @@ function GameOver({
                         ? 'Your cash ran out.'
                         : game.sold_for_cents !== null
                           ? `You sold the business for ${formatCents(game.sold_for_cents)}.`
-                          : 'You kept the business.'
+                          : game.closure
+                            ? `You closed the café. Notice, severance and the equipment sold for scrap came to ${formatCents(game.closure.net_cents)}; the traspaso was lost.`
+                            : 'You kept the business.'
                 }
             />
             <p className="text-lg">

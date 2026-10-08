@@ -1,4 +1,4 @@
-# Balancing pass (milestones 9–11, 17–18)
+# Balancing pass (milestones 9–11, 17–19)
 
 How the game plays out on the real Zaragoza data, and what was changed to get
 there. Reproduce with:
@@ -14,6 +14,26 @@ from real cafés and bars), play 12 months, then value what's left. Each game
 draws its starting capital (€20k–€100k, whole thousands) and its starting month
 from the seed. Net worth = cash + the landlord's deposit + the business's value;
 cash below zero ends the game with cash + deposit.
+
+## Closing down and quick sale (milestone 19)
+
+Two ways out without waiting for a buyer, both on the month's last day:
+
+- **Closing down:** two months' rent for the lease's notice or break penalty
+  (a guess: commercial leases set their own, LAU art. 4); severance of 20
+  days' gross pay per year worked for each employee (ET art. 53.1.b; closing
+  is an objective dismissal), counting 2 years' seniority inherited with the
+  traspaso (ET art. 44; the 2 years are a guess); the equipment sells for
+  20% of the fixtures' value (a guess). The traspaso is lost; the deposit
+  comes back.
+- **Quick sale:** a buyer of last resort pays half the café's value (a guess),
+  never less than the scrap value, with the usual gestoría and tax.
+
+For a typical small café closing after a few months, closing costs more
+than the scrap brings in; a quick sale usually leaves more, which is the
+point of it. `market:balance` doesn't use either yet: a café closed for not
+paying its owner is still valued as a private sale at its value. Milestone 21
+should have the balance owner take the better of a quick sale and closing.
 
 ## Selling (milestone 18)
 
