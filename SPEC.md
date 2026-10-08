@@ -332,3 +332,61 @@ A separate product from the game: no game account needed.
 14. **Viability check** (done): `/viability`, open to anyone. A map pin (snapped to the nearest commercial street point within 150 m) and the listing's figures, the user's money and how they'd run it; `RunViabilityCheck` plays 1,000 five-year futures of that café on the queue (about 30 s), with the user's plan held fixed, repairs when affordable, and the real cafés and bars nearby as rivals (one at the pin is taken to be the café itself). The report: free preview (1-year survival, the spot's footfall and rivals); full report (survival at 1, 3 and 5 years, yearly profit before the owner's pay with an 8-in-10 range, months to earn back the traspaso, flagged risks) once `paid_at` is set, which milestone 15's payments will do. `VIABILITY_UNLOCK_ALL=true` shows the full report for local testing.
 15. **Payments and accounts** (done): one-off Stripe Checkout payments (`app/Payments`, behind a `PaymentGateway` interface) for the full viability report (no account needed) and for capital tiers (€60k and €100k of savings, tied to the account; up to €30k stays free). Each payment is a `purchases` row, fulfilled once (idempotent) by the `/stripe/webhook` or when the buyer returns from Checkout. Prices include IVA (an optional Stripe tax rate shows it on the receipt) and Stripe issues an invoice. Buyers must tick a box agreeing that the digital content starts at once and they lose the 14-day withdrawal right (RDL 1/2007 art. 103 m). Terms, privacy and disclaimer pages are drafts with [placeholders]. Prices in `config/payments.php` are placeholders.
 16. **Going live** (done): `docs/deploy.md` sets up one EU VPS (nginx, PHP-FPM, SQLite in WAL mode, the database queue) with the configs in `deploy/` (nginx, supervisor for the queue worker, the scheduler's crontab, `deploy.sh`). Monitoring: `/up` and `app:health` fail when the database is down, a queued job waits over 30 minutes, a job failed in the last day, or a café missed a nightly run; an optional heartbeat URL is pinged after each nightly run. Backups: `app:backup` (nightly, 04:00 Madrid) keeps 14 days of compressed SQLite copies; copying them off the server is up to the host. GDPR: a JSON download of the user's data in Settings, account deletion (purchase records kept without the user, for tax law), unpaid reports pruned after 90 days and abandoned checkouts after 30. Production forces HTTPS, trusts proxies from `TRUSTED_PROXIES`, and seeds no test user.
+
+## 12. Stage three: selling and buying
+
+Stage two's café runs until it goes bankrupt. Stage three lets the owner get out the way real owners do, by selling the traspaso or closing, and then buy another café with what they have left. One game becomes an owner's career: a run of cafés, one at a time, with net worth across all of them. The realism rules stay. A sale takes months, costs money, and fetches what a buyer would really pay for the books the café shows.
+
+### Selling: a listing, not a button
+
+- **List the café** at an asking price. It keeps trading while it's listed: rent, staff and the nightly results all carry on. The player can change the price or withdraw the listing at any time.
+- **Buyers look at the books.** Each buyer values the café with `BusinessValuation`: location and licence, fixtures worn with the equipment, and goodwill from the last 12 months' profit after the owner's pay and from reputation. A café run down before the sale is worth less.
+- **Offers arrive over time.** Interested buyers arrive at random, at a rate that falls as the asking price rises above what buyers think it's worth, and slows in August and over Christmas. Each buyer offers below asking, around their own valuation. All of these rates come from the parameter sheet.
+- **Answering an offer:** accept, reject, or counter once. An offer lapses after a few days, like an event. Offers come in as push notifications.
+- **From acceptance to handover**, the café keeps trading for a handover period (a few weeks: gestoría, the landlord's paperwork). At completion the price arrives as cash, less the costs of the sale, and the deposit (fianza) comes back.
+- **The landlord:** under LAU art. 32 a tenant can assign a business lease without the landlord's consent (the landlord may raise the rent by 20%), but most commercial leases agree their own terms (art. 4). The landlord's side only shows up in the time and costs of the sale. *To confirm.*
+- **Costs of the sale:** an agency commission if the player uses an agency (more buyers, and it costs a share of the price), gestoría fees, and income tax on the gain (IRPF savings scale on the sale price less what was paid, simplified). IVA: selling a whole going business is not subject to IVA (LIVA art. 7.1). Any other tax on the deal is *to confirm with a gestor*.
+
+### Closing down
+
+- **Close** instead of selling: stop trading, pay the lease's notice period (or the break penalty), sell the equipment at scrap value, and lose the traspaso. The deposit comes back, less any damage.
+- **A quick sale** for a café in trouble: a lowball offer from a buyer of last resort, completed fast. It's the realistic way out before bankruptcy. Bankruptcy stays for cafés whose cash runs out first.
+
+### Buying again
+
+- **A career, not a new game.** After a sale or a closure the owner has cash and no café: no income and no owner's pay. They buy the next café in the same game, with what they have. The €30k free cap and paid tiers apply only when a game starts. Money made in the game is the owner's to use.
+- **A living market.** Listings come and go in real time. New ones appear every week, drawn from the same calibrated distributions, and others sell to someone else and disappear. The market the player sees is today's, not the one from when the game started.
+- **The café sold stays on the map**, now run by its new owner as a rival if the player buys nearby.
+- **A career page:** each café the owner ran, with what they paid, how long they ran it, its profit, and what it sold for. Net worth over the whole career.
+
+### Data needed (aggregated only, per §8)
+
+- **Time to sell** for Zaragoza café and bar traspasos: how long listings stay up, even as rough tiers. Without data this is a *guess*.
+- **Asking vs agreed price**: the usual discount. *Guess* without data.
+- **Agency commission** for traspasos (a share or a flat fee), and the gestoría costs of the handover.
+- **Lease notice and break terms** in typical Zaragoza commercial leases.
+- **How many new café and bar listings appear a month** in Zaragoza, for the living market.
+- **Valuation:** calibrate `BusinessValuation` (still a PLACEHOLDER) against the aggregated listings. A newly listed café should be worth about what it's listed for.
+
+### Data model additions
+
+- `businesses`: listing dates (`listed_on`, `delisted_on`) for the living market, and a status for cafés sold or closed by the player.
+- `games`: `business_id` becomes the current café (null between cafés).
+- `month_results`, `day_results` and `game_business_states` gain `business_id`, so each café's results stay apart.
+- `sale_listings`: `game_id, business_id, asking_cents, with_agency, listed_on, withdrawn_on, accepted_on, completes_on`.
+- `sale_offers`: `sale_listing_id, buyer, amount_cents, made_on, expires_on, status` (open, accepted, rejected, countered, lapsed), `counter_cents`.
+
+### Milestones (stage three)
+
+17. **Valuation calibration**: fit `BusinessValuation` to the aggregated listing data. `market:balance` checks that a fresh listing's value is close to its traspaso, and reports what typical cafés would sell for after 1, 3 and 5 years.
+18. **Selling**: the buyer market in `app/Simulation/Sale/` (pure PHP, seeded; parameters in `config/market`). Listings, offers, counters, handover, the costs and tax of the sale, the deposit back, and push notifications for offers.
+19. **Closing down and quick sale**: closure costs (notice, scrap value) and the buyer of last resort.
+20. **Buying again**: the career model (results per café, `business_id` on results), a living market with listings that appear and sell, and the career page.
+21. **Balance**: `market:balance` gains sell-and-rebuy strategies. The targets: selling a café that hasn't improved loses roughly the costs of the sale, flipping is no money machine, and the 1- and 5-year closure targets still hold.
+
+### Open decisions
+
+- Sell through a listing that takes months (above), or instantly at the valuation? The plan assumes a listing.
+- Should the agency be a choice (pay commission, get more buyers) or always on?
+- Should income tax on the gain be included (realistic, but net worth then counts after tax)?
+- Should the viability check also report what the café would sell for after 5 years?
