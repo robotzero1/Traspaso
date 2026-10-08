@@ -389,3 +389,56 @@ Stage two's café runs until it goes bankrupt. Stage three lets the owner get ou
 - **The agency is optional.** Listing through an agency costs commission and brings more buyers; selling privately is cheaper and slower.
 - **Income tax on the gain is included.** It's paid at completion. Net worth counts the café at what the owner would walk away with: the valuation less typical sale costs and the tax a sale would trigger.
 - **The viability check reports resale value:** what the café would likely sell for after 5 years (median and 8-in-10 range, after costs and tax), and the owner's total return including it. It's added in milestone 21, once the valuation is calibrated.
+
+## 13. Stage four: real data and buying costs
+
+The game works end to end, but 45 sections of the parameter sheet are still placeholders (`php artisan market:placeholders`), and the selling, closing and churn numbers from stage three are guesses. Stage four replaces guesses with sourced figures, adds the costs of buying a café, and recalibrates. No new features beyond that. Each milestone ends with `market:balance` (1 year, 5 years, daily; 1,000 games) passing and `docs/balance-report.md` saying what changed and what's still a guess.
+
+### Where the data comes from
+
+The data rules hold: no scraping, nothing per-listing, only aggregates.
+
+- **Public sources Claude can look up and cite:**
+  - the hostelería collective agreement for Zaragoza province (wages);
+  - Seguridad Social contribution rates;
+  - AEAT (IVA at 10% on hostelería, IRPF instalments on modelo 130);
+  - the Zaragoza fiscal ordinance (tasa de veladores, licence fees);
+  - Aragón opening-hours rules;
+  - AEMET climate normals;
+  - INE and DIRCE closure and density figures;
+  - Hostelería de España yearbooks (cost shares);
+  - published tariffs (electricity, water, insurance);
+  - Banco de España, CaixaBank Research and BBVA Research reports on card spending by weekday and season.
+- **Market figures the user gathers, as aggregates** (tiers, ranges, medians):
+  - how long Zaragoza café and bar traspasos stay listed, and how many new ones appear a month;
+  - the usual gap between asking and agreed price;
+  - agency fees;
+  - typical commercial lease terms (notice, break penalty, deposit, guarantees);
+  - coffee and breakfast prices at ordinary vs speciality/upmarket cafés, and how busy they are.
+- **Field counts the user makes:** pedestrian counts at 15–20 spots, two or three times of day (§8 Footfall estimate). The app gives a simple counting page for this.
+
+### Buying costs
+
+A traspaso costs more than its price. The game and `market:balance` charge, at purchase:
+
+- the buyer's gestoría or lawyer (the traspaso contract, the lease assignment);
+- the licence's change of holder (cambio de titularidad: Zaragoza's fee and any technical report);
+- any tax on the deal: the transfer of a whole going business isn't subject to IVA (LIVA 7.1), and whether ITP applies to the lease assignment is *to confirm*;
+- the landlord's deposit and any extra guarantee (aval) the lease asks for.
+
+The business card shows the total before buying ("cash needed"). The viability check counts it, and the flipper uses the same figures (replacing `changing_cafe.buying_costs_cents`).
+
+### Milestones (stage four)
+
+22. **Public-source research pass**: replace every placeholder a public source can settle (the list above), citing each next to its number. Then recalibrate: `capture.base_rate` first, as it moves every strategy together.
+23. **Buying costs**: costs at purchase in the game, the viability check and `market:balance`; "cash needed" on the business card; recalibrate the closure targets.
+24. **Market data intake**: `docs/data-requests.md` lists exactly what to gather and in what form (tiers or percentiles, with the date and how many listings or places were seen). The figures the user brings go into the sheet: time listed, agreed vs asking, agency fees, lease terms, new listings a month. Then retune the sale, churn and closure guesses.
+25. **Price and quality response**: from aggregated café prices and busyness (ordinary vs speciality), recalibrate how customers respond to price and quality (`capture.price_elasticity`, `capture.quality`, `ticket_position.tier`). New target: the premium strategy no longer almost never fails; its year-1 failure and net worth sit within the range the data supports.
+26. **Footfall counts**: a counting page (phone-friendly, signed-in, stores only the spot, time and count) and `geo:calibrate` reading those counts. Tune the footfall weights so the model ranks the spots as the counts do (Spearman rank correlation, target ≥ 0.6, a guess at "good enough").
+27. **Recalibration and report**: rerun everything. The balance report gets a table of every parameter section: real (with source), fitted (to which target), or still a guess, and why.
+
+### Open decisions
+
+- **Order:** 22 and 23 need nothing from the user and can start now; 24–26 wait on the figures and counts.
+- **Paid capital tiers** (€60k, €100k) may need rethinking once buying costs raise the cash needed.
+- **ITP on a traspaso:** model it only once a gestor or the Aragón tax rules confirm whether it applies.
