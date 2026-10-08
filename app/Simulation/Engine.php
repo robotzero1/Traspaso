@@ -133,7 +133,7 @@ final class Engine
         $revenueCents = array_sum(array_map(fn (DayPartResult $part) => $part->revenueCents, $dayParts)) + $eventRevenueCents;
 
         // 6. Costs
-        $costs = (new MonthlyCosts($sheet))->calculate($state, $decisions, $season, $revenueCents, $modifiers, $eventCostCents);
+        $costs = (new MonthlyCosts($sheet))->calculate($state, $decisions, $season, $revenueCents, $modifiers, $eventCostCents, $context->gameMonth);
         // The owner's pay leaves the cash too, whatever the month brought in.
         $ownerPay = $sheet->int('owner.pay_month_cents');
         $cashAfter = $state->cashCents + $revenueCents - $costs->totalCents() - $ownerPay;

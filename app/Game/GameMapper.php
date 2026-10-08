@@ -37,7 +37,15 @@ final class GameMapper
     /** @return array<string, mixed> */
     public function parameters(Game $game): array
     {
-        return config("market.{$game->market}");
+        $parameters = config("market.{$game->market}");
+
+        // The flat rate is for new self-employed owners: the second café of
+        // a career doesn't get it (the owner was self-employed just now).
+        if ($game->previous_game_id !== null) {
+            $parameters['cuota_autonomo']['flat_rate_months'] = 0;
+        }
+
+        return $parameters;
     }
 
     public function sheet(Game $game): ParameterSheet

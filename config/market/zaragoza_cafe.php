@@ -621,9 +621,10 @@ return [
         // Calibrated (market:balance) so that, once the owner takes their
         // pay, 20–25% of typical new cafés fail in year 1, as INE/DIRCE and
         // Hostelería de España report for new cafés and bars. 0.091 →
-        // 0.095 in milestone 22, after the sourced wages and Social
-        // Security raised costs.
-        'base_rate' => 0.095,
+        // 0.095 in milestone 22 after the sourced wages and Social
+        // Security raised costs, then 0.093 once the October payment and
+        // the new owner's flat-rate cuota were in.
+        'base_rate' => 0.093,
         'price_elasticity' => 0.7,
         'reputation' => ['base' => 0.3, 'per_point' => 0.014],
         'quality' => ['base' => 0.75, 'per_point' => 0.005],
@@ -989,11 +990,13 @@ return [
     'staff' => [
         'source' => 'Convenio de hostelería de la provincia de Zaragoza 2023–2025 (BOPZ 84, 13/04/2024; in force by ultraactividad), 2025 tables via search summaries; Orden PJC/297/2026 cotización rates; AT/EP tarifa de primas, CNAE 56',
         // Camarero and cocinero (Grupo II), 2025 table: €1,375 gross a
-        // month, 14 payments (two sources; a third adds a fixed October
-        // payment of €1,359: to check in the BOPZ text). Table range
-        // €1,180–1,563. Was €1,300, a guess.
+        // month in 14 payments, plus the agreement's fixed October payment
+        // of €1,359.07: 14 + 1,359.07 ÷ 1,375 = 14.988 payments' worth a
+        // year. Table range €1,179.53–1,562.56. Was €1,300 × 14, a guess.
+        // Not modelled: Sundays (€12.61) and holidays (€25) worked, and
+        // +25% for hours after midnight.
         'gross_per_payment_cents' => 137_500,
-        'payments_per_year' => 14,
+        'payments_per_year' => 14.988,
         // Employer, permanent contract, 2026: contingencias comunes 23.60%,
         // desempleo 5.50%, FOGASA 0.20%, formación 0.60%, MEI 0.75%, plus
         // AT/EP for CNAE 56 1.50% (0.80 IT + 0.70 IMS). Was 31.5%.
@@ -1020,7 +1023,12 @@ return [
     // The 15 RETA bands (RDL 13/2022 schedule; 2025 cuotas, unchanged for
     // 2026 apart from MEI per search summaries), at the minimum base of each.
     'cuota_autonomo' => [
-        'source' => 'RDL 13/2022 RETA bands, 2025–2026 cuotas at each band\'s minimum base (via search summaries; check the TGSS table)',
+        'source' => 'RDL 13/2022 RETA bands, 2025–2026 cuotas at each band\'s minimum base (via search summaries; check the TGSS table); tarifa plana LETA art. 38 ter',
+        // A new self-employed owner (none in the last two years) pays a flat
+        // €80 a month for the first 12 months: the game assumes the player
+        // qualifies. (A second year at €80 needs income below the SMI.)
+        'flat_rate_cents' => 8_000,
+        'flat_rate_months' => 12,
         'bands' => [
             ['max_income_cents' => 67_000, 'cuota_cents' => 20_000],
             ['max_income_cents' => 90_000, 'cuota_cents' => 22_000],

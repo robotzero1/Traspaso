@@ -249,6 +249,7 @@ final class DayEngine
             $cogsCents,
             $sum(fn (DayResult $d) => $d->eventCostCents + $d->modifierCostCents),
             $share,
+            $context->gameMonth,
         );
 
         $ownerPay = (int) round($sheet->int('owner.pay_month_cents') * $share);

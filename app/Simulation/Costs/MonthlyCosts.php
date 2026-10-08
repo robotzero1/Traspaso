@@ -22,6 +22,7 @@ final readonly class MonthlyCosts
 
     /**
      * @param  int  $eventCostCents  one-off costs from events this month
+     * @param  int|null  $gameMonth  months since purchase (1 = the first), for the new-owner flat rate; null: no flat rate
      */
     public function calculate(
         BusinessState $state,
@@ -30,10 +31,11 @@ final readonly class MonthlyCosts
         int $revenueCents,
         ModifierSet $modifiers = new ModifierSet,
         int $eventCostCents = 0,
+        ?int $gameMonth = null,
     ): CostBreakdown {
         $cogs = $this->round($revenueCents * $this->cogsShare($decisions, $modifiers));
 
-        return $this->breakdown($state, $decisions, $season, $revenueCents, $cogs, $modifiers->rent(), $modifiers->monthlyCostCents() + $eventCostCents);
+        return $this->breakdown($state, $decisions, $season, $revenueCents, $cogs, $modifiers->rent(), $modifiers->monthlyCostCents() + $eventCostCents, 1.0, $gameMonth);
     }
 
     /**
@@ -44,9 +46,9 @@ final readonly class MonthlyCosts
      * @param  int  $otherCostCents  events and monthly-cost modifiers over the month's days
      * @param  float  $share  the share of the month traded: fixed costs are pro rata
      */
-    public function settleMonth(BusinessState $state, Decisions $decisions, SeasonalFactors $season, int $revenueCents, int $cogsCents, int $otherCostCents, float $share = 1.0): CostBreakdown
+    public function settleMonth(BusinessState $state, Decisions $decisions, SeasonalFactors $season, int $revenueCents, int $cogsCents, int $otherCostCents, float $share = 1.0, ?int $gameMonth = null): CostBreakdown
     {
-        return $this->breakdown($state, $decisions, $season, $revenueCents, $cogsCents, $state->modifierSet()->rent(), $otherCostCents, $share);
+        return $this->breakdown($state, $decisions, $season, $revenueCents, $cogsCents, $state->modifierSet()->rent(), $otherCostCents, $share, $gameMonth);
     }
 
     /** COGS as a share of revenue: the quality tier's, plus any event modifiers. */
@@ -55,7 +57,7 @@ final readonly class MonthlyCosts
         return $this->sheet->float("cogs.share_of_revenue.{$decisions->qualityTier->value}") + $modifiers->cogsShare();
     }
 
-    private function breakdown(BusinessState $state, Decisions $decisions, SeasonalFactors $season, int $revenueCents, int $cogs, float $rentFactor, int $extraOtherCents, float $share = 1.0): CostBreakdown
+    private function breakdown(BusinessState $state, Decisions $decisions, SeasonalFactors $season, int $revenueCents, int $cogs, float $rentFactor, int $extraOtherCents, float $share = 1.0, ?int $gameMonth = null): CostBreakdown
     {
         $staff = $this->round(($this->staff($decisions->staffCount) + $this->coverCents($decisions)) * $share);
         $rent = $this->round($state->profile->rentMonthCents * $rentFactor * $share);
@@ -68,7 +70,10 @@ final readonly class MonthlyCosts
 
         $beforeCuota = $revenueCents - ($cogs + $staff + $rent + $utilities + $marketing + $fixedOther);
         // The cuota's band is set by what a full month would earn.
-        $cuota = $this->round($this->cuotaAutonomo($this->round($beforeCuota / $share)) * $share);
+        // A new self-employed owner pays the flat rate for their first year.
+        $cuota = $gameMonth !== null && $gameMonth <= $this->sheet->int('cuota_autonomo.flat_rate_months')
+            ? $this->round($this->sheet->int('cuota_autonomo.flat_rate_cents') * $share)
+            : $this->round($this->cuotaAutonomo($this->round($beforeCuota / $share)) * $share);
         $taxes = $this->round(max(0, $beforeCuota - $cuota) * $this->sheet->float('income_tax.rate'));
 
         return new CostBreakdown(

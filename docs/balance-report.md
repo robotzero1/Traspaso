@@ -53,6 +53,32 @@ bands. `capture.base_rate` **0.091 → 0.095** brings them back:
 Every other target passes too (resale 93%, round trip −10%, flipping +52% vs
 +89% holding).
 
+**Follow-up, with the user's figures** (the same agreement and sources):
+
+- The agreement's **October payment** (fixed €1,359.07) is on top of the 14:
+  `staff.payments_per_year` 14 → **14.988** (14 + 1,359.07 ÷ 1,375). Wages
+  +7%; severance follows.
+- The **flat-rate cuota** for new self-employed owners (€80 a month for the
+  first 12 months, LETA art. 38 ter): `cuota_autonomo.flat_rate_cents` and
+  `flat_rate_months`. The game assumes the player qualifies; the second café
+  of a career doesn't get it.
+- Not modelled (about 2–3% of wages for a café open every day): €12.61 per
+  Sunday and €25 per holiday worked, +25% after midnight.
+- One discrepancy left as it is: the user's summary gives a minimum RETA base
+  of €735.29 (cuota ~€225–230); the 2025 schedule, which other sources say
+  is frozen for 2026, starts at €653.59 (€200). The TGSS table settles it.
+
+With these, typical owners failed 20% (the bottom of the band), so
+`capture.base_rate` **0.095 → 0.093**:
+
+| 1,000 games | Monthly | Daily | 5 years |
+|---|---|---|---|
+| Typical owner, failed in year 1 (20–25%) | 22% | 22% | 22% |
+| Typical owner, open after 5 years (45–50%) | | | 46% |
+| Thoughtful, failed in year 1 (≤ 12%) | 8% | 11% | 8% |
+
+Resale 95%, round trip −8%, flipping +58% vs +73% holding: all pass.
+
 ## Selling, flipping and failed cafés (milestone 21)
 
 Three changes to `market:balance`, all at 1,000 games:

@@ -29,9 +29,9 @@ it('takes COGS as a share of revenue by quality tier', function (QualityTier $ti
     expect(costsFor(1_000_000, ['qualityTier' => $tier])->cogsCents)->toBe((int) round(1_000_000 * $share));
 })->with(QualityTier::cases());
 
-it('costs staff at 14 payments a year plus social security', function () {
+it('costs staff at the agreement\'s payments a year plus social security', function () {
     $staff = SimulationFixtures::parameters()['staff'];
-    $perPerson = $staff['gross_per_payment_cents'] * 14 / 12 * (1 + $staff['employer_social_security_rate']);
+    $perPerson = $staff['gross_per_payment_cents'] * $staff['payments_per_year'] / 12 * (1 + $staff['employer_social_security_rate']);
 
     expect(monthlyCosts()->staff(0))->toBe(0)
         ->and(monthlyCosts()->staff(3))->toBe((int) round(3 * $perPerson))
@@ -117,4 +117,21 @@ it('settles a month played day by day the same way, with the days\' COGS and one
 
     expect($settled)->toEqual($whole)
         ->and(monthlyCosts()->settleMonth($state, $decisions, $season, 1_000_000, 123_456, 0)->cogsCents)->toBe(123_456);
+});
+
+it('charges a new owner the flat-rate cuota in the first 12 months, then the band', function () {
+    $other = fn (?int $month) => monthlyCosts()->calculate(
+        SimulationFixtures::state(),
+        SimulationFixtures::decisions(),
+        new SeasonalFactors(1.0, 30, 26, 0.5),
+        2_000_000,
+        gameMonth: $month,
+    )->otherCents;
+    $band = $other(null) - $other(1) + 8_000;
+
+    expect($other(12))->toBe($other(1))
+        ->and($other(13))->toBe($other(null))
+        // The difference is exactly the band's cuota against the flat €80.
+        ->and($band)->toBeGreaterThan(8_000)
+        ->and(collect(SimulationFixtures::parameters()['cuota_autonomo']['bands'])->pluck('cuota_cents'))->toContain($band);
 });
