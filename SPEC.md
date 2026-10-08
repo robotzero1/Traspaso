@@ -345,7 +345,7 @@ Stage two's café runs until it goes bankrupt. Stage three lets the owner get ou
 - **Answering an offer:** accept, reject, or counter once. An offer lapses after a few days, like an event. Offers come in as push notifications.
 - **From acceptance to handover**, the café keeps trading for a handover period (a few weeks: gestoría, the landlord's paperwork). At completion the price arrives as cash, less the costs of the sale, and the deposit (fianza) comes back.
 - **The landlord:** under LAU art. 32 a tenant can assign a business lease without the landlord's consent (the landlord may raise the rent by 20%), but most commercial leases agree their own terms (art. 4). The landlord's side only shows up in the time and costs of the sale. *To confirm.*
-- **Costs of the sale:** an agency commission if the player uses an agency (more buyers, and it costs a share of the price), gestoría fees, and income tax on the gain (IRPF savings scale on the sale price less what was paid, simplified). IVA: selling a whole going business is not subject to IVA (LIVA art. 7.1). Any other tax on the deal is *to confirm with a gestor*.
+- **Costs of the sale:** an agency commission if the player chooses an agency (more buyers, and it costs a share of the price), gestoría fees, and income tax on the gain (IRPF savings scale on the sale price less what was paid, simplified). IVA: selling a whole going business is not subject to IVA (LIVA art. 7.1). Any other tax on the deal is *to confirm with a gestor*.
 
 ### Closing down
 
@@ -382,11 +382,11 @@ Stage two's café runs until it goes bankrupt. Stage three lets the owner get ou
 18. **Selling**: the buyer market in `app/Simulation/Sale/` (pure PHP, seeded; parameters in `config/market`). Listings, offers, counters, handover, the costs and tax of the sale, the deposit back, and push notifications for offers.
 19. **Closing down and quick sale**: closure costs (notice, scrap value) and the buyer of last resort.
 20. **Buying again**: the career model (results per café, `business_id` on results), a living market with listings that appear and sell, and the career page.
-21. **Balance**: `market:balance` gains sell-and-rebuy strategies. The targets: selling a café that hasn't improved loses roughly the costs of the sale, flipping is no money machine, and the 1- and 5-year closure targets still hold.
+21. **Balance and resale in the viability check**: `market:balance` gains sell-and-rebuy strategies. The targets: selling a café that hasn't improved loses roughly the costs of the sale, flipping is no money machine, and the 1- and 5-year closure targets still hold. The viability report adds the year-5 resale value and the owner's total return.
 
-### Open decisions
+### Decisions (settled)
 
-- Sell through a listing that takes months (above), or instantly at the valuation? The plan assumes a listing.
-- Should the agency be a choice (pay commission, get more buyers) or always on?
-- Should income tax on the gain be included (realistic, but net worth then counts after tax)?
-- Should the viability check also report what the café would sell for after 5 years?
+- **Selling is a listing that takes months**, not an instant sale at the valuation.
+- **The agency is optional.** Listing through an agency costs commission and brings more buyers; selling privately is cheaper and slower.
+- **Income tax on the gain is included.** It's paid at completion. Net worth counts the café at what the owner would walk away with: the valuation less typical sale costs and the tax a sale would trigger.
+- **The viability check reports resale value:** what the café would likely sell for after 5 years (median and 8-in-10 range, after costs and tax), and the owner's total return including it. It's added in milestone 21, once the valuation is calibrated.
