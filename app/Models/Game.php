@@ -31,13 +31,15 @@ use Illuminate\Support\Carbon;
  * @property int|null $final_net_worth_cents
  * @property Carbon|null $ended_at
  * @property Carbon|null $closes_on
+ * @property int|null $previous_game_id
+ * @property Carbon|null $market_refreshed_on
  * @property array<string, int>|null $closure
  * @property-read Business|null $business
  * @property-read GameBusinessState|null $latestState
  */
 #[Fillable([
     'user_id', 'market', 'seed', 'start_date', 'started_on', 'last_simulated_on', 'scheduled_decisions', 'starting_capital_cents', 'cash_cents', 'current_month',
-    'status', 'business_id', 'deposit_cents', 'decisions', 'sold_for_cents', 'final_net_worth_cents', 'ended_at', 'closes_on', 'closure',
+    'status', 'business_id', 'deposit_cents', 'decisions', 'sold_for_cents', 'final_net_worth_cents', 'ended_at', 'closes_on', 'closure', 'previous_game_id', 'market_refreshed_on',
 ])]
 class Game extends Model
 {
@@ -51,6 +53,49 @@ class Game extends Model
     public function business(): BelongsTo
     {
         return $this->belongsTo(Business::class);
+    }
+
+    /** @return BelongsTo<Game, $this> the café before this one, in a career */
+    public function previousGame(): BelongsTo
+    {
+        return $this->belongsTo(Game::class, 'previous_game_id');
+    }
+
+    /** @return HasOne<Game, $this> the café after this one */
+    public function nextGame(): HasOne
+    {
+        return $this->hasOne(Game::class, 'previous_game_id');
+    }
+
+    /** Sold or closed (not bankrupt), with cash left, and not yet carried on. */
+    public function canBuyAgain(): bool
+    {
+        return $this->status === GameStatus::Finished
+            && ($this->sold_for_cents !== null || $this->closure !== null)
+            && $this->cash_cents > 0
+            && ! $this->nextGame()->exists();
+    }
+
+    /**
+     * The whole career this game belongs to, first café first.
+     *
+     * @return list<Game>
+     */
+    public function career(): array
+    {
+        $first = $this;
+
+        while ($first->previousGame !== null) {
+            $first = $first->previousGame;
+        }
+
+        $chain = [$first];
+
+        while (end($chain)->nextGame !== null) {
+            $chain[] = end($chain)->nextGame;
+        }
+
+        return $chain;
     }
 
     /** @return HasMany<SaleListing, $this> */
@@ -162,6 +207,7 @@ class Game extends Model
             'final_net_worth_cents' => 'integer',
             'ended_at' => 'datetime',
             'closes_on' => 'date',
+            'market_refreshed_on' => 'date',
             'closure' => 'array',
         ];
     }

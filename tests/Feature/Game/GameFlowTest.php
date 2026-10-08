@@ -772,3 +772,70 @@ it('closes down at the month end: notice and severance out, scrap and the deposi
         ->where('game.phase', 'over')
         ->where('game.closure.net_cents', $closure['net_cents']));
 });
+
+// Buying again (milestone 20) -----------------------------------------------------
+
+it('carries on after a sale with the cash left, in today\'s market, where the old café still trades', function () {
+    $game = boughtGame($this->user);
+    $sold = $game->business;
+    app(Sales::class)->quickSale($game);
+    nightlyRun('2026-10-31');
+    $game->refresh();
+
+    $this->actingAs($this->user)->get(route('games.show', $game))->assertInertia(fn (Assert $page) => $page
+        ->where('game.can_buy_again', true)->where('career', []));
+
+    $this->actingAs($this->user)->post(route('games.next', $game))->assertRedirect();
+    $next = $game->refresh()->nextGame;
+
+    expect($next->starting_capital_cents)->toBe($game->cash_cents)
+        ->and($next->cash_cents)->toBe($game->cash_cents)
+        ->and($next->business_id)->toBeNull()
+        ->and($next->market_refreshed_on->toDateString())->toBe('2026-10-31')
+        ->and($next->businesses()->where('status', BusinessStatus::ForSale)->count())->toBeGreaterThan(50)
+        // The café sold on is in the new market as a possible rival, not for sale.
+        ->and($next->businesses()->where('status', BusinessStatus::Taken)->sole()->fictional_name)->toBe($sold->fictional_name)
+        ->and($game->canBuyAgain())->toBeFalse();
+
+    $this->actingAs($this->user)->post(route('games.next', $game))->assertSessionHasErrors('game');
+
+    $this->actingAs($this->user)->get(route('games.show', $next))->assertInertia(fn (Assert $page) => $page
+        ->where('game.phase', 'browsing')
+        ->has('career', 2)
+        ->where('career.0.outcome', 'sold')
+        ->where('career.1.outcome', 'choosing')
+        ->where('career.1.current', true)
+        ->where('businesses', fn ($b) => collect($b)->doesntContain('id', $next->businesses()->where('status', BusinessStatus::Taken)->value('id'))));
+});
+
+it('only carries on after a sale or closure', function () {
+    $game = boughtGame($this->user);
+    $this->actingAs($this->user)->post(route('games.next', $game))->assertSessionHasErrors('game');
+
+    $game->update(['status' => GameStatus::Bankrupt, 'ended_at' => now()]);
+    $this->actingAs($this->user)->post(route('games.next', $game))->assertSessionHasErrors('game');
+    $this->actingAs(User::factory()->create())->post(route('games.next', $game))->assertForbidden();
+});
+
+it('changes the market week by week while the player is choosing', function () {
+    $game = startedGame($this->user);
+    $before = $game->businesses()->where('status', BusinessStatus::ForSale)->count();
+    $this->actingAs($this->user)->get(route('games.show', $game))->assertOk();
+    expect($game->businesses()->count())->toBe($before);
+
+    $this->travelTo(Carbon::parse('2026-10-24 12:00', 'Europe/Madrid'));
+    $this->actingAs($this->user)->get(route('games.show', $game))->assertOk();
+    $game->refresh();
+
+    expect($game->market_refreshed_on->toDateString())->toBe('2026-10-21')
+        ->and($game->businesses()->where('status', BusinessStatus::Taken)->count())->toBeGreaterThan(0)
+        ->and($game->businesses()->count())->toBeGreaterThan($before)
+        ->and($game->businesses()->max('market_index'))->toBe($game->businesses()->count());
+
+    // Once a café is bought, the market stands still.
+    $bought = boughtGame($this->user, seed: 7);
+    $count = $bought->businesses()->count();
+    $this->travelTo(Carbon::parse('2026-12-24 12:00', 'Europe/Madrid'));
+    $this->actingAs($this->user)->get(route('games.show', $bought))->assertOk();
+    expect($bought->businesses()->count())->toBe($count);
+});

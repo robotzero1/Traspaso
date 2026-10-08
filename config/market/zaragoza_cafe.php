@@ -204,6 +204,19 @@ return [
         'max' => 200,
     ],
 
+    // The living market (SPEC §12, milestone 20): each week some listings
+    // sell to someone else and new ones appear, about as many, so the
+    // market stays the same size. A listing then stays up ~3 months on
+    // average. GUESS: replace with how many café/bar traspasos Zaragoza
+    // portals add a month and how long they stay up.
+    'market_churn' => [
+        'source' => 'PLACEHOLDER: guess',
+        'taken_per_week' => 0.08,
+        'new_per_week' => 12,
+        // Catch up at most this many weeks at once.
+        'max_weeks' => 26,
+    ],
+
     // Where listings appear: weight = population × (1 + commercial_boost ×
     // (tourist_index + office_index) / 20), so busy commercial areas get
     // more listings than their population alone would give them.

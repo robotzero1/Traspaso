@@ -1,7 +1,10 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 import EndController from '@/actions/App/Http/Controllers/Game/EndController';
+import GameController from '@/actions/App/Http/Controllers/Game/GameController';
 import { BusinessBrowser } from '@/components/game/business-browser';
+import { CareerTable } from '@/components/game/career-table';
+import type { CareerEntry } from '@/components/game/career-table';
 import { CashChart, DailyChart, ProfitChart } from '@/components/game/charts';
 import {
     DecisionsForm,
@@ -20,7 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatCents, formatPercent, humanize, monthName } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { index } from '@/routes/games';
+import { index, show } from '@/routes/games';
 import type {
     BusinessForSale,
     BusinessStateProps,
@@ -43,6 +46,7 @@ import type {
 type Props = {
     game: GameSummary;
     map: MapProps;
+    career?: CareerEntry[];
     businesses?: BusinessForSale[];
     business?: BusinessForSale;
     state?: BusinessStateProps;
@@ -81,6 +85,9 @@ export default function GameShow(props: Props) {
             <Head title={game.business_name ?? 'Choose a business'} />
             <div className="flex flex-col gap-6 p-4">
                 <GameHeader game={game} />
+                {props.career && props.career.length > 0 && (
+                    <CareerTable career={props.career} />
+                )}
 
                 {game.phase === 'browsing' && props.businesses && (
                     <section className="space-y-4">
@@ -563,6 +570,27 @@ function GameOver({
                     ({formatPercent(change, 1)})
                 </span>
             </p>
+            {game.can_buy_again && (
+                <Form {...GameController.next.form(game.id)}>
+                    {({ processing, errors }) => (
+                        <>
+                            <Button disabled={processing}>
+                                Buy another café with{' '}
+                                {formatCents(game.cash_cents)}
+                            </Button>
+                            <InputError message={errors.game} />
+                        </>
+                    )}
+                </Form>
+            )}
+            {game.next_game_id && (
+                <Link
+                    href={show(game.next_game_id)}
+                    className="text-sm underline"
+                >
+                    Go to your next café
+                </Link>
+            )}
             {results.length > 0 && (
                 <p className="text-sm text-muted-foreground">
                     Over {results.length} months the café made{' '}

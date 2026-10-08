@@ -18,6 +18,8 @@ export type GameSummary = {
     net_worth_cents: number;
     sold_for_cents: number | null;
     final_net_worth_cents: number | null;
+    can_buy_again: boolean;
+    next_game_id: number | null;
     closure: {
         notice_cents: number;
         severance_cents: number;

@@ -3,6 +3,7 @@
 namespace App\Game;
 
 use App\Enums\BusinessStatus;
+use App\Enums\GameStatus;
 use App\Generation\Geo\Geo;
 use App\Models\Business;
 use App\Models\DayResult;
@@ -54,8 +55,48 @@ final class GamePresenter
             'sold_for_cents' => $game->sold_for_cents,
             'final_net_worth_cents' => $game->final_net_worth_cents,
             'closure' => $game->closure,
+            'can_buy_again' => $game->canBuyAgain(),
+            'next_game_id' => $game->nextGame?->id,
             'business_name' => $game->business?->fictional_name,
         ];
+    }
+
+    /**
+     * Every café of the career this game is part of (SPEC §12), first one
+     * first; empty for a career of one.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function career(Game $game): array
+    {
+        $chain = $game->career();
+
+        if (count($chain) === 1) {
+            return [];
+        }
+
+        return array_map(fn (Game $g) => [
+            'game_id' => $g->id,
+            'current' => $g->id === $game->id,
+            'name' => $g->business?->fictional_name,
+            'neighbourhood' => $g->business?->neighbourhood?->name,
+            'started_on' => $g->started_on?->toDateString(),
+            'ended_on' => $g->ended_at?->toDateString(),
+            'traspaso_cents' => $g->business?->traspaso_cents,
+            'months' => $g->monthResults()->count(),
+            'profit_cents' => (int) $g->monthResults()->sum('profit_cents'),
+            'owner_pay_cents' => (int) $g->monthResults()->sum('owner_pay_cents'),
+            'outcome' => match (true) {
+                $g->status === GameStatus::Bankrupt => 'bankrupt',
+                $g->sold_for_cents !== null => 'sold',
+                $g->closure !== null => 'closed',
+                $g->business_id === null => 'choosing',
+                default => 'running',
+            },
+            'sold_for_cents' => $g->sold_for_cents,
+            'starting_capital_cents' => $g->starting_capital_cents,
+            'net_worth_cents' => $this->valuation->netWorthCents($g),
+        ], $chain);
     }
 
     /** browsing → playing → ending → over */
@@ -72,7 +113,7 @@ final class GamePresenter
     /** @return array<string, mixed> */
     public function show(Game $game): array
     {
-        $props = ['game' => $this->summary($game), 'map' => $this->map($game)];
+        $props = ['game' => $this->summary($game), 'map' => $this->map($game), 'career' => $this->career($game)];
 
         if ($game->business_id === null) {
             if ($game->isActive()) {

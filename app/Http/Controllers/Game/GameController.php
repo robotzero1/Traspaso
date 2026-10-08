@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Game;
 
+use App\Actions\Game\RefreshMarket;
 use App\Actions\Game\StartGame;
 use App\Enums\GameStatus;
 use App\Game\GamePresenter;
@@ -13,6 +14,7 @@ use App\Payments\Payments;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -54,9 +56,24 @@ class GameController extends Controller
         return to_route('games.show', $game);
     }
 
-    public function show(Game $game, GamePresenter $presenter): Response
+    /** After selling or closing: the next café of the career, with the cash left (SPEC §12). */
+    public function next(Game $game, StartGame $startGame): RedirectResponse
+    {
+        Gate::authorize('update', $game);
+
+        if (! $game->canBuyAgain()) {
+            throw ValidationException::withMessages(['game' => 'Only after selling or closing a café, once.']);
+        }
+
+        $next = $startGame->handle($game->user, $game->cash_cents, $game->market, previous: $game);
+
+        return to_route('games.show', $next);
+    }
+
+    public function show(Game $game, GamePresenter $presenter, RefreshMarket $refresh): Response
     {
         Gate::authorize('view', $game);
+        $refresh->handle($game);
 
         return Inertia::render('games/show', $presenter->show($game));
     }
