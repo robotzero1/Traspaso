@@ -8,8 +8,9 @@ use App\Models\Game;
 use Illuminate\Validation\ValidationException;
 
 /**
- * After the twelfth month: sell the business (its value and the deposit
- * become cash) or keep it (net worth counts its value).
+ * After the twelfth month (stage one's fixed-length game): sell the
+ * business (its value, less the costs of a private sale and the tax on
+ * the gain, and the deposit become cash) or keep it.
  */
 final class EndGame
 {
@@ -20,7 +21,7 @@ final class EndGame
         $this->guard($game);
 
         $price = $this->valuation->businessValueCents($game);
-        $cash = $game->cash_cents + $price + $game->deposit_cents;
+        $cash = $game->cash_cents + $this->valuation->walkAwayCents($game) + $game->deposit_cents;
 
         $game->update([
             'cash_cents' => $cash,

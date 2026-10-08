@@ -13,10 +13,13 @@ use App\Models\GameEvent;
 use App\Models\MonthResult;
 use App\Models\Neighbourhood;
 use App\Models\PointOfInterest;
+use App\Models\SaleOffer;
 use App\Simulation\Costs\MonthlyCosts;
 use App\Simulation\Data\DayPart;
 use App\Simulation\Data\EventRecord;
 use App\Simulation\Data\Modifier;
+use App\Simulation\Data\ParameterSheet;
+use App\Simulation\Sale\SaleCosts;
 
 /**
  * Shapes a game into props for the Inertia pages. Money stays in cents;
@@ -101,6 +104,7 @@ final class GamePresenter
                 'modifiers' => array_map(fn (Modifier $m) => $this->mapper->modifierToArray($m), $state->modifiers),
             ],
             'business_value_cents' => $this->valuation->businessValueCents($game),
+            'sale' => $this->sale($game, $sheet),
             // What the player has chosen, including changes not yet in effect.
             'decisions' => array_merge($game->decisions, ...array_column($game->scheduled_decisions ?? [], 'changes')),
             'scheduled_decisions' => $game->scheduled_decisions ?? [],
@@ -158,6 +162,36 @@ final class GamePresenter
                 ...$c->only(['key', 'name', 'distance_metres', 'price_level', 'quality', 'reputation', 'seats']),
                 ...$this->competitorLocation($c, $game->business),
             ])->all(),
+        ];
+    }
+
+    /**
+     * Selling (SPEC §12): the latest listing and its offers (never the
+     * buyers' limits), and what a sale at the café's value would leave.
+     *
+     * @return array<string, mixed>
+     */
+    private function sale(Game $game, ParameterSheet $sheet): array
+    {
+        $listing = $game->saleListings()->reorder()->latest('id')->first();
+        $value = $this->valuation->businessValueCents($game);
+        $costs = new SaleCosts($sheet);
+
+        return [
+            'listing' => $listing === null || $listing->withdrawn_on !== null ? null : [
+                ...$listing->only(['id', 'asking_cents', 'agency', 'price_cents', 'costs']),
+                ...collect(['listed_on', 'accepted_on', 'completes_on', 'completed_on'])->mapWithKeys(fn (string $k) => [$k => $listing->{$k}?->toDateString()])->all(),
+                'offers' => $listing->offers->map(fn (SaleOffer $o) => [
+                    ...$o->only(['id', 'buyer', 'amount_cents', 'status', 'counter_cents']),
+                    'made_on' => $o->made_on->toDateString(),
+                    'expires_on' => $o->expires_on->toDateString(),
+                ])->all(),
+            ],
+            'value_cents' => $value,
+            'private' => $costs->breakdown($value, $game->business->traspaso_cents, agency: false),
+            'agency' => $costs->breakdown($value, $game->business->traspaso_cents, agency: true),
+            'offer_days' => $sheet->int('sale.offer_days'),
+            'handover_days' => $sheet->int('sale.handover_days'),
         ];
     }
 

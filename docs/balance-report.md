@@ -1,4 +1,4 @@
-# Balancing pass (milestones 9–11, 17)
+# Balancing pass (milestones 9–11, 17–18)
 
 How the game plays out on the real Zaragoza data, and what was changed to get
 there. Reproduce with:
@@ -14,6 +14,33 @@ from real cafés and bars), play 12 months, then value what's left. Each game
 draws its starting capital (€20k–€100k, whole thousands) and its starting month
 from the seed. Net worth = cash + the landlord's deposit + the business's value;
 cash below zero ends the game with cash + deposit.
+
+## Selling (milestone 18)
+
+A listed café gets buyers at random (`config/market/zaragoza_cafe.php`,
+`sale`). Each buyer's limit is the valuation give or take 15%; they open 10%
+below it and never above asking. **All of these are guesses**: there's no
+data yet on how long Zaragoza traspasos stay listed or how far agreed prices
+fall below asking. With them, a café asked at a given multiple of its value
+gets its first offer after (2,000 simulated listings, from April):
+
+| Asking ÷ value | Privately: first offer (median, p25–p75) | Agency | Offer ÷ asking |
+|---|---|---|---|
+| 1.00 | 53 days (21–107) | 21 days (9–43) | 0.90 |
+| 1.15 | 81 days (34–189) | 34 days (14–68) | 0.78 |
+| 1.30 | 153 days (54–299) | 56 days (22–113) | 0.70 |
+
+The handover then takes 30 days and completes at that month's end, so a
+sale at a fair price takes about three to five months from listing, longer
+when overpriced or in August. Costs: an agency takes 8% (minimum €3,000), the
+gestoría €800, and the gain over the traspaso paid is taxed at the IRPF
+savings scale (19–30%; LIRPF art. 76). Selling a whole going business isn't
+subject to IVA (LIVA 7.1).
+
+Net worth now counts the café at what a private sale at its value would
+leave after these costs and the tax, in the game and in `market:balance`.
+Medians fall 1–3 points; every target still passes at 1,000 games (monthly,
+daily and 5 years).
 
 ## Resale value (milestone 17)
 

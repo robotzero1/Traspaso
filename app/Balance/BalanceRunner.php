@@ -16,12 +16,14 @@ use App\Simulation\Data\ParameterSheet;
 use App\Simulation\DayEngine;
 use App\Simulation\Engine;
 use App\Simulation\Rng\SeededRng;
+use App\Simulation\Sale\SaleCosts;
 use App\Simulation\Valuation\BusinessValuation;
 
 /**
  * Plays whole games without the database, the way the app does: generate
  * the market from the seed, buy, pick rivals, play for the given years,
- * value what's left (net worth = cash + deposit + business value; cash
+ * value what's left (net worth = cash + deposit + what selling the café
+ * privately would leave after costs and tax; cash
  * below zero ends the game with cash + deposit). Starting capital and the
  * starting month are drawn from the seed, across the range a player can
  * choose.
@@ -98,6 +100,9 @@ final readonly class BalanceRunner
         $profits = [];
         $values = [];
         $valuation = new BusinessValuation($this->sheet);
+        // Net worth counts the café at what a private sale would leave the
+        // owner, after its costs and the tax on the gain (SPEC §12).
+        $costs = new SaleCosts($this->sheet);
         $ownerPaid = 0;
         $yearProfit = 0;
         $yearPay = 0;
@@ -127,7 +132,7 @@ final readonly class BalanceRunner
                 $values[$year] = $valuation->valueCents($state, $business->traspasoCents, $profits);
 
                 if ($yearProfit < $yearPay) {
-                    return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, null, $year, $profits, $state->cashCents + $deposit + $values[$year], $ownerPaid, $years, $revenues, $values);
+                    return $this->outcome($strategy, $seed, $capital, $business, $rivals, $month, null, $year, $profits, $state->cashCents + $deposit + $costs->netCents($values[$year], $business->traspasoCents, agency: false), $ownerPaid, $years, $revenues, $values);
                 }
 
                 [$yearProfit, $yearPay] = [0, 0];
@@ -136,7 +141,7 @@ final readonly class BalanceRunner
             $decisions = $strategy->adjust($decisions->with(eventChoices: []), $result, $business, $this->sheet);
         }
 
-        return $this->outcome($strategy, $seed, $capital, $business, $rivals, $months, null, null, $profits, $state->cashCents + $deposit + $values[$years], $ownerPaid, $years, $revenues, $values);
+        return $this->outcome($strategy, $seed, $capital, $business, $rivals, $months, null, null, $profits, $state->cashCents + $deposit + $costs->netCents($values[$years], $business->traspasoCents, agency: false), $ownerPaid, $years, $revenues, $values);
     }
 
     /**

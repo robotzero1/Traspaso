@@ -31,16 +31,19 @@ final class NightlyNotifier
         $waiting = $game->events()->whereNull('choice')->whereNull('resolved_month')->get()
             ->filter(fn (GameEvent $e) => $e->choices !== [])->values();
         $bankrupt = $game->status === GameStatus::Bankrupt;
+        $sold = $game->sold_for_cents !== null;
+        $sale = $this->saleNews($game, $day->date->toDateString());
 
-        // Bankruptcy always gets through; otherwise the player's choices apply.
-        $wantsDay = $user->notify_daily_results || $bankrupt;
-        $wantsEvents = $user->notify_events && $waiting->isNotEmpty();
+        // Bankruptcy and a completed sale always get through; otherwise the
+        // player's choices apply (buyers count as events: they need answers).
+        $wantsDay = $user->notify_daily_results || $bankrupt || $sold;
+        $wantsEvents = $user->notify_events && ($waiting->isNotEmpty() || $sale !== []);
 
         if (! $wantsDay && ! $wantsEvents) {
             return;
         }
 
-        $message = $this->message($game, $day, $waiting->all(), $wantsDay, $bankrupt);
+        $message = $this->message($game, $day, $waiting->all(), $wantsDay, $bankrupt, $sale);
 
         foreach ($user->pushSubscriptions as $subscription) {
             /** @var PushSubscription $subscription */
@@ -52,9 +55,10 @@ final class NightlyNotifier
 
     /**
      * @param  list<GameEvent>  $waiting
+     * @param  list<string>  $sale
      * @return array{title: string, body: string, url: string, tag: string}
      */
-    public function message(Game $game, DayResult $day, array $waiting, bool $withResults = true, bool $bankrupt = false): array
+    public function message(Game $game, DayResult $day, array $waiting, bool $withResults = true, bool $bankrupt = false, array $sale = []): array
     {
         $name = $game->business?->fictional_name ?? 'Your café';
         $lines = [];
@@ -79,6 +83,8 @@ final class NightlyNotifier
             }
         }
 
+        array_push($lines, ...$sale);
+
         if ($waiting !== []) {
             $lines[] = count($waiting) === 1
                 ? Str::headline($waiting[0]->type).' needs your decision.'
@@ -86,11 +92,51 @@ final class NightlyNotifier
         }
 
         return [
-            'title' => $bankrupt ? "{$name}: bankrupt" : $name.' · '.$day->date->format('D j M'),
+            'title' => match (true) {
+                $bankrupt => "{$name}: bankrupt",
+                $game->sold_for_cents !== null => "{$name}: sold",
+                default => $name.' · '.$day->date->format('D j M'),
+            },
             'body' => $bankrupt ? 'The cash ran out at the month end. '.implode(' ', $lines) : implode(' ', $lines),
             'url' => route('games.show', $game, absolute: false),
             'tag' => "game-{$game->id}",
         ];
+    }
+
+    /**
+     * The day's news from the sale: new offers, buyers' answers to counter
+     * offers, and the completion.
+     *
+     * @return list<string>
+     */
+    private function saleNews(Game $game, string $date): array
+    {
+        $listing = $game->saleListings()->reorder()->latest('id')->first();
+
+        if ($listing === null) {
+            return [];
+        }
+
+        if ($listing->completed_on?->toDateString() === $date) {
+            return [sprintf('Sold for %s; %s is yours after costs and tax.', self::euros($listing->price_cents), self::euros($listing->costs['net_cents']))];
+        }
+
+        $lines = [];
+
+        foreach ($listing->offers()->whereDate('made_on', $date)->get() as $offer) {
+            $lines[] = sprintf('%s offers %s for the café.', $offer->buyer, self::euros($offer->amount_cents));
+        }
+
+        // Buyers answer counters in the run that just finished.
+        foreach ($listing->offers()->where('status', 'walked')->where('updated_at', '>=', now()->subDay())->get() as $offer) {
+            $lines[] = "{$offer->buyer} turned down your counter-offer.";
+        }
+
+        if ($listing->accepted_on?->toDateString() === $date) {
+            $lines[] = sprintf('Sale agreed at %s, completing %s.', self::euros($listing->price_cents), $listing->completes_on->format('j M'));
+        }
+
+        return $lines;
     }
 
     /** "1.184 €", as the app shows money. */

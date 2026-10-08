@@ -3,11 +3,14 @@
 namespace App\Game;
 
 use App\Models\Game;
+use App\Simulation\Sale\SaleCosts;
 use App\Simulation\Valuation\BusinessValuation;
 
 /**
  * Business value and net worth for a game: cash + the landlord's deposit +
- * what the business would sell for (SPEC §1).
+ * what the owner would walk away with from selling the business: its value
+ * less the costs of a private sale and the tax on the gain, or the agreed
+ * sale's proceeds once a buyer has signed (SPEC §12).
  */
 final class GameValuation
 {
@@ -31,6 +34,21 @@ final class GameValuation
             return $game->final_net_worth_cents;
         }
 
-        return $game->cash_cents + $game->deposit_cents + $this->businessValueCents($game);
+        return $game->cash_cents + $game->deposit_cents + $this->walkAwayCents($game);
+    }
+
+    public function walkAwayCents(Game $game): int
+    {
+        if ($game->business_id === null || $game->sold_for_cents !== null) {
+            return 0;
+        }
+
+        $agreed = $game->liveListing();
+
+        if ($agreed?->costs !== null) {
+            return $agreed->costs['net_cents'];
+        }
+
+        return (new SaleCosts($this->mapper->sheet($game)))->netCents($this->businessValueCents($game), $game->business->traspaso_cents, agency: false);
     }
 }

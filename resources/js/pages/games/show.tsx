@@ -12,6 +12,8 @@ import { GameHeader } from '@/components/game/game-header';
 import { LatestDayCard } from '@/components/game/latest-day';
 import { GameMap } from '@/components/game/game-map';
 import { DayPartBreakdown, PnlTable } from '@/components/game/pnl-table';
+import { SalePanel } from '@/components/game/sale-panel';
+import type { SaleProps } from '@/components/game/sale-panel';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +47,7 @@ type Props = {
     business?: BusinessForSale;
     state?: BusinessStateProps;
     business_value_cents?: number;
+    sale?: SaleProps;
     decisions?: Decisions;
     scheduled_decisions?: ScheduledDecision[];
     decision_limits?: DecisionLimits;
@@ -67,7 +70,8 @@ type Tab =
     | 'business'
     | 'map'
     | 'competitors'
-    | 'events';
+    | 'events'
+    | 'sale';
 
 export default function GameShow(props: Props) {
     const { game } = props;
@@ -140,6 +144,14 @@ function Playing(
             label: 'Events',
             badge: props.events?.length,
             show: true,
+        },
+        {
+            id: 'sale',
+            label: 'Sell',
+            badge: props.sale?.listing?.offers.filter(
+                (o) => o.status === 'open',
+            ).length,
+            show: game.phase === 'playing' && !!props.sale,
         },
     ];
 
@@ -227,6 +239,9 @@ function Playing(
                     <Competitors competitors={props.competitors ?? []} />
                 )}
                 {tab === 'events' && <EventLog events={props.events ?? []} />}
+                {tab === 'sale' && props.sale && (
+                    <SalePanel gameId={game.id} sale={props.sale} />
+                )}
             </div>
         </div>
     );

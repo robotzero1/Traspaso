@@ -51,6 +51,18 @@ class Game extends Model
         return $this->belongsTo(Business::class);
     }
 
+    /** @return HasMany<SaleListing, $this> */
+    public function saleListings(): HasMany
+    {
+        return $this->hasMany(SaleListing::class)->orderBy('id');
+    }
+
+    /** The listing that is live now (listed, not withdrawn or sold), if any. */
+    public function liveListing(): ?SaleListing
+    {
+        return $this->saleListings()->whereNull('withdrawn_on')->whereNull('completed_on')->reorder()->latest('id')->first();
+    }
+
     /** @return HasMany<Business, $this> */
     public function businesses(): HasMany
     {

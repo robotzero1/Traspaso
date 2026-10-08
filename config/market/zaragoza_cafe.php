@@ -126,6 +126,48 @@ return [
         'rounding_cents' => 50_000,
     ],
 
+    // Selling the café (SPEC §12, milestone 18). Buyers arrive at random;
+    // each values the café with BusinessValuation, give or take, and opens
+    // below that. Nothing here is from data yet: all of it is a GUESS to
+    // replace with aggregated figures on Zaragoza traspasos (time listed,
+    // asking vs agreed price, agency fees).
+    'sale' => [
+        'source' => 'PLACEHOLDER: guesses; see docs/balance-report.md',
+        // Serious buyers a month for a café asked at its value. Private:
+        // portal listing only; agency: its buyer list and marketing too.
+        'buyers_per_month' => ['private' => 0.4, 'agency' => 1.0],
+        // Interest falls as the asking price rises above the value:
+        // × exp(−sensitivity × (asking ÷ value − 1)), capped at max_interest.
+        'price_sensitivity' => 3.0,
+        'max_interest' => 1.5,
+        // Fewer buyers in August and over Christmas.
+        'season' => [8 => 0.3, 12 => 0.6, 1 => 0.8],
+        // What one buyer would pay at most, around the valuation.
+        'buyer_value_sd' => 0.15,
+        // A buyer opens this far below their limit (never above asking)...
+        'opening_discount' => 0.1,
+        // ...and doesn't bother if their limit is under this share of asking.
+        'min_offer_share' => 0.6,
+        'offer_days' => 5,
+        // From an accepted offer to completion (gestoría, the landlord's
+        // paperwork); completion then falls on that month's last day.
+        'handover_days' => 30,
+        // Agency commission: a share of the price, with a minimum.
+        'agency_commission_share' => 0.08,
+        'agency_commission_min_cents' => 300_000,
+        'gestoria_cents' => 80_000,
+        // IRPF savings scale (LIRPF art. 76, from 2025): the gain (price less
+        // the traspaso paid and the costs of the sale) is taxed here.
+        // Simplified: amortisation of the traspaso isn't deducted from its cost.
+        'tax_brackets' => [
+            ['up_to_cents' => 600_000, 'rate' => 0.19],
+            ['up_to_cents' => 5_000_000, 'rate' => 0.21],
+            ['up_to_cents' => 20_000_000, 'rate' => 0.23],
+            ['up_to_cents' => 30_000_000, 'rate' => 0.27],
+            ['up_to_cents' => null, 'rate' => 0.30],
+        ],
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Generation: how many businesses, and what kind

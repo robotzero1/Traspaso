@@ -4,6 +4,7 @@ namespace App\Actions\Game;
 
 use App\Enums\GameStatus;
 use App\Game\GameMapper;
+use App\Game\Sales;
 use App\Models\DayResult as DayResultRow;
 use App\Models\Game;
 use App\Models\GameEvent;
@@ -35,6 +36,7 @@ final class SimulateDays
     public function __construct(
         private readonly GameMapper $mapper,
         private readonly DayEngine $engine,
+        private readonly Sales $sales,
     ) {}
 
     /** @return int the number of days played */
@@ -90,6 +92,7 @@ final class SimulateDays
         $game->cash_cents = $day->stateAfter->cashCents;
         $game->last_simulated_on = $date->toString();
         $game->save();
+        $this->sales->day($game, $date);
 
         if ($date->isLastOfMonth()) {
             $this->closeMonth($game, $month, $date, $monthRng);
@@ -153,13 +156,26 @@ final class SimulateDays
         ]);
         $this->storeCompetitors($game, $result->competitorsAfter);
 
-        $bankrupt = $result->cashAfterCents() < 0;
+        // An agreed sale completes after the month's bills: the price, less
+        // its costs and tax, and the deposit come in, and the game ends.
+        $sale = $this->sales->completing($game, $lastDay);
+        $cash = $result->cashAfterCents() + ($sale === null ? 0 : $sale->costs['net_cents'] + $game->deposit_cents);
+        $bankrupt = $cash < 0;
+        $sale?->update(['completed_on' => $lastDay->toString()]);
+
         $game->update([
-            'cash_cents' => $result->cashAfterCents(),
+            'cash_cents' => $cash,
             'current_month' => $month + 1,
+            ...($sale !== null && ! $bankrupt ? [
+                'status' => GameStatus::Finished,
+                'sold_for_cents' => $sale->price_cents,
+                'deposit_cents' => 0,
+                'final_net_worth_cents' => $cash,
+                'ended_at' => now(),
+            ] : []),
             ...($bankrupt ? [
                 'status' => GameStatus::Bankrupt,
-                'final_net_worth_cents' => $result->cashAfterCents() + $game->deposit_cents,
+                'final_net_worth_cents' => $cash + ($sale === null ? $game->deposit_cents : 0),
                 'ended_at' => now(),
             ] : []),
         ]);

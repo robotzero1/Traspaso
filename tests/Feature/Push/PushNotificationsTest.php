@@ -3,6 +3,7 @@
 use App\Actions\Game\PurchaseBusiness;
 use App\Actions\Game\StartGame;
 use App\Enums\GameStatus;
+use App\Game\Sales;
 use App\Models\Game;
 use App\Models\GameEvent;
 use App\Models\PushSubscription;
@@ -183,6 +184,26 @@ it('always says when the café went bankrupt', function () {
 
     expect($this->push->sent)->toHaveCount(1)
         ->and($this->push->sent[0]['message']['title'])->toEndWith(': bankrupt');
+});
+
+it('tells the owner about buyers\' offers, even with daily results off, and about the completed sale', function () {
+    $game = pushGame($this->user);
+    $this->user->update(['notify_daily_results' => false]);
+    device($this->user);
+    $listing = app(Sales::class)->list($game, 4_000_000, agency: false);
+    $listing->offers()->create(['buyer' => 'Carmen', 'amount_cents' => 3_600_000, 'limit_cents' => 3_800_000, 'made_on' => '2026-10-01', 'expires_on' => '2026-10-06']);
+
+    playNight('2026-10-01');
+
+    expect($this->push->sent)->toHaveCount(1)
+        ->and($this->push->sent[0]['message']['body'])->toContain('Carmen offers 36.000 € for the café.');
+
+    $listing->update(['accepted_on' => '2026-10-02', 'completes_on' => '2026-10-31', 'price_cents' => 3_600_000, 'costs' => ['commission_cents' => 0, 'gestoria_cents' => 80_000, 'gain_cents' => 0, 'tax_cents' => 0, 'net_cents' => 3_520_000]]);
+    $this->user->update(['notify_events' => false]);
+    playNight('2026-10-31');
+
+    expect(end($this->push->sent)['message'])->toMatchArray(['title' => $game->business->fictional_name.': sold'])
+        ->and(end($this->push->sent)['message']['body'])->toContain('Sold for 36.000 €; 35.200 € is yours after costs and tax.');
 });
 
 // The app --------------------------------------------------------------------------

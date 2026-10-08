@@ -4,6 +4,8 @@ use App\Actions\Game\SimulateDays;
 use App\Actions\Game\StartGame;
 use App\Enums\BusinessStatus;
 use App\Enums\GameStatus;
+use App\Game\GameValuation;
+use App\Game\Sales;
 use App\Generation\Geo\Geo;
 use App\Models\Business;
 use App\Models\Game;
@@ -11,6 +13,7 @@ use App\Models\User;
 use App\Simulation\Costs\MonthlyCosts;
 use App\Simulation\Data\CalendarDate;
 use App\Simulation\Data\ParameterSheet;
+use App\Simulation\Sale\SaleCosts;
 use Database\Seeders\NeighbourhoodSeeder;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -489,7 +492,7 @@ it('plays a full year, then sells the business', function () {
 
     expect($game->status)->toBe(GameStatus::Finished)
         ->and($game->sold_for_cents)->toBeGreaterThan(0)
-        ->and($game->cash_cents)->toBe($cash + $deposit + $game->sold_for_cents)
+        ->and($game->cash_cents)->toBe($cash + $deposit + (new SaleCosts(new ParameterSheet(config('market.zaragoza_cafe'))))->netCents($game->sold_for_cents, $game->business->traspaso_cents, false))
         ->and($game->final_net_worth_cents)->toBe($game->cash_cents)
         ->and($game->final_net_worth_cents)->toBe($netWorth);
 
@@ -612,4 +615,103 @@ it('exports the user\'s games, and deleting the account removes them', function 
     $this->actingAs($this->user)->delete(route('profile.destroy'), ['password' => 'password'])->assertRedirect('/');
 
     expect(Game::query()->count())->toBe(0);
+});
+
+// Selling (milestone 18) ------------------------------------------------------
+
+it('lists the café, brings offers in the nightly run, and keeps buyers\' limits hidden', function () {
+    $game = boughtGame($this->user);
+
+    $this->actingAs($this->user)->post(route('games.sale.store', $game), ['asking' => 5_000, 'agency' => '1'])
+        ->assertRedirect(route('games.show', $game));
+    $this->actingAs($this->user)->post(route('games.sale.store', $game), ['asking' => 6_000])->assertSessionHasErrors('asking');
+
+    nightlyRun('2026-11-30');
+
+    $offers = $game->liveListing()->offers;
+    expect($offers)->not->toBeEmpty()
+        ->and($offers->every(fn ($o) => $o->amount_cents <= 500_000 && $o->amount_cents <= $o->limit_cents))->toBeTrue()
+        // Unanswered offers lapse after their deadline.
+        ->and($offers->where('expires_on', '<', '2026-11-30')->every(fn ($o) => $o->status === 'lapsed'))->toBeTrue();
+
+    $this->actingAs($this->user)->get(route('games.show', $game))->assertInertia(fn (Assert $page) => $page
+        ->where('sale.listing.asking_cents', 500_000)
+        ->has('sale.listing.offers.0', fn (Assert $o) => $o->hasAll(['id', 'buyer', 'amount_cents', 'status', 'counter_cents', 'made_on', 'expires_on'])->missing('limit_cents'))
+        ->where('sale.private.net_cents', fn ($v) => $v > 0));
+});
+
+it('completes an accepted sale at the month end after the handover, and ends the game', function () {
+    $game = boughtGame($this->user);
+    $listing = app(Sales::class)->list($game, 4_000_000, agency: false);
+    $offer = $listing->offers()->create(['buyer' => 'Carmen', 'amount_cents' => 3_600_000, 'limit_cents' => 3_800_000, 'made_on' => '2026-10-01', 'expires_on' => '2026-10-06']);
+    $this->travelTo(Carbon::parse('2026-10-01 12:00', 'Europe/Madrid'));
+
+    $this->actingAs($this->user)->post(route('games.sale.answer', [$game, $offer]), ['answer' => 'accept'])->assertRedirect();
+
+    $listing->refresh();
+    $costs = (new SaleCosts(new ParameterSheet(config('market.zaragoza_cafe'))))->breakdown(3_600_000, $game->business->traspaso_cents, false);
+    // Accepted for the next day to be played (1 Oct), +30 days → completes 31 Oct.
+    expect($listing->completes_on->toDateString())->toBe('2026-10-31')
+        ->and($listing->costs)->toBe($costs)
+        ->and(app(GameValuation::class)->netWorthCents($game->refresh()))->toBe($game->cash_cents + $game->deposit_cents + $costs['net_cents']);
+
+    nightlyRun('2026-10-30');
+    expect($game->refresh()->isActive())->toBeTrue();
+    $cashBefore = $game->cash_cents;
+    $deposit = $game->deposit_cents;
+
+    nightlyRun('2026-10-31');
+    $game->refresh();
+    $month = $game->monthResults()->sole();
+
+    expect($game->status)->toBe(GameStatus::Finished)
+        ->and($game->sold_for_cents)->toBe(3_600_000)
+        ->and($game->deposit_cents)->toBe(0)
+        ->and($game->cash_cents)->toBe($month->cash_after_cents + $costs['net_cents'] + $deposit)
+        ->and($game->final_net_worth_cents)->toBe($game->cash_cents)
+        ->and($listing->refresh()->completed_on->toDateString())->toBe('2026-10-31')
+        ->and($cashBefore)->toBeInt();
+
+    // Nothing more is played.
+    nightlyRun('2026-11-02');
+    expect($game->dayResults()->count())->toBe(31);
+});
+
+it('lets a buyer take a counter-offer within their limit, or walk away', function () {
+    $game = boughtGame($this->user);
+    $listing = app(Sales::class)->list($game, 4_000_000, agency: false);
+    $offer = fn (int $limit) => $listing->offers()->create(['buyer' => 'Javier', 'amount_cents' => 3_000_000, 'limit_cents' => $limit, 'made_on' => '2026-10-01', 'expires_on' => '2026-10-06']);
+    $low = $offer(3_200_000);
+    $this->travelTo(Carbon::parse('2026-10-01 12:00', 'Europe/Madrid'));
+
+    $answer = fn ($o, array $data) => $this->actingAs($this->user)->post(route('games.sale.answer', [$game, $o]), $data);
+    $answer($low, ['answer' => 'counter', 'counter' => 2_000])->assertSessionHasErrors('counter');
+    $answer($low, ['answer' => 'counter', 'counter' => 41_000])->assertSessionHasErrors('counter');
+    $answer($low, ['answer' => 'counter', 'counter' => 35_000])->assertSessionHasNoErrors();
+
+    nightlyRun('2026-10-01');
+    expect($low->refresh()->status)->toBe('walked')
+        ->and($listing->refresh()->accepted_on)->toBeNull();
+
+    $high = $offer(3_800_000);
+    $answer($high, ['answer' => 'counter', 'counter' => 37_500])->assertSessionHasNoErrors();
+    nightlyRun('2026-10-02');
+
+    expect($high->refresh()->status)->toBe('accepted')
+        ->and($listing->refresh()->price_cents)->toBe(3_750_000)
+        ->and($listing->accepted_on->toDateString())->toBe('2026-10-02');
+});
+
+it('withdraws a listing, lapsing its offers, and keeps others out', function () {
+    $game = boughtGame($this->user);
+    $listing = app(Sales::class)->list($game, 4_000_000, agency: true);
+    $offer = $listing->offers()->create(['buyer' => 'Lucía', 'amount_cents' => 3_000_000, 'limit_cents' => 3_500_000, 'made_on' => '2026-10-01', 'expires_on' => '2026-10-06']);
+
+    $this->actingAs(User::factory()->create())->delete(route('games.sale.destroy', $game))->assertForbidden();
+    $this->actingAs($this->user)->delete(route('games.sale.destroy', $game))->assertRedirect();
+
+    expect($listing->refresh()->withdrawn_on)->not->toBeNull()
+        ->and($offer->refresh()->status)->toBe('lapsed')
+        ->and($game->liveListing())->toBeNull();
+    $this->actingAs($this->user)->post(route('games.sale.answer', [$game, $offer]), ['answer' => 'accept'])->assertSessionHasErrors('offer');
 });

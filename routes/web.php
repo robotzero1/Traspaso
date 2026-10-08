@@ -5,6 +5,7 @@ use App\Http\Controllers\Game\EndController;
 use App\Http\Controllers\Game\GameController;
 use App\Http\Controllers\Game\MonthController;
 use App\Http\Controllers\Game\PurchaseController;
+use App\Http\Controllers\Game\SaleController;
 use App\Http\Controllers\Map\FootfallController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ViabilityController;
@@ -40,6 +41,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('games/{game}/decisions', [DecisionsController::class, 'update'])->name('games.decisions');
     Route::post('games/{game}/months', [MonthController::class, 'store'])->name('games.months.store');
     Route::post('games/{game}/end', [EndController::class, 'store'])->name('games.end');
+    Route::post('games/{game}/sale', [SaleController::class, 'store'])->name('games.sale.store');
+    Route::delete('games/{game}/sale', [SaleController::class, 'destroy'])->name('games.sale.destroy');
+    Route::post('games/{game}/sale/offers/{offer}', [SaleController::class, 'answer'])->name('games.sale.answer');
 
     Route::get('map/footfall', FootfallController::class)->name('map.footfall');
 });
