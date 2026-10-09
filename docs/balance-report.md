@@ -134,7 +134,51 @@ running costs no public benchmark covers.
 
 ### Which guesses matter
 
-*(Running: filled in below once the sensitivity runs finish.)*
+Each guess moved on its own, everything else as it is, 1,000 monthly games
+per strategy on the same seeds (a scratch script setting the config and
+calling `market:balance`). Year-1 failure for the typical owner, which the
+engine is fitted to (baseline 21%), and the thoughtful and premium players.
+Some changes redraw the market, so read ±2 points as noise.
+
+| Guess moved | Typical owner fails | Thoughtful fails | Premium: fails, median | Round trip |
+|---|---|---|---|---|
+| *baseline* | 21% | 8% | 2%, +145% | 9% |
+| **average tickets ×0.9 / ×1.1** | **29% / 17%** | 15% / 6% | 6%, +107% / 1%, +188% | 19% / 1% |
+| **competition weight 0.5 / 0.3** (0.4) | **28% / 17%** | 14% / 5% | 5%, +124% / 1%, +171% | 15% / 3% |
+| **morning stop factor 1.5 / 2.1** (1.8) | **26% / 18%** | 12% / 7% | 4%, +132% / 1%, +158% | 13% / 7% |
+| cost of goods +3 / −3 points | 24% / 19% | 11% / 8% | 4%, +128% / 2%, +167% | 13% / 5% |
+| owner works 40 / 60 h a week (50) | 24% / 21% | 11% / 8% | 2%, +141% / 2%, +149% | 13% / 8% |
+| customers per person-hour 14 / 22 (18) | 22% / 21% | 15% / 8% | 2%, +128% / 2%, +152% | 16% / 8% |
+| utilities ×1.5 / ×0.7 | 23% / 20% | 10% / 8% | 2%, +142% / 2%, +148% | 11% / 8% |
+| no random events at all | 20% | 7% | 2%, +152% | 9% |
+| price elasticity 1.0 / 0.5 (0.7) | 21% / 21% | 8% / 8% | 3%, +134% / 2%, +154% | 9% |
+| insurance ×2, maintenance ×2, terrace fee ×3 | 22–23% | 9% | 2%, +144% | 10% |
+| extra guarantee 4 / 0 months (2) | 22% / 22% | 9% / 8% | 3%, +143% / 2%, +140% | 13% / 12% |
+| seats per m² 0.4 / 0.6 (0.5) | 21% / 21% | 11% / 10% | 2%, +137% / 2%, +149% | 10% / 9% |
+
+What it says:
+
+- **Three guesses carry the calibration:** what customers spend
+  (`average_ticket_cents`), how much nearby rivals take
+  (`capture.competition.weight`) and how readily passers-by stop for a
+  coffee (`day_parts.*.stop_factor`). Each moves year-1 failure by 8–12
+  points across a plausible range. `capture.base_rate` is fitted to the
+  closure rate, so a wrong guess here is absorbed by it and hides: the
+  closure target still holds, but for the wrong reasons, and the share
+  of revenue between morning coffees and lunches would be off. These are
+  exactly what milestone 25 (prices and busyness) and 26 (counts)
+  measure, so they come first.
+- **Second rank:** cost of goods, the owner's hours and staff
+  productivity (3–7 points for the thoughtful player).
+- **Barely matter:** utilities, insurance, maintenance, the terrace fee,
+  the extra guarantee, seats per m², and the events as a whole (2 points
+  between all events and none). Real figures for these would tidy the
+  sheet but won't change how the game plays; they can wait.
+- **Price elasticity** only touches players who move their prices: at
+  default prices nothing changes. It moves the premium player's median by
+  20 points but not its 2–3% failure rate, so the premium problem
+  (milestone 25) won't be fixed by elasticity alone: the quality response
+  and ticket tiers have to move with it.
 
 ### Results: everything rerun
 
