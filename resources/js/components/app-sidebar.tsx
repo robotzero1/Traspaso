@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Coffee } from 'lucide-react';
+import { Coffee, Footprints } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -13,6 +13,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { index as countsIndex } from '@/routes/counts';
 import { index as gamesIndex } from '@/routes/games';
 import type { NavItem } from '@/types';
 
@@ -21,6 +22,11 @@ const mainNavItems: NavItem[] = [
         title: 'Games',
         href: gamesIndex(),
         icon: Coffee,
+    },
+    {
+        title: 'Pedestrian counts',
+        href: countsIndex(),
+        icon: Footprints,
     },
 ];
 

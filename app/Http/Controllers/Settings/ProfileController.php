@@ -57,6 +57,7 @@ class ProfileController extends Controller
             'games' => $user->games()->with(['businesses', 'monthResults', 'dayResults', 'events'])->get()->toArray(),
             'viability_reports' => $user->viabilityReports()->get(['uuid', 'status', 'inputs', 'results', 'paid_at', 'created_at'])->toArray(),
             'purchases' => $user->purchases()->get(['product', 'amount_cents', 'currency', 'status', 'withdrawal_waived_at', 'paid_at', 'created_at'])->toArray(),
+            'pedestrian_counts' => $user->pedestrianCounts()->get(['lat', 'lng', 'day_part', 'counted_on', 'minutes', 'count', 'note'])->toArray(),
             'push_subscriptions' => $user->pushSubscriptions()->get(['endpoint', 'created_at'])->toArray(),
         ];
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CountController;
 use App\Http\Controllers\Game\DecisionsController;
 use App\Http\Controllers\Game\EndController;
 use App\Http\Controllers\Game\GameController;
@@ -42,6 +43,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('games/{game}/months', [MonthController::class, 'store'])->name('games.months.store');
     Route::post('games/{game}/end', [EndController::class, 'store'])->name('games.end');
     Route::post('games/{game}/next', [GameController::class, 'next'])->name('games.next');
+
+    // Pedestrian counts for the footfall calibration (SPEC §8).
+    Route::get('counts', [CountController::class, 'index'])->name('counts.index');
+    Route::post('counts', [CountController::class, 'store'])->name('counts.store');
+    Route::delete('counts/{count}', [CountController::class, 'destroy'])->name('counts.destroy');
     Route::post('games/{game}/sale', [SaleController::class, 'store'])->name('games.sale.store');
     Route::delete('games/{game}/sale', [SaleController::class, 'destroy'])->name('games.sale.destroy');
     Route::post('games/{game}/sale/offers/{offer}', [SaleController::class, 'answer'])->name('games.sale.answer');

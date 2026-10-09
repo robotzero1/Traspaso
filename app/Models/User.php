@@ -47,6 +47,12 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return $this->hasMany(Purchase::class);
     }
 
+    /** @return HasMany<PedestrianCount, $this> */
+    public function pedestrianCounts(): HasMany
+    {
+        return $this->hasMany(PedestrianCount::class);
+    }
+
     /** @return HasMany<ViabilityReport, $this> */
     public function viabilityReports(): HasMany
     {

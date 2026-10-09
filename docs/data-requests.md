@@ -129,6 +129,17 @@ Gathered at the same time if convenient; used in milestone 25.
 
 ---
 
+## Milestone 26: pedestrian counts
+
+Use the counting page (**Pedestrian counts** in the sidebar, `/counts`) on
+your phone: pin the spot (or "Use my location"), start the 10-minute timer
+and tap once for every person who walks past. Aim for 15–20 varied spots on
+shopping streets (busy and quiet, centre and neighbourhoods), each at two or
+three times of day (morning, lunch, afternoon). When you're done, run
+`php artisan geo:counts-export`, commit
+`database/seeders/geo/zaragoza/sources/pedestrian_counts.csv`, and tell me:
+I'll run `geo:calibrate --fit` and tune the footfall weights.
+
 ## Template
 
 Copy, fill in what you have, leave the rest blank, and paste it back.
