@@ -143,16 +143,19 @@ milestone 23:
 
 | Target | Monthly | Daily | 5 years | |
 |---|---|---|---|---|
-| Typical owner, failed in year 1 (20–25%) | 21% | {{D_DEF}} | 21% | pass |
+| Typical owner, failed in year 1 (20–25%) | 21% | 23% | 21% | pass |
 | Typical owner, open after 5 years (45–50%) | | | 49% | pass |
-| Thoughtful, failed in year 1 (≤ 12%) | 8% | {{D_TH}} | 8% | pass |
-| Thoughtful, median net worth doesn't fall | +46% | {{D_THMED}} | +136% | pass |
-| Thoughtful, worst district (10+ games, ≤ 30% fail) | 21% | {{D_DIST}} | 21% | pass |
-| Thoughtful beats default by 5+ points | +16 | {{D_GAP}} | +54 | pass |
-| Resale after a year (85–100% of traspaso) | 98% | {{D_RES}} | 98% | pass |
-| Round trip, traspaso + fees (5–25% loss) | 9% | {{D_RT}} | 9% | pass |
+| Thoughtful, failed in year 1 (≤ 12%) | 8% | 11% | 8% | pass |
+| Thoughtful, median net worth doesn't fall | +46% | +41% | +136% | pass |
+| Thoughtful, worst district (10+ games, ≤ 30% fail) | 21% | 27% | 21% | pass |
+| Thoughtful beats default by 5+ points | +16 | +15 | +54 | pass |
+| Resale after a year (85–100% of traspaso) | 98% | 96% | 98% | pass |
+| Round trip, traspaso + fees (5–25% loss) | 9% | 12% | 9% | pass |
 | Flipping doesn't beat holding, 5 years | | | +65% vs +81% | pass |
-| Careless, failed (≥ 90%) | 100% | {{D_CARE}} | 100% | pass |
+| Careless, failed (≥ 90%) | 100% | 100% | 100% | pass |
+
+On the daily engine the worst district is now Santa Isabel (27% of 33
+games), still close to the 30% limit as in milestone 11.
 
 Medians, monthly engine: thoughtful +46%, typical owner +30%, cheapest −39%
 (86% fail), premium +145% (2% fail). Five years: 79% of typical owners open
