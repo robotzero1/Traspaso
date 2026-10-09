@@ -1,4 +1,4 @@
-# Balancing pass (milestones 9–11, 17–23)
+# Balancing pass (milestones 9–11, 17–23, 27)
 
 How the game plays out on the real Zaragoza data, and what was changed to get
 there. Reproduce with:
@@ -15,6 +15,149 @@ draws its starting capital (€20k–€100k, whole thousands) and its starting 
 from the seed. Net worth = cash + the landlord's deposit and guarantee + the
 business's value; cash below zero ends the game with cash + deposit and
 guarantee. Buying costs (milestone 23) come out of the starting capital.
+
+## Where every number stands (milestone 27)
+
+Every section of `config/market/zaragoza_cafe.php`, as of October 2026.
+Milestones 24–26 still wait on the user's market figures and pedestrian
+counts, so this is the state *before* them; rerun this pass and update the
+table when they land. (`ParameterSheetTest` fails if a section of the sheet
+has no row here.)
+
+- **Real**: taken from a law, an official table or the user's aggregated
+  listing sample, with the source in the sheet.
+- **Fitted**: tuned in `market:balance` until a real-world target holds;
+  the target is named.
+- **Guess**: no source yet. Most are plausible, a few matter a lot (see the
+  sensitivity table below).
+- **Design**: a rule of the game rather than a claim about Zaragoza
+  (limits, defaults, how scores move). Data can't settle these.
+
+Where a section mixes kinds, the status names the most important part first.
+
+### Setup, buying and selling
+
+| Section | Status | What it rests on | What would settle the rest |
+|---|---|---|---|
+| `city` | **Design** | the market's name | — |
+| `game` | **Design** | €20k–€100k starting capital, no fixed end (SPEC §1, §11) | — |
+| `purchase` | **Real** + guess | deposit 2 months (LAU art. 36.1); licence fee €102.70 (OF 13 at 50%, a service's figure); gestoría €100 (Certicalia average). Guesses: extra guarantee 2 months, lawyer €800 + 1%, technical report €400 | lease terms and fees (milestone 24 §5); ITP waits on a gestor |
+| `owner` | **Design** | €1,200 a month, about the minimum wage after tax (the user's choice) | — |
+| `viability` | **Design** | a real café within 15 m is the one being checked | — |
+| `takeover` | **Guess** | one employee (from the first balancing pass), morale 70, equipment health from condition, stock 55 | nothing observable; low stakes |
+| `default_decisions` | **Design** | what a new owner who changes nothing does (one employee, three day parts, six days) | — |
+| `decision_limits` | **Design** | the range of each control | — |
+| `valuation` | **Fitted** + guess | fitted so a typical owner's café sells after a year for 85–100% of its traspaso (listing tiers, Oct 2026); the location/fixtures split and the 85–100% band itself are guesses | asking vs agreed price (milestone 24 §3) |
+| `sale` | **Guess** + real | buyers a month, price sensitivity, offers, agency 8% (min €3,000), gestoría €800 are guesses; IRPF savings brackets are real (LIRPF art. 76) | time listed, asking vs agreed, agency fees (milestone 24 §1, §3, §4) |
+| `closure` | **Real** + guess | severance 20 days a year (ET art. 53.1.b), seniority carried over (ET art. 44). Guesses: 2 months' rent to break the lease, 2 years' inherited tenure, scrap at 20% of fixtures | lease terms (milestone 24 §5) |
+| `changing_cafe` | **Guess** | 2 months between cafés for the flipper | how long buying takes (milestone 24 §1) |
+| `quick_sale` | **Guess** | a buyer of last resort pays half the value | agencies on distress sales (milestone 24 §3) |
+
+### The market: listings, premises and places
+
+| Section | Status | What it rests on | What would settle the rest |
+|---|---|---|---|
+| `business_count` | **Design** | 100–200 listings (SPEC §2) | the count of listings up on one day (milestone 24 §2) |
+| `market_churn` | **Guess** | 8% taken and 12 new a week (a listing stays ~3 months) | new listings a month, time listed (milestone 24 §1–2) |
+| `neighbourhood_weighting` | **Guess** | listings follow population, boosted in commercial areas | listing counts per district |
+| `categories` | **Guess** | 55% cafés, 45% café-bars | a count of listing types |
+| `licences` | **Guess** | licence mix by category | a count of listing types |
+| `kitchens` | **Guess** | kitchen mix by category | a count of listing types |
+| `footfall` | **Design** | a fallback for a market without real locations (tests); the game uses the footfall surface in `config/geo.php` | — |
+| `floor_area_m2` | **Real** | Zaragoza listing sample, Oct 2026 (25–220 m², median 60) | — |
+| `seating` | **Guess** | 0.5 seats per m², terrace at 55% of places | seats and terraces in listings |
+| `condition` | **Guess** | spread of condition 1–10 | listing photos would only give a rough read; low stakes |
+| `equipment_age_years` | **Guess** | median 6 years | listing descriptions |
+| `base_reputation` | **Design** | a 0–100 score with no outside scale | — |
+| `rent` | **Real** + fitted | percentiles from the listing sample (median €900); the link to footfall (0.85) fitted so the busiest street doesn't win every game | — |
+| `traspaso` | **Real** + fitted | percentiles from the listing sample (median €40,000); the link to footfall (0.85) fitted as for rent; the kitchen and terrace premiums are guesses | — |
+
+### Trading and demand
+
+| Section | Status | What it rests on | What would settle the rest |
+|---|---|---|---|
+| `day_parts` | **Guess** | the five day parts' hours follow Zaragoza's trading day; intensity, turnover, stop factors and the demand mix are guesses | counts at two or three times of day (milestone 26) |
+| `appeal` | **Guess** | how well cafés and café-bars, with and without a kitchen, suit each day part | busyness by type (milestone 25) |
+| `licence_day_parts` | **Real** | Zaragoza's opening-hours ordinance (06:00–01:30, +1 h Fri/Sat/eves) | the ordinance text, once |
+| `ticket_position` | **Guess** | where budget/standard/premium sit in each ticket range | café prices by tier (milestone 25) |
+| `average_ticket_cents` | **Guess** | own observation (a café con leche ~€1.50); the ranges are guesses | coffee and breakfast prices (milestone 25) |
+| `seasonality` | **Guess** | August empties out, October has the Pilar | card spending by month (CaixaBank / BBVA Research) |
+| `terrace_usable_days` | **Guess** | in line with the AEMET rain days, but not from AEMET | terraces seen in use |
+| `day_of_week` | **Guess** | shaped on Spanish card spending (Fri–Sat peak) | card spending by weekday, or counts |
+| `holidays` | **Real** | BOE, BOA and Zaragoza calendars | — |
+| `pilar` | **Real** + guess | dates from the Ayuntamiento's programmes; the fiesta's weights are guesses | card spending in Pilar week |
+| `weather` | **Real** + guess | rain days: AEMET normals 1981–2010, Zaragoza Aeropuerto (from a search summary: check on aemet.es); hot days and their effects are guesses | AEMET days ≥ 35 °C |
+| `daily` | **Guess** | ±10% day-to-day noise | counts on several days at the same spot |
+| `demand` | **Guess** + fitted | potential customers per hour, footfall exponent, monthly noise are guesses; `local_trend` (24.5% a year) fitted to INE/DIRCE: 45–50% of new cafés still open after 5 years | pedestrian counts (milestone 26) |
+| `capture` | **Fitted** + guess | `base_rate` 0.094 fitted to INE/DIRCE and Hostelería de España: 20–25% of new cafés and bars close in year 1. Price elasticity, quality, reputation, condition, marketing and competition responses are guesses | café prices and busyness by tier (milestone 25) |
+| `quality` | **Design** | the tiers' scores and how worn equipment cuts them | — |
+| `service` | **Guess** | 18 customers per person-hour, owner works 50 h a week | own observation behind a bar |
+| `reputation` | **Design** | how reputation follows quality, price and service | — |
+| `morale` | **Design** | how morale follows workload | — |
+| `equipment` | **Guess** | wear of 1 point a month plus 0.1 a year of age | repair records; low stakes |
+| `events` | **Guess** | the odds and costs of 18 events. Some could be sourced (inspection frequency, fines in Aragón food-safety law, insurance excesses) | official inspection and fine figures |
+| `competitors` | **Design** + real | rivals' behaviour is a design; their positions are real OSM cafés and bars (density scaled by OSM coverage, 0.65, IAEST) | — |
+
+### Costs
+
+| Section | Status | What it rests on | What would settle the rest |
+|---|---|---|---|
+| `cogs` | **Guess** | 28/31/35% of revenue, inside the usual hospitality range (28–35%); no public Spanish benchmark found | café owners, or Hostelería de España's yearbook |
+| `iva` | **Real** | 10% (LIVA art. 91.Uno.2.2º) | — |
+| `staff` | **Real** | Zaragoza hostelería agreement 2023–2025, Grupo II, €1,375 × 14 + October payment; Social Security 32.15% (Orden PJC/297/2026 + AT/EP); 1,776 h a year. `min_on_shift` is design; 7 days to hire is a guess; 15 days' notice is ET | the BOPZ text, once |
+| `cuota_autonomo` | **Real** | the 15 RETA bands (RDL 13/2022) and the €80 flat rate (LETA art. 38 ter), via search summaries | the TGSS table, once |
+| `utilities` | **Guess** | aims at €250–500 a month | published tariffs × a café's load |
+| `insurance` | **Guess** | €45 a month | two or three quotes |
+| `maintenance` | **Guess** | €50 a month + €5 per year of equipment age | café owners |
+| `income_tax` | **Real** | modelo 130: 20% of net yield (RIRPF art. 110) | — |
+| `terrace_fee` | **Guess** | €100 a table a year | Ordenanza Fiscal 25's tariff and street categories |
+| `names` | **Design** | fictional names | — |
+
+### And the map (`config/geo.php`)
+
+| Section | Status | What it rests on |
+|---|---|---|
+| `osm_coverage` | **Real** | IAEST and the Asociación Café Bares de Zaragoza (3,000–3,500 places) vs 2,152 in OSM |
+| `footfall` (surface) | **Guess** | the weights of shops, junctions, residents and stops, and their timing by day part. Milestone 26 tunes them to the counts |
+| `indices` | **Guess** | which POIs make a neighbourhood student, tourist, office or transport |
+
+### Tally
+
+Of the sheet's 58 sections: **13 real** (7 wholly, 6 with a guess or two
+inside), **2 fitted** (`capture`, `valuation`; and fitted parts of `rent`,
+`traspaso` and `demand`), **29 guesses** and **14 design**. By what they
+move, the economy is in better shape than the count suggests: the
+listing prices, rents, wages, Social Security, taxes and the closure rates
+the engine is fitted to are all real. The guesses that remain sit on the
+revenue side (how many people come in and what they spend) and in the
+running costs no public benchmark covers.
+
+### Which guesses matter
+
+*(Running: filled in below once the sensitivity runs finish.)*
+
+### Results: everything rerun
+
+1,000 games per strategy, seeds from 1, with no parameter retuned since
+milestone 23:
+
+| Target | Monthly | Daily | 5 years | |
+|---|---|---|---|---|
+| Typical owner, failed in year 1 (20–25%) | 21% | {{D_DEF}} | 21% | pass |
+| Typical owner, open after 5 years (45–50%) | | | 49% | pass |
+| Thoughtful, failed in year 1 (≤ 12%) | 8% | {{D_TH}} | 8% | pass |
+| Thoughtful, median net worth doesn't fall | +46% | {{D_THMED}} | +136% | pass |
+| Thoughtful, worst district (10+ games, ≤ 30% fail) | 21% | {{D_DIST}} | 21% | pass |
+| Thoughtful beats default by 5+ points | +16 | {{D_GAP}} | +54 | pass |
+| Resale after a year (85–100% of traspaso) | 98% | {{D_RES}} | 98% | pass |
+| Round trip, traspaso + fees (5–25% loss) | 9% | {{D_RT}} | 9% | pass |
+| Flipping doesn't beat holding, 5 years | | | +65% vs +81% | pass |
+| Careless, failed (≥ 90%) | 100% | {{D_CARE}} | 100% | pass |
+
+Medians, monthly engine: thoughtful +46%, typical owner +30%, cheapest −39%
+(86% fail), premium +145% (2% fail). Five years: 79% of typical owners open
+after year 1, 67%, 59%, 54%, **49%** after year 5; thoughtful 59%, premium
+73%.
 
 ## Public sources (milestone 22)
 

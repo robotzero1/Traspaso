@@ -82,3 +82,11 @@ it('reports when every section is verified', function () {
 it('fails for an unknown market', function () {
     $this->artisan('market:placeholders atlantis')->assertFailed();
 });
+
+it('says in the balance report where every section stands', function () {
+    $report = file_get_contents(base_path('docs/balance-report.md'));
+
+    foreach (array_keys(config('market.zaragoza_cafe')) as $section) {
+        expect($report)->toMatch("/^\| `{$section}` \| \*\*(Real|Fitted|Guess|Design)/m", "docs/balance-report.md has no status row for [{$section}]");
+    }
+});

@@ -7,11 +7,11 @@
 |
 | Every tunable number the generator and the engine use (SPEC.md §7).
 |
-| ⚠️ Every value here is a PLACEHOLDER until it has been checked against
-| research. Each section has a `source` key: it starts with "PLACEHOLDER"
-| and should be replaced with the real source once the numbers are
-| verified. `php artisan market:placeholders` lists the sections that
-| are still placeholders.
+| Each section has a `source` key. It starts with "PLACEHOLDER" while any
+| of the section's numbers is still a guess, and names the real source
+| once they are verified. `php artisan market:placeholders` lists the
+| sections that still hold guesses; docs/balance-report.md (milestone 27)
+| says, section by section, what is real, fitted or a guess, and why.
 |
 | Conventions:
 | - Money is integer cents. Keys holding money end in `_cents`.
@@ -160,7 +160,7 @@ return [
     // replace with aggregated figures on Zaragoza traspasos (time listed,
     // asking vs agreed price, agency fees).
     'sale' => [
-        'source' => 'PLACEHOLDER: guesses; see docs/balance-report.md',
+        'source' => 'PLACEHOLDER: guesses for the market figures (milestone 24: time listed, asking vs agreed, agency fees); tax_brackets are LIRPF art. 76',
         // Serious buyers a month for a café asked at its value. Private:
         // portal listing only; agency: its buyer list and marketing too.
         'buyers_per_month' => ['private' => 0.4, 'agency' => 1.0],
@@ -299,7 +299,7 @@ return [
     */
 
     'footfall' => [
-        'source' => 'PLACEHOLDER: to derive from OSM footfall proxies (milestone 8)',
+        'source' => 'fallback for a market without real locations (tests); the game uses the footfall surface in config/geo.php',
         'index_weights' => [
             'student' => 0.20,
             'tourist' => 0.25,
@@ -512,7 +512,7 @@ return [
     ],
 
     'terrace_usable_days' => [
-        'source' => 'PLACEHOLDER: AEMET climate normals',
+        'source' => 'PLACEHOLDER: a guess (the rain days in weather are AEMET normals; these are not); check against terraces seen in use through the year',
         'days' => [
             1 => 8, 2 => 10, 3 => 16, 4 => 20, 5 => 25, 6 => 27,
             7 => 26, 8 => 26, 9 => 25, 10 => 20, 11 => 12, 12 => 8,
@@ -618,7 +618,7 @@ return [
     */
 
     'demand' => [
-        'source' => 'PLACEHOLDER: to calibrate against manual pedestrian counts',
+        'source' => 'PLACEHOLDER: local_trend fitted to INE/DIRCE 5-year survival (market:balance --years=5); the rest is a guess for the pedestrian counts (milestone 26)',
         'potential_per_hour_at_footfall_10' => 400,
         'footfall_exponent' => 0.8,
         'index_reference' => 5.0,
@@ -643,7 +643,7 @@ return [
     // attractiveness = reputation factor × price_level ^ −price_elasticity
     //                × quality factor
     'capture' => [
-        'source' => 'PLACEHOLDER: game design, to tune in the balancing pass',
+        'source' => 'PLACEHOLDER: base_rate fitted to INE/DIRCE year-1 closures (market:balance); the price, quality, reputation, marketing and competition responses are guesses (milestone 25)',
         // Calibrated (market:balance) so that, once the owner takes their
         // pay, 20–25% of typical new cafés fail in year 1, as INE/DIRCE and
         // Hostelería de España report for new cafés and bars. 0.091 →
