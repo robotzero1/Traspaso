@@ -1,11 +1,80 @@
 # Traspaso
 
-A business simulator: take over a café in Zaragoza and try to make it work
-for a year. See [SPEC.md](SPEC.md) for the design.
+A simulation of running a café in Zaragoza: take over a business through a
+*traspaso* (buying the lease, fit-out and goodwill of a going concern), run
+it day by day in real time, and sell up or close when it's time. It's built
+to be realistic rather than fun: the economy is calibrated to real closure
+rates, sourced wages and taxes, and aggregated listing prices, and every
+number says where it comes from.
 
 > Business locations, financial data and operating characteristics are
 > simulated. Real-world market data is used to establish realistic ranges
 > and distributions.
+
+![A café six months in: cash, profit each month, takings day by day, and the P&L](docs/screenshots/results.png)
+
+## What it does
+
+- **The game.** Choose a café from a generated market of 100–200 listings
+  placed on real Zaragoza commercial streets, with real cafés and bars
+  nearby as rivals. Set prices, quality, opening hours, staff and
+  marketing. One game day passes per real day: every night at 23:00 the
+  server plays the day (weather, weekdays, holidays, the Pilar week,
+  events) and sends a push notification with the results. Rent, wages and
+  your own pay go out at the month end; run out of cash and it's over.
+- **Selling and buying.** List the café privately or through an agency and
+  wait for buyers (who value it on its last year's accounts), negotiate,
+  pay the gestoría and income tax on the gain, or close it down or sell it
+  fast. Then buy another with what's left.
+- **The viability check.** Pin a real café on the map, enter the listing's
+  figures and how you'd run it, and get 1,000 simulated five-year futures:
+  survival at 1, 3 and 5 years, profit ranges, when the traspaso is earned
+  back, what it would sell for, and the risks.
+- **An installable app**, with Stripe payments for the full viability report
+  and for bigger starting capital.
+
+![The decisions screen: prices, quality, opening hours, staff, and the costs they commit you to](docs/screenshots/decisions.png)
+
+## Realism first
+
+- **Calibrated to outcomes.** `php artisan market:balance` plays thousands of
+  complete games with scripted strategies (a typical owner, a thoughtful
+  one, a careless one, a flipper…) and checks targets from real data: 20–25%
+  of new cafés and bars close within a year and about half survive five
+  (INE/DIRCE); a café run as the seller ran it resells for a little under its
+  asking price; buying and selling cafés is no money machine.
+- **Sourced inputs.** Wages from the Zaragoza hostelería collective
+  agreement, Social Security and self-employed contributions, IVA and IRPF,
+  deposit and severance rules from Spanish law, opening hours from the city
+  ordinance, rents and traspaso prices from aggregated listings (never
+  single listings).
+- **Honest about the gaps.** Every section of the parameter sheet is marked
+  real, fitted, guess or game design, and a sensitivity table shows which
+  guesses actually move the results (see
+  [docs/balance-report.md](docs/balance-report.md)).
+- **Footfall from open data.** Pedestrian footfall for every commercial
+  street point is estimated offline from OpenStreetMap (shops and services
+  nearby, street centrality, population, transport stops), per time of day,
+  and calibrated against manual counts made with the app's counting page.
+
+## How it's built
+
+- **Laravel 13**, **Inertia + React + TypeScript**, **Tailwind**, **SQLite**,
+  **Pest** (750+ tests), Leaflet with OpenStreetMap tiles.
+- **A pure simulation engine** in `app/Simulation/`: plain PHP with no
+  framework, database or clock, everything passed in as immutable DTOs and
+  all randomness from a seeded generator, so any game or simulation replays
+  exactly. A monthly engine and a day-by-day engine share the same steps.
+- **One parameter sheet** (`config/market/zaragoza_cafe.php`) holds every
+  economic number with its source; nothing economic is hard-coded.
+- **Real time on the server:** a scheduled nightly job queues each café's
+  day; days are played once, in order, with catch-up after a missed night.
+  Web Push (VAPID) notifications, a service worker and a web app manifest.
+- **Production basics:** health checks, backups, a deployment guide for a
+  small EU server, and GDPR data export and deletion
+  ([docs/deploy.md](docs/deploy.md)).
+
+The design, scope and milestones are in [SPEC.md](SPEC.md).
 
 ## Running it locally
 
