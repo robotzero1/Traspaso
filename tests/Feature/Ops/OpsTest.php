@@ -3,6 +3,7 @@
 use App\Models\Purchase;
 use App\Models\User;
 use App\Models\ViabilityReport;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
@@ -96,4 +97,20 @@ it('prunes unpaid reports and abandoned checkouts, but keeps what was paid for',
 
     expect(ViabilityReport::query()->pluck('id')->all())->toEqualCanonicalizing([$paid->id, $recent->id])
         ->and(Purchase::query()->pluck('id')->all())->toBe([$bought->id]);
+});
+
+// Shared hosting -----------------------------------------------------------------
+
+it('works the queue from the scheduler only when told to (shared hosting)', function () {
+    $event = collect(app(Schedule::class)->events())
+        ->first(fn ($e) => str_contains($e->command, 'queue:work'));
+
+    expect($event)->not->toBeNull()
+        ->and($event->expression)->toBe('* * * * *');
+
+    config(['ops.queue_from_scheduler' => false]);
+    expect($event->filtersPass($this->app))->toBeFalse();
+
+    config(['ops.queue_from_scheduler' => true]);
+    expect($event->filtersPass($this->app))->toBeTrue();
 });

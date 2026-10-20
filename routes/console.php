@@ -24,3 +24,11 @@ Schedule::command('app:backup')
     ->when(fn () => DB::connection(config('ops.backup.connection'))->getDriverName() === 'sqlite');
 Schedule::command('model:prune')->daily();
 Schedule::command('queue:prune-failed', ['--hours' => 24 * 30])->daily();
+
+// Shared hosting (QUEUE_FROM_SCHEDULER=true): no supervisor to keep a worker
+// running, so each minute's schedule:run works the queue until it's empty.
+Schedule::command('queue:work --stop-when-empty --max-time=55 --tries=3')
+    ->everyMinute()
+    ->withoutOverlapping(10)
+    ->runInBackground()
+    ->when(fn () => config('ops.queue_from_scheduler'));

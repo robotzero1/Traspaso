@@ -131,7 +131,9 @@ be paid for; for local testing put `VIABILITY_UNLOCK_ALL=true` in `.env`.
 
 ## Going live
 
-`docs/deploy.md` covers running it on a server: the configs in `deploy/`,
+`docs/deploy-cpanel.md` covers testing it on ordinary cPanel hosting (no root
+or process manager: the scheduler works the queue). `docs/deploy.md` covers
+running it on your own server: the configs in `deploy/`,
 the production `.env`, monitoring (`/up`, `php artisan app:health`), nightly
 backups (`php artisan app:backup`) and the GDPR basics.
 

@@ -22,6 +22,11 @@ return [
     // Better Stack, cron-job.org...), so a missed night raises an alert.
     'nightly_ping_url' => env('NIGHTLY_PING_URL'),
 
+    // On hosting without a process manager (cPanel and other shared
+    // hosting), the scheduler works the queue each minute instead of a
+    // long-running queue:work. See docs/deploy-cpanel.md.
+    'queue_from_scheduler' => (bool) env('QUEUE_FROM_SCHEDULER', false),
+
     'backup' => [
         'at' => '04:00',
         // null: the default connection.

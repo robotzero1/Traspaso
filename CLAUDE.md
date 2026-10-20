@@ -33,4 +33,4 @@ Summarise what was built, what's tested, any placeholder values you added to con
 - Push notifications need VAPID keys in `.env` (`php artisan webpush:vapid` prints them) and HTTPS (or localhost); without keys the app works but sends nothing.
 - The user runs the app on Windows (`C:\SITES\Traspaso\Traspaso`, portable PHP 8.4). After pulling they usually need `php artisan migrate` and `npm run build`; say so whenever a change needs either.
 - Payments use Stripe Checkout: `STRIPE_SECRET`, `STRIPE_WEBHOOK_SECRET` and optionally `STRIPE_TAX_RATE_ID` in `.env`, webhook at `/stripe/webhook`. Without keys nothing can be bought (the rest works).
-- Going live is in `docs/deploy.md` (server configs in `deploy/`). `php artisan app:health` runs the same checks as `/up`; `app:backup` backs up the SQLite database.
+- Going live is in `docs/deploy.md` (server configs in `deploy/`); cPanel testing in `docs/deploy-cpanel.md` (`QUEUE_FROM_SCHEDULER=true` makes the scheduler work the queue). `php artisan app:health` runs the same checks as `/up`; `app:backup` backs up the SQLite database.
