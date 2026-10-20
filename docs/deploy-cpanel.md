@@ -121,10 +121,23 @@ Run `php artisan optimize` again after every `.env` change.
 
 The built frontend (`public/build`) isn't in git. Either:
 
-- **Build on your PC and upload** (simplest): on Windows, in
-  `C:\SITES\Traspaso\Traspaso`, run `npm run build`, zip the `public\build`
-  folder, upload it with **File Manager** to `/home/USER/traspaso/public/`
-  and extract it there, so you have `public/build/manifest.json`.
+- **Build on your PC and upload** (simplest): on Windows, in the folder
+  you already develop in (`C:\SITES\Traspaso\Traspaso`, on `main`, after a
+  `git pull`), run `npm run build`, zip the `public\build` folder, upload it
+  with **File Manager** to `/home/USER/traspaso/public/` and extract it
+  there, so you have `public/build/manifest.json`.
+
+  In a fresh clone, install first: the build runs `php artisan
+  wayfinder:generate` for the frontend's route helpers, so it needs the PHP
+  packages and an `.env` as well as the Node ones:
+
+  ```
+  composer install
+  copy .env.example .env
+  php artisan key:generate
+  npm install
+  npm run build
+  ```
 - **Or build on the server**, if it has Node 22 (cPanel → **Setup Node.js
   App** on CloudLinux gives you one: create an app with root `traspaso`,
   copy the "enter the virtual environment" command it shows, run it in
